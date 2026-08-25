@@ -160,6 +160,8 @@ class _RulesListScreenState
       return;
     }
 
+
+
     final ruleContent =
     RulesRepository.findById(rule.id);
 
