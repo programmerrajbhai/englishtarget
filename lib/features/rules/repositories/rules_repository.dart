@@ -1,14 +1,14 @@
-
-import '../data/batches/rules_batch_01.dart';
+import '../data/batches/rules_batch_registry.dart';
 import '../models/rule_content.dart';
 
 abstract final class RulesRepository {
-  static const List<RuleContent> allRules = [
-    ...Batch01Rules.rules,
-  ];
+  static final List<RuleContent> allRules =
+  List<RuleContent>.unmodifiable(
+    RulesBatchRegistry.all,
+  );
 
   static RuleContent? findById(String id) {
-    for (final rule in allRules) {
+    for (final RuleContent rule in allRules) {
       if (rule.id == id) {
         return rule;
       }
@@ -17,19 +17,13 @@ abstract final class RulesRepository {
     return null;
   }
 
-  static List<RuleContent> findByCategory(
-      String category,
-      ) {
+  static List<RuleContent> findByCategory(String category) {
     return allRules
-        .where(
-          (rule) => rule.category == category,
-    )
-        .toList();
+        .where((RuleContent rule) => rule.category == category)
+        .toList(growable: false);
   }
 
-  static bool validateRuleContent(
-      RuleContent rule,
-      ) {
+  static bool validateRuleContent(RuleContent rule) {
     return rule.examples.length == 15 &&
         rule.tests.length == 10 &&
         rule.speakingTests.length == 5;
@@ -37,9 +31,11 @@ abstract final class RulesRepository {
 
   static List<RuleContent> findIncompleteRules() {
     return allRules
-        .where(
-          (rule) => !validateRuleContent(rule),
-    )
-        .toList();
+        .where((RuleContent rule) => !validateRuleContent(rule))
+        .toList(growable: false);
+  }
+
+  static bool hasContent(String id) {
+    return allRules.any((RuleContent rule) => rule.id == id);
   }
 }

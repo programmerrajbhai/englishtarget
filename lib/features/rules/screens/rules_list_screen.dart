@@ -1,14 +1,13 @@
-import 'package:englishtarget/features/rules/screens/rule_details_screen.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
-
+import '../data/batches/rule_config.dart';
 import '../models/rule_item.dart';
 import '../models/rule_progress.dart';
 import '../models/rules_data.dart';
 import '../repositories/rules_repository.dart';
 import '../services/rules_progress_service.dart';
-import '../widgets/rule_card.dart';
+import 'rule_details_screen.dart';
 
 class RulesListScreen extends StatefulWidget {
   final bool showBackButton;
@@ -19,60 +18,38 @@ class RulesListScreen extends StatefulWidget {
   });
 
   @override
-  State<RulesListScreen> createState() =>
-      _RulesListScreenState();
+  State<RulesListScreen> createState() => _RulesListScreenState();
 }
 
-class _RulesListScreenState
-    extends State<RulesListScreen> {
-  final TextEditingController _searchController =
-  TextEditingController();
+class _RulesListScreenState extends State<RulesListScreen> {
+  final TextEditingController _searchController = TextEditingController();
 
+  Map<String, RuleProgress> _progressMap = const {};
   String _selectedCategory = 'All';
   String _searchQuery = '';
-
   bool _isLoading = true;
 
-  Map<String, RuleProgress> _progressMap = {};
-  final Set<String> _bookmarkedRules = {};
-
-  List<String> get _orderedRuleIds {
-    return RulesData.rules
-        .map((rule) => rule.id)
-        .toList(growable: false);
-  }
+  List<String> get _orderedRuleIds =>
+      RulesData.rules.map((rule) => rule.id).toList(growable: false);
 
   List<RuleItem> get _filteredRules {
     final query = _searchQuery.trim().toLowerCase();
 
     return RulesData.rules.where((rule) {
-      final matchesCategory =
-          _selectedCategory == 'All' ||
-              rule.category == _selectedCategory;
-
-      final matchesSearch =
-          query.isEmpty ||
-              rule.title.toLowerCase().contains(query) ||
-              rule.shortMeaning
-                  .toLowerCase()
-                  .contains(query) ||
-              rule.explanation
-                  .toLowerCase()
-                  .contains(query);
+      final matchesCategory = _selectedCategory == 'All' ||
+          rule.category == _selectedCategory;
+      final matchesSearch = query.isEmpty ||
+          rule.title.toLowerCase().contains(query) ||
+          rule.shortMeaning.toLowerCase().contains(query) ||
+          rule.explanation.toLowerCase().contains(query);
 
       return matchesCategory && matchesSearch;
     }).toList(growable: false);
   }
 
-  int get _completedRulesCount {
-    return RulesData.rules.where((rule) {
-      final progress =
-          _progressMap[rule.id] ??
-              const RuleProgress();
-
-      return progress.isCompleted;
-    }).length;
-  }
+  int get _completedRulesCount => RulesData.rules.where((rule) {
+    return (_progressMap[rule.id] ?? const RuleProgress()).isCompleted;
+  }).length;
 
   @override
   void initState() {
@@ -81,8 +58,7 @@ class _RulesListScreenState
   }
 
   Future<void> _loadProgress() async {
-    final progress =
-    await RulesProgressService.loadAllProgress();
+    final progress = await RulesProgressService.loadAllProgress();
 
     if (!mounted) return;
 
@@ -92,38 +68,13 @@ class _RulesListScreenState
     });
   }
 
-  void _selectCategory(String category) {
-    setState(() {
-      _selectedCategory = category;
-    });
-  }
-
-  void _search(String value) {
-    setState(() {
-      _searchQuery = value;
-    });
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-
-    setState(() {
-      _searchQuery = '';
-    });
-  }
-
-  void _toggleBookmark(String ruleId) {
-    setState(() {
-      if (_bookmarkedRules.contains(ruleId)) {
-        _bookmarkedRules.remove(ruleId);
-      } else {
-        _bookmarkedRules.add(ruleId);
-      }
-    });
-  }
-
   bool _isRuleUnlocked(RuleItem rule) {
-    final ruleIndex = RulesData.rules.indexWhere(
+    if (RuleConfig.unlockAllForTesting) {
+      // যেসব Rule-এর content আছে, শুধু সেগুলো test-এর জন্য unlock হবে।
+      return RulesRepository.findById(rule.id) != null;
+    }
+
+    final int ruleIndex = RulesData.rules.indexWhere(
           (item) => item.id == rule.id,
     );
 
@@ -134,71 +85,52 @@ class _RulesListScreenState
     );
   }
 
-
-
   Future<void> _openRule(
       RuleItem rule,
       bool isUnlocked,
       ) async {
     if (!isUnlocked) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: const Text(
-              'আগের Rule সম্পূর্ণ করলে এটি unlock হবে।',
-            ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.navy,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-        );
-
+      _showMessage('আগের Rule-এর Learn, Test ও Speaking সম্পূর্ণ করুন।');
       return;
     }
 
+    final content = RulesRepository.findById(rule.id);
 
-
-    final ruleContent =
-    RulesRepository.findById(rule.id);
-
-    if (ruleContent == null) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: const Text(
-              'এই Rule-এর learning content এখনো add করা হয়নি।',
-            ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.error,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-        );
-
+    if (content == null) {
+      _showMessage(
+        'এই Rule-এর lesson content এখনো যোগ করা হয়নি।',
+        isError: true,
+      );
       return;
     }
 
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) {
-          return RuleDetailsScreen(
-            rule: ruleContent,
-          );
-        },
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => RuleDetailsScreen(rule: content),
       ),
     );
 
     await _loadProgress();
   }
 
+  void _showMessage(
+      String message, {
+        bool isError = false,
+      }) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: isError ? AppColors.error : AppColors.navy,
+          margin: const EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      );
+  }
 
   @override
   void dispose() {
@@ -214,26 +146,17 @@ class _RulesListScreenState
         bottom: false,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final width = constraints.maxWidth;
-
-            final horizontalPadding = (width * 0.055)
-                .clamp(18.0, 38.0)
-                .toDouble();
-
-            final crossAxisCount = width >= 1000
+            final horizontalPadding =
+            (constraints.maxWidth * 0.05).clamp(18.0, 32.0).toDouble();
+            final columnCount = constraints.maxWidth >= 980
                 ? 3
-                : width >= 650
+                : constraints.maxWidth >= 650
                 ? 2
                 : 1;
 
-            final cardHeight =
-            width < 370 ? 178.0 : 170.0;
-
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 1100,
-                ),
+                constraints: const BoxConstraints(maxWidth: 1100),
                 child: Column(
                   children: [
                     Padding(
@@ -245,137 +168,99 @@ class _RulesListScreenState
                       ),
                       child: Column(
                         children: [
-                          _RulesHeader(
-                            showBackButton:
-                            widget.showBackButton,
+                          _Header(
+                            showBackButton: widget.showBackButton,
+                            completedRules: _completedRulesCount,
                           ),
-
                           const SizedBox(height: 18),
-
-                          _RealProgressSummary(
-                            completed:
-                            _completedRulesCount,
+                          _ProgressSummary(
+                            completed: _completedRulesCount,
                             total: RulesData.rules.length,
                           ),
-
-                          const SizedBox(height: 17),
-
-                          _SearchField(
-                            controller:
-                            _searchController,
-                            searchQuery: _searchQuery,
-                            onChanged: _search,
-                            onClear: _clearSearch,
+                          const SizedBox(height: 15),
+                          _SearchBox(
+                            controller: _searchController,
+                            query: _searchQuery,
+                            onChanged: (value) {
+                              setState(() => _searchQuery = value);
+                            },
+                            onClear: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
                           ),
                         ],
                       ),
                     ),
-
-                    const SizedBox(height: 13),
-
+                    const SizedBox(height: 12),
                     SizedBox(
-                      height: 42,
+                      height: 39,
                       child: ListView.separated(
-                        scrollDirection:
-                        Axis.horizontal,
+                        scrollDirection: Axis.horizontal,
                         padding: EdgeInsets.symmetric(
-                          horizontal:
-                          horizontalPadding,
+                          horizontal: horizontalPadding,
                         ),
-                        itemCount:
-                        RulesData.categories.length,
-                        separatorBuilder: (_, _) =>
-                        const SizedBox(width: 9),
+                        itemCount: RulesData.categories.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
                         itemBuilder: (context, index) {
-                          final category =
-                          RulesData.categories[index];
+                          final category = RulesData.categories[index];
 
                           return _CategoryChip(
                             label: category,
-                            isSelected: category ==
-                                _selectedCategory,
+                            selected: category == _selectedCategory,
                             onTap: () {
-                              _selectCategory(category);
+                              setState(() => _selectedCategory = category);
                             },
                           );
                         },
                       ),
                     ),
-
-                    const SizedBox(height: 13),
-
+                    const SizedBox(height: 12),
                     Expanded(
                       child: _isLoading
                           ? const Center(
-                        child:
-                        CircularProgressIndicator(),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
                       )
                           : RefreshIndicator(
-                        onRefresh: _loadProgress,
                         color: AppColors.primary,
+                        onRefresh: _loadProgress,
                         child: _filteredRules.isEmpty
-                            ? const _EmptyRules()
+                            ? const _EmptyState()
                             : GridView.builder(
                           physics:
                           const AlwaysScrollableScrollPhysics(
-                            parent:
-                            BouncingScrollPhysics(),
+                            parent: BouncingScrollPhysics(),
                           ),
-                          padding:
-                          EdgeInsets.fromLTRB(
+                          padding: EdgeInsets.fromLTRB(
                             horizontalPadding,
-                            3,
+                            2,
                             horizontalPadding,
                             28,
                           ),
-                          itemCount:
-                          _filteredRules.length,
+                          itemCount: _filteredRules.length,
                           gridDelegate:
                           SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount:
-                            crossAxisCount,
-                            mainAxisSpacing: 13,
-                            crossAxisSpacing: 13,
-                            mainAxisExtent:
-                            cardHeight,
+                            crossAxisCount: columnCount,
+                            mainAxisSpacing: 11,
+                            crossAxisSpacing: 11,
+                            mainAxisExtent: 104,
                           ),
-                          itemBuilder:
-                              (context, index) {
-                            final rule =
-                            _filteredRules[index];
-
+                          itemBuilder: (context, index) {
+                            final rule = _filteredRules[index];
                             final progress =
-                                _progressMap[
-                                rule.id] ??
+                                _progressMap[rule.id] ??
                                     const RuleProgress();
-
                             final isUnlocked =
-                            _isRuleUnlocked(
-                              rule,
-                            );
+                            _isRuleUnlocked(rule);
 
-                            return RuleCard(
+                            return _RuleTile(
                               rule: rule,
-                              progress:
-                              progress,
-                              isUnlocked:
-                              isUnlocked,
-                              isBookmarked:
-                              _bookmarkedRules
-                                  .contains(
-                                rule.id,
-                              ),
-                              onBookmark: () {
-                                _toggleBookmark(
-                                  rule.id,
-                                );
-                              },
-                              onTap: () {
-                                _openRule(
-                                  rule,
-                                  isUnlocked,
-                                );
-                              },
+                              progress: progress,
+                              isUnlocked: isUnlocked,
+                              onTap: () =>
+                                  _openRule(rule, isUnlocked),
                             );
                           },
                         ),
@@ -392,11 +277,13 @@ class _RulesListScreenState
   }
 }
 
-class _RulesHeader extends StatelessWidget {
+class _Header extends StatelessWidget {
   final bool showBackButton;
+  final int completedRules;
 
-  const _RulesHeader({
+  const _Header({
     required this.showBackButton,
+    required this.completedRules,
   });
 
   @override
@@ -404,42 +291,47 @@ class _RulesHeader extends StatelessWidget {
     return Row(
       children: [
         if (showBackButton) ...[
-          IconButton.filledTonal(
-            onPressed: () {
-              Navigator.maybePop(context);
-            },
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.white,
-            ),
-            icon: const Icon(
-              Icons.arrow_back_rounded,
+          IconButton(
+            onPressed: () => Navigator.maybePop(context),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            color: AppColors.navy,
+            visualDensity: VisualDensity.compact,
+          ),
+          const SizedBox(width: 4),
+        ],
+        const Expanded(
+          child: Text(
+            'Learn Rules',
+            style: TextStyle(
               color: AppColors.navy,
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
             ),
           ),
-          const SizedBox(width: 11),
-        ],
-
-        const Expanded(
-          child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF8EA),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFFFFDDA2)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Learn Rules',
-                style: TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 27,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.6,
-                ),
+              const Icon(
+                Icons.workspace_premium_rounded,
+                color: AppColors.amber,
+                size: 18,
               ),
-              SizedBox(height: 4),
+              const SizedBox(width: 5),
               Text(
-                '60 essential rules for spoken English',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w500,
+                '$completedRules',
+                style: const TextStyle(
+                  color: AppColors.navy,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ],
@@ -450,103 +342,99 @@ class _RulesHeader extends StatelessWidget {
   }
 }
 
-class _RealProgressSummary extends StatelessWidget {
+class _ProgressSummary extends StatelessWidget {
   final int completed;
   final int total;
 
-  const _RealProgressSummary({
+  const _ProgressSummary({
     required this.completed,
     required this.total,
   });
 
   @override
   Widget build(BuildContext context) {
-    final progress =
-    total == 0 ? 0.0 : completed / total;
-
-    final percentage = (progress * 100).round();
+    final value = total == 0 ? 0.0 : completed / total;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 99,
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [
-            AppColors.primary,
-            AppColors.primaryDark,
-          ],
+          colors: [Color(0xFFF2FBF6), Color(0xFFE9F8F1)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(22),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withAlpha(45),
-            blurRadius: 20,
-            offset: const Offset(0, 9),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFCBE8D9)),
       ),
       child: Row(
         children: [
           SizedBox(
-            width: 54,
-            height: 54,
+            width: 67,
+            height: 67,
             child: Stack(
               alignment: Alignment.center,
               children: [
-                CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 5,
-                  backgroundColor:
-                  Colors.white.withAlpha(50),
-                  valueColor:
-                  const AlwaysStoppedAnimation<Color>(
-                    Colors.white,
+                SizedBox.expand(
+                  child: CircularProgressIndicator(
+                    value: value,
+                    strokeWidth: 6,
+                    strokeCap: StrokeCap.round,
+                    backgroundColor: const Color(0xFFD5EADF),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
                   ),
                 ),
                 Text(
-                  '$percentage%',
+                  '$completed',
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                    color: AppColors.navy,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
             ),
           ),
-
-          const SizedBox(width: 14),
-
+          const SizedBox(width: 15),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Your real progress',
+                  'rules learned',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.navy,
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 6),
                 Text(
-                  '$completed of $total rules completed',
-                  style: TextStyle(
-                    color:
-                    Colors.white.withAlpha(205),
+                  '$completed of $total completed',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
                     fontSize: 12.5,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-
-          const Icon(
-            Icons.auto_awesome_rounded,
-            color: AppColors.amber,
-            size: 27,
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(18),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.school_rounded,
+              color: AppColors.primary,
+              size: 27,
+            ),
           ),
         ],
       ),
@@ -554,45 +442,53 @@ class _RealProgressSummary extends StatelessWidget {
   }
 }
 
-class _SearchField extends StatelessWidget {
+class _SearchBox extends StatelessWidget {
   final TextEditingController controller;
-  final String searchQuery;
+  final String query;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
 
-  const _SearchField({
+  const _SearchBox({
     required this.controller,
-    required this.searchQuery,
+    required this.query,
     required this.onChanged,
     required this.onClear,
   });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      onChanged: onChanged,
-      textInputAction: TextInputAction.search,
-      decoration: InputDecoration(
-        hintText: 'Search rules...',
-        prefixIcon: const Icon(
-          Icons.search_rounded,
-        ),
-        suffixIcon: searchQuery.isEmpty
-            ? null
-            : IconButton(
-          onPressed: onClear,
-          icon: const Icon(
-            Icons.close_rounded,
+    return SizedBox(
+      height: 48,
+      child: TextField(
+        controller: controller,
+        onChanged: onChanged,
+        textInputAction: TextInputAction.search,
+        decoration: InputDecoration(
+          hintText: 'Search rules',
+          hintStyle: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 14,
           ),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-        border: _border(),
-        enabledBorder: _border(),
-        focusedBorder: _border(
-          color: AppColors.primary,
-          width: 1.5,
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.navy,
+            size: 22,
+          ),
+          suffixIcon: query.isEmpty
+              ? null
+              : IconButton(
+            onPressed: onClear,
+            icon: const Icon(Icons.close_rounded, size: 20),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          border: _border(),
+          enabledBorder: _border(),
+          focusedBorder: _border(
+            color: AppColors.primary,
+            width: 1.4,
+          ),
         ),
       ),
     );
@@ -603,79 +499,232 @@ class _SearchField extends StatelessWidget {
     double width = 1,
   }) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(17),
-      borderSide: BorderSide(
-        color: color,
-        width: width,
-      ),
+      borderRadius: BorderRadius.circular(14),
+      borderSide: BorderSide(color: color, width: width),
     );
   }
 }
 
 class _CategoryChip extends StatelessWidget {
   final String label;
-  final bool isSelected;
+  final bool selected;
   final VoidCallback onTap;
 
   const _CategoryChip({
     required this.label,
-    required this.isSelected,
+    required this.selected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (_) => onTap(),
-      showCheckmark: false,
-      backgroundColor: Colors.white,
-      selectedColor: AppColors.primary,
-      side: BorderSide(
-        color: isSelected
-            ? AppColors.primary
-            : AppColors.border,
+    return Material(
+      color: selected ? AppColors.primary : Colors.white,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: selected ? AppColors.primary : AppColors.border,
+        ),
       ),
-      labelStyle: TextStyle(
-        color: isSelected
-            ? Colors.white
-            : AppColors.textSecondary,
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(30),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.white : AppColors.navy,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
-class _EmptyRules extends StatelessWidget {
-  const _EmptyRules();
+class _RuleTile extends StatelessWidget {
+  final RuleItem rule;
+  final RuleProgress progress;
+  final bool isUnlocked;
+  final VoidCallback onTap;
+
+  const _RuleTile({
+    required this.rule,
+    required this.progress,
+    required this.isUnlocked,
+    required this.onTap,
+  });
+
+  String get _buttonText {
+    if (!isUnlocked) return 'Locked';
+    if (progress.isCompleted) return 'Done';
+    if (progress.isStarted) return 'Continue';
+    return 'Start';
+  }
+
+  IconData get _statusIcon {
+    if (!isUnlocked) return Icons.lock_rounded;
+    if (progress.isCompleted) return Icons.check_rounded;
+    return Icons.arrow_forward_rounded;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.search_off_rounded,
-            color: AppColors.textSecondary,
-            size: 60,
-          ),
-          SizedBox(height: 14),
-          Text(
-            'No rules found',
-            style: TextStyle(
-              color: AppColors.navy,
-              fontSize: 19,
-              fontWeight: FontWeight.w800,
+    final activeColor = isUnlocked ? AppColors.primary : const Color(0xFF98A2B3);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(17),
+        child: Ink(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isUnlocked ? const Color(0xFFF3FBF7) : const Color(0xFFF6F7F7),
+            borderRadius: BorderRadius.circular(17),
+            border: Border.all(
+              color: isUnlocked
+                  ? const Color(0xFFCBE7D8)
+                  : const Color(0xFFE3E6E5),
             ),
           ),
-        ],
+          child: Row(
+            children: [
+              Container(
+                width: 49,
+                height: 49,
+                decoration: BoxDecoration(
+                  color: activeColor,
+                  shape: BoxShape.circle,
+                  boxShadow: isUnlocked
+                      ? [
+                    BoxShadow(
+                      color: AppColors.primary.withAlpha(35),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ]
+                      : null,
+                ),
+                child: Icon(
+                  isUnlocked ? rule.icon : Icons.lock_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      rule.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: isUnlocked
+                            ? AppColors.navy
+                            : AppColors.textSecondary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      rule.shortMeaning,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: LinearProgressIndicator(
+                        value: isUnlocked ? progress.progress : 0,
+                        minHeight: 5,
+                        backgroundColor: const Color(0xFFDCEAE3),
+                        valueColor: AlwaysStoppedAnimation<Color>(activeColor),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 11),
+              Container(
+                constraints: const BoxConstraints(minWidth: 76),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: progress.isCompleted && isUnlocked
+                      ? AppColors.primary
+                      : Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: activeColor),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _statusIcon,
+                      size: 15,
+                      color: progress.isCompleted && isUnlocked
+                          ? Colors.white
+                          : activeColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _buttonText,
+                      style: TextStyle(
+                        color: progress.isCompleted && isUnlocked
+                            ? Colors.white
+                            : activeColor,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: const [
+        SizedBox(height: 90),
+        Icon(
+          Icons.search_off_rounded,
+          size: 58,
+          color: AppColors.textSecondary,
+        ),
+        SizedBox(height: 12),
+        Text(
+          'কোনো Rule পাওয়া যায়নি',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.navy,
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../controllers/rule_learning_controller.dart';
 import '../models/rule_content.dart';
+import 'rule_test_screen.dart';
 
 class RuleDetailsScreen extends StatefulWidget {
   final RuleContent rule;
@@ -20,11 +22,30 @@ class RuleDetailsScreen extends StatefulWidget {
 class _RuleDetailsScreenState
     extends State<RuleDetailsScreen> {
   late final RuleLearningController _controller;
+  late final FlutterTts _tts;
 
-  final ScrollController _scrollController =
-  ScrollController();
+  int _currentIndex = 0;
+  bool _isSpeaking = false;
 
-  bool _reachedExamplesEnd = false;
+  RuleExample get _currentExample {
+    return widget.rule.examples[_currentIndex];
+  }
+
+  bool get _isFirst {
+    return _currentIndex == 0;
+  }
+
+  bool get _isLast {
+    return _currentIndex ==
+        widget.rule.examples.length - 1;
+  }
+
+  double get _exampleProgress {
+    if (widget.rule.examples.isEmpty) return 0;
+
+    return (_currentIndex + 1) /
+        widget.rule.examples.length;
+  }
 
   @override
   void initState() {
@@ -34,10 +55,39 @@ class _RuleDetailsScreenState
       ruleId: widget.rule.id,
     );
 
-    _controller.addListener(_refreshScreen);
-    _scrollController.addListener(_checkScrollPosition);
+    _tts = FlutterTts();
 
+    _controller.addListener(_refreshScreen);
+
+    _configureTts();
     _controller.initialize();
+  }
+
+  Future<void> _configureTts() async {
+    await _tts.setLanguage('en-US');
+    await _tts.setSpeechRate(0.42);
+    await _tts.setPitch(1.0);
+    await _tts.setVolume(1.0);
+
+    _tts.setStartHandler(() {
+      if (!mounted) return;
+      setState(() => _isSpeaking = true);
+    });
+
+    _tts.setCompletionHandler(() {
+      if (!mounted) return;
+      setState(() => _isSpeaking = false);
+    });
+
+    _tts.setCancelHandler(() {
+      if (!mounted) return;
+      setState(() => _isSpeaking = false);
+    });
+
+    _tts.setErrorHandler((_) {
+      if (!mounted) return;
+      setState(() => _isSpeaking = false);
+    });
   }
 
   void _refreshScreen() {
@@ -45,83 +95,261 @@ class _RuleDetailsScreenState
     setState(() {});
   }
 
-  void _checkScrollPosition() {
-    if (!_scrollController.hasClients) return;
-
-    final position = _scrollController.position;
-
-    if (position.pixels >=
-        position.maxScrollExtent - 100) {
-      if (!_reachedExamplesEnd) {
-        setState(() {
-          _reachedExamplesEnd = true;
-        });
-      }
-    }
+  Future<void> _speakSentence() async {
+    await _tts.stop();
+    await _tts.speak(_currentExample.english);
   }
 
-  Future<void> _completeLearning() async {
-    if (!_reachedExamplesEnd &&
-        !_controller.progress.learnCompleted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: const Text(
-              'আগে সবগুলো example দেখে নিচে আসুন।',
-            ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.navy,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
-        );
+  Future<void> _previousSentence() async {
+    if (_isFirst) return;
 
-      await _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 550),
-        curve: Curves.easeOutCubic,
-      );
+    await _tts.stop();
 
+    setState(() {
+      _currentIndex--;
+    });
+  }
+
+  Future<void> _nextSentence() async {
+    await _tts.stop();
+
+    if (!_isLast) {
+      setState(() {
+        _currentIndex++;
+      });
       return;
     }
 
-    final completed =
-    await _controller.completeLearning();
+    if (!_controller.progress.learnCompleted) {
+      final completed =
+      await _controller.completeLearning();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (completed) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: const Text(
-              'Learning complete! Rule Test এখন unlock হয়েছে।',
-            ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.primary,
-            margin: const EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ),
+      if (completed) {
+        _showMessage(
+          'Learning complete হয়েছে। এখন Rule Test দিন।',
+          color: AppColors.primary,
+        );
+      }
+
+      setState(() {});
+      return;
+    }
+
+    _openTest();
+  }
+
+  void _openTest() {
+    Navigator.of(context)
+        .push(
+      MaterialPageRoute<void>(
+        builder: (_) {
+          return RuleTestScreen(
+            rule: widget.rule,
+          );
+        },
+      ),
+    )
+        .then((_) {
+      _controller.refreshProgress();
+    });
+  }
+
+  String _resolveVisualKey(RuleExample example) {
+    if (example.visualKey.isNotEmpty &&
+        example.visualKey != 'default') {
+      return example.visualKey;
+    }
+
+    final text = '${example.bengali} '
+        '${example.english}'
+        .toLowerCase();
+
+    if (text.contains('student') ||
+        text.contains('ছাত্র') ||
+        text.contains('ছাত্রী')) {
+      return 'student';
+    }
+
+    if (text.contains('learn') ||
+        text.contains('english') ||
+        text.contains('শিখি')) {
+      return 'learning';
+    }
+
+    if (text.contains('friend') ||
+        text.contains('বন্ধু')) {
+      return 'friends';
+    }
+
+    if (text.contains('speak') ||
+        text.contains('বলো')) {
+      return 'speaking';
+    }
+
+    if (text.contains('boy') ||
+        text.contains('ছেলে')) {
+      return 'boy';
+    }
+
+    if (text.contains('girl') ||
+        text.contains('মেয়ে')) {
+      return 'girl';
+    }
+
+    if (text.contains('work') ||
+        text.contains('কাজ')) {
+      return 'work';
+    }
+
+    if (text.contains('sing') ||
+        text.contains('গান')) {
+      return 'singing';
+    }
+
+    if (text.contains('phone') ||
+        text.contains('ফোন')) {
+      return 'phone';
+    }
+
+    if (text.contains('live') ||
+        text.contains('বাংলাদেশে')) {
+      return 'home';
+    }
+
+    if (text.contains('together') ||
+        text.contains('একসঙ্গে')) {
+      return 'learning_together';
+    }
+
+    if (text.contains('football') ||
+        text.contains('মাঠে')) {
+      return 'football';
+    }
+
+    if (text.contains('ready') ||
+        text.contains('প্রস্তুত')) {
+      return 'ready';
+    }
+
+    return 'default';
+  }
+
+  _VisualInfo _visualInfo(String key) {
+    switch (key) {
+      case 'student':
+        return const _VisualInfo(
+          icon: Icons.school_rounded,
+          color: Color(0xFF16A36A),
+          label: 'Student',
+        );
+
+      case 'learning':
+        return const _VisualInfo(
+          icon: Icons.menu_book_rounded,
+          color: Color(0xFF4285F4),
+          label: 'Learning English',
+        );
+
+      case 'friends':
+      case 'friend':
+        return const _VisualInfo(
+          icon: Icons.groups_rounded,
+          color: Color(0xFF7756D8),
+          label: 'Friends',
+        );
+
+      case 'speaking':
+        return const _VisualInfo(
+          icon: Icons.record_voice_over_rounded,
+          color: Color(0xFF4285F4),
+          label: 'Speaking',
+        );
+
+      case 'boy':
+        return const _VisualInfo(
+          icon: Icons.person_rounded,
+          color: Color(0xFF16A36A),
+          label: 'A boy',
+        );
+
+      case 'girl':
+        return const _VisualInfo(
+          icon: Icons.face_rounded,
+          color: Color(0xFF7756D8),
+          label: 'A girl',
+        );
+
+      case 'work':
+        return const _VisualInfo(
+          icon: Icons.work_rounded,
+          color: Color(0xFFFFA51F),
+          label: 'Work',
+        );
+
+      case 'singing':
+        return const _VisualInfo(
+          icon: Icons.music_note_rounded,
+          color: Color(0xFFE94B4B),
+          label: 'Singing',
+        );
+
+      case 'phone':
+        return const _VisualInfo(
+          icon: Icons.phone_android_rounded,
+          color: Color(0xFF0D9E70),
+          label: 'Phone',
+        );
+
+      case 'home':
+        return const _VisualInfo(
+          icon: Icons.home_rounded,
+          color: Color(0xFF4285F4),
+          label: 'Home',
+        );
+
+      case 'learning_together':
+        return const _VisualInfo(
+          icon: Icons.groups_rounded,
+          color: Color(0xFF16A36A),
+          label: 'Learning together',
+        );
+
+      case 'football':
+        return const _VisualInfo(
+          icon: Icons.sports_soccer_rounded,
+          color: Color(0xFF16A36A),
+          label: 'Playing football',
+        );
+
+      case 'ready':
+        return const _VisualInfo(
+          icon: Icons.check_circle_rounded,
+          color: Color(0xFF16A36A),
+          label: 'Ready',
+        );
+
+      default:
+        return _VisualInfo(
+          icon: widget.rule.icon,
+          color: widget.rule.color,
+          label: 'Example scene',
         );
     }
   }
 
-  void _openTest() {
+  void _showMessage(
+      String message, {
+        Color color = AppColors.navy,
+      }) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: const Text(
-            'Rule Test Screen পরবর্তী ধাপে connect হবে।',
-          ),
+          content: Text(message),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.navy,
+          backgroundColor: color,
           margin: const EdgeInsets.all(16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -132,290 +360,217 @@ class _RuleDetailsScreenState
 
   @override
   void dispose() {
+    _tts.stop();
     _controller.removeListener(_refreshScreen);
     _controller.dispose();
-
-    _scrollController
-      ..removeListener(_checkScrollPosition)
-      ..dispose();
-
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.rule.examples.isEmpty) {
+      return const Scaffold(
+        body: Center(
+          child: Text('No examples available'),
+        ),
+      );
+    }
+
     final progress = _controller.progress;
+    final visual = _visualInfo(
+      _resolveVisualKey(_currentExample),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
-
-            final horizontalPadding = (width * 0.055)
-                .clamp(18.0, 38.0)
-                .toDouble();
-
-            return Column(
-              children: [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                    horizontalPadding,
-                    10,
-                    horizontalPadding,
-                    8,
-                  ),
-                  child: _DetailsHeader(
-                    title: widget.rule.title,
-                  ),
+        child: Column(
+          children: [
+            _TopHeader(
+              title: widget.rule.title,
+              onBack: () {
+                Navigator.maybePop(context);
+              },
+            ),
+            const _LessonSteps(),
+            Expanded(
+              child: _controller.isLoading
+                  ? const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
                 ),
+              )
+                  : LayoutBuilder(
+                builder: (context, constraints) {
+                  final padding =
+                  (constraints.maxWidth * 0.055)
+                      .clamp(18.0, 34.0)
+                      .toDouble();
 
-                _LearningStepBar(
-                  learnCompleted:
-                  progress.learnCompleted,
-                  testCompleted:
-                  progress.testCompleted,
-                  speakingCompleted:
-                  progress.speakingCompleted,
-                ),
-
-                Expanded(
-                  child: _controller.isLoading &&
-                      !progress.isStarted
-                      ? const Center(
-                    child:
-                    CircularProgressIndicator(),
-                  )
-                      : Center(
+                  return Center(
                     child: ConstrainedBox(
                       constraints:
                       const BoxConstraints(
-                        maxWidth: 850,
+                        maxWidth: 760,
                       ),
-                      child: CustomScrollView(
-                        controller:
-                        _scrollController,
-                        physics:
-                        const BouncingScrollPhysics(),
-                        slivers: [
-                          SliverPadding(
-                            padding:
-                            EdgeInsets.fromLTRB(
-                              horizontalPadding,
-                              18,
-                              horizontalPadding,
-                              16,
+                      child: ListView(
+                        padding: EdgeInsets.fromLTRB(
+                          padding,
+                          18,
+                          padding,
+                          25,
+                        ),
+                        children: [
+                          _RuleInfoCard(
+                            rule: widget.rule,
+                          ),
+                          const SizedBox(height: 14),
+                          _FormulaCard(
+                            formula:
+                            widget.rule.formula,
+                          ),
+                          const SizedBox(height: 20),
+                          _ExampleProgress(
+                            current:
+                            _currentIndex + 1,
+                            total: widget
+                                .rule.examples.length,
+                            value: _exampleProgress,
+                          ),
+                          const SizedBox(height: 13),
+                          AnimatedSwitcher(
+                            duration: const Duration(
+                              milliseconds: 350,
                             ),
-                            sliver: SliverList(
-                              delegate:
-                              SliverChildListDelegate(
-                                [
-                                  _RuleIntroductionCard(
-                                    rule: widget.rule,
-                                  ),
-
-                                  const SizedBox(
-                                    height: 16,
-                                  ),
-
-                                  _FormulaCard(
-                                    formula:
-                                    widget.rule.formula,
-                                  ),
-
-                                  if (widget.rule
-                                      .keywords
-                                      .isNotEmpty) ...[
-                                    const SizedBox(
-                                      height: 18,
-                                    ),
-                                    _KeywordsSection(
-                                      keywords:
-                                      widget.rule
-                                          .keywords,
-                                    ),
-                                  ],
-
-                                  const SizedBox(
-                                    height: 27,
-                                  ),
-
-                                  _ExamplesHeader(
-                                    exampleCount:
-                                    widget.rule
-                                        .examples
-                                        .length,
-                                  ),
-
-                                  const SizedBox(
-                                    height: 13,
-                                  ),
-                                ],
+                            child: _VisualCard(
+                              key: ValueKey(
+                                _currentIndex,
                               ),
+                              visual: visual,
                             ),
                           ),
-
-                          SliverPadding(
-                            padding:
-                            EdgeInsets.symmetric(
-                              horizontal:
-                              horizontalPadding,
+                          const SizedBox(height: 14),
+                          AnimatedSwitcher(
+                            duration: const Duration(
+                              milliseconds: 300,
                             ),
-                            sliver: SliverList.separated(
-                              itemCount: widget
-                                  .rule.examples.length,
-                              separatorBuilder:
-                                  (_, _) =>
-                              const SizedBox(
-                                height: 11,
+                            child: _SentenceCard(
+                              key: ValueKey(
+                                'sentence_$_currentIndex',
                               ),
-                              itemBuilder:
-                                  (context, index) {
-                                final example = widget
-                                    .rule.examples[index];
-
-                                return _ExampleCard(
-                                  index: index,
-                                  example: example,
-                                  color:
-                                  widget.rule.color,
-                                );
-                              },
+                              example:
+                              _currentExample,
+                              color: visual.color,
+                              isSpeaking:
+                              _isSpeaking,
+                              onSpeak:
+                              _speakSentence,
                             ),
                           ),
-
-                          SliverPadding(
-                            padding:
-                            EdgeInsets.fromLTRB(
-                              horizontalPadding,
-                              22,
-                              horizontalPadding,
-                              30,
-                            ),
-                            sliver:
-                            SliverToBoxAdapter(
-                              child:
-                              _LearningCompletionCard(
-                                isCompleted: progress
-                                    .learnCompleted,
-                              ),
-                            ),
+                          const SizedBox(height: 14),
+                          _TipCard(
+                            example:
+                            _currentExample,
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ),
-
-                _BottomActionArea(
-                  isLoading: _controller.isLoading,
-                  isLearningCompleted:
-                  progress.learnCompleted,
-                  onCompleteLearning:
-                  _completeLearning,
-                  onOpenTest: _openTest,
-                ),
-              ],
-            );
-          },
+                  );
+                },
+              ),
+            ),
+            _BottomControls(
+              isFirst: _isFirst,
+              isLast: _isLast,
+              isCompleted:
+              progress.learnCompleted,
+              isLoading: _controller.isLoading,
+              onPrevious: _previousSentence,
+              onNext: _nextSentence,
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _DetailsHeader extends StatelessWidget {
-  final String title;
+class _VisualInfo {
+  final IconData icon;
+  final Color color;
+  final String label;
 
-  const _DetailsHeader({
+  const _VisualInfo({
+    required this.icon,
+    required this.color,
+    required this.label,
+  });
+}
+
+class _TopHeader extends StatelessWidget {
+  final String title;
+  final VoidCallback onBack;
+
+  const _TopHeader({
     required this.title,
+    required this.onBack,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        IconButton.filledTonal(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          style: IconButton.styleFrom(
-            backgroundColor: Colors.white,
-          ),
-          icon: const Icon(
-            Icons.arrow_back_rounded,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        12,
+        8,
+        16,
+        8,
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: onBack,
+            icon: const Icon(
+              Icons.arrow_back_rounded,
+            ),
             color: AppColors.navy,
           ),
-        ),
-
-        const SizedBox(width: 10),
-
-        Expanded(
-          child: Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppColors.navy,
-              fontSize: 21,
-              fontWeight: FontWeight.w800,
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.navy,
+                fontSize: 21,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-        ),
-
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 7,
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(
+              Icons.bookmark_border_rounded,
+            ),
+            color: AppColors.navy,
           ),
-          decoration: BoxDecoration(
-            color: AppColors.mint,
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: const Row(
-            children: [
-              Icon(
-                Icons.menu_book_rounded,
-                color: AppColors.primary,
-                size: 17,
-              ),
-              SizedBox(width: 5),
-              Text(
-                'Learn',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-class _LearningStepBar extends StatelessWidget {
-  final bool learnCompleted;
-  final bool testCompleted;
-  final bool speakingCompleted;
-
-  const _LearningStepBar({
-    required this.learnCompleted,
-    required this.testCompleted,
-    required this.speakingCompleted,
-  });
+class _LessonSteps extends StatelessWidget {
+  const _LessonSteps();
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(
-        22,
-        10,
-        22,
-        13,
+        24,
+        8,
+        24,
+        12,
       ),
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -428,34 +583,21 @@ class _LearningStepBar extends StatelessWidget {
       child: Row(
         children: [
           _StepItem(
-            label: 'Learn',
+            title: 'Learn',
             icon: Icons.menu_book_rounded,
-            isCompleted: learnCompleted,
-            isActive: !learnCompleted,
+            active: true,
           ),
-
-          _StepLine(
-            isCompleted: learnCompleted,
-          ),
-
+          const _StepLine(),
           _StepItem(
-            label: 'Test',
+            title: 'Test',
             icon: Icons.quiz_rounded,
-            isCompleted: testCompleted,
-            isActive:
-            learnCompleted && !testCompleted,
+            active: false,
           ),
-
-          _StepLine(
-            isCompleted: testCompleted,
-          ),
-
+          const _StepLine(),
           _StepItem(
-            label: 'Speak',
+            title: 'Speak',
             icon: Icons.mic_rounded,
-            isCompleted: speakingCompleted,
-            isActive:
-            testCompleted && !speakingCompleted,
+            active: false,
           ),
         ],
       ),
@@ -464,51 +606,42 @@ class _LearningStepBar extends StatelessWidget {
 }
 
 class _StepItem extends StatelessWidget {
-  final String label;
+  final String title;
   final IconData icon;
-  final bool isCompleted;
-  final bool isActive;
+  final bool active;
 
   const _StepItem({
-    required this.label,
+    required this.title,
     required this.icon,
-    required this.isCompleted,
-    required this.isActive,
+    required this.active,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = isCompleted || isActive
+    final color = active
         ? AppColors.primary
         : AppColors.textSecondary;
 
     return Column(
       children: [
         Container(
-          width: 32,
-          height: 32,
+          width: 31,
+          height: 31,
           decoration: BoxDecoration(
-            color: isCompleted
-                ? AppColors.primary
-                : isActive
+            color: active
                 ? AppColors.mint
-                : const Color(0xFFF0F2F1),
+                : const Color(0xFFF1F3F2),
             shape: BoxShape.circle,
           ),
           child: Icon(
-            isCompleted
-                ? Icons.check_rounded
-                : icon,
-            color:
-            isCompleted ? Colors.white : color,
+            icon,
+            color: color,
             size: 17,
           ),
         ),
-
         const SizedBox(height: 4),
-
         Text(
-          label,
+          title,
           style: TextStyle(
             color: color,
             fontSize: 10.5,
@@ -521,11 +654,7 @@ class _StepItem extends StatelessWidget {
 }
 
 class _StepLine extends StatelessWidget {
-  final bool isCompleted;
-
-  const _StepLine({
-    required this.isCompleted,
-  });
+  const _StepLine();
 
   @override
   Widget build(BuildContext context) {
@@ -533,119 +662,82 @@ class _StepLine extends StatelessWidget {
       child: Container(
         height: 3,
         margin: const EdgeInsets.fromLTRB(
-          7,
+          8,
           0,
-          7,
+          8,
           17,
         ),
         decoration: BoxDecoration(
-          color: isCompleted
-              ? AppColors.primary
-              : AppColors.border,
-          borderRadius: BorderRadius.circular(20),
+          color: AppColors.border,
+          borderRadius:
+          BorderRadius.circular(20),
         ),
       ),
     );
   }
 }
 
-class _RuleIntroductionCard extends StatelessWidget {
+class _RuleInfoCard extends StatelessWidget {
   final RuleContent rule;
 
-  const _RuleIntroductionCard({
+  const _RuleInfoCard({
     required this.rule,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(19),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            rule.color.withAlpha(25),
-            rule.color.withAlpha(8),
-            Colors.white,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(23),
+        color: rule.color.withAlpha(17),
+        borderRadius:
+        BorderRadius.circular(20),
         border: Border.all(
-          color: rule.color.withAlpha(45),
+          color: rule.color.withAlpha(48),
         ),
       ),
-      child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: rule.color,
-                  borderRadius: BorderRadius.circular(17),
-                ),
-                child: Icon(
-                  rule.icon,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-
-              const SizedBox(width: 14),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      rule.shortMeaning,
-                      style: const TextStyle(
-                        color: AppColors.navy,
-                        fontSize: 17,
-                        height: 1.35,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-
-                    const SizedBox(height: 5),
-
-                    Text(
-                      rule.category,
-                      style: TextStyle(
-                        color: rule.color,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 18),
-
-          const Text(
-            'কোথায় ব্যবহার হয়?',
-            style: TextStyle(
-              color: AppColors.navy,
-              fontSize: 15,
-              fontWeight: FontWeight.w800,
+          Container(
+            width: 49,
+            height: 49,
+            decoration: BoxDecoration(
+              color: rule.color,
+              borderRadius:
+              BorderRadius.circular(15),
+            ),
+            child: Icon(
+              rule.icon,
+              color: Colors.white,
+              size: 26,
             ),
           ),
-
-          const SizedBox(height: 7),
-
-          Text(
-            rule.usage,
-            style: const TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-              height: 1.65,
-              fontWeight: FontWeight.w500,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment:
+              CrossAxisAlignment.start,
+              children: [
+                Text(
+                  rule.shortMeaning,
+                  style: const TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  rule.usage,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                    height: 1.45,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -664,29 +756,29 @@ class _FormulaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(17),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.navy,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius:
+        BorderRadius.circular(19),
       ),
       child: Row(
         children: [
           Container(
-            width: 43,
-            height: 43,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              color: Colors.white.withAlpha(22),
-              borderRadius: BorderRadius.circular(13),
+              color: Colors.white.withAlpha(20),
+              borderRadius:
+              BorderRadius.circular(12),
             ),
             child: const Icon(
               Icons.account_tree_rounded,
               color: AppColors.amber,
-              size: 23,
+              size: 22,
             ),
           ),
-
-          const SizedBox(width: 13),
-
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment:
@@ -696,19 +788,16 @@ class _FormulaCard extends StatelessWidget {
                   'Sentence Structure',
                   style: TextStyle(
                     color: Colors.white.withAlpha(180),
-                    fontSize: 11.5,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-
                 const SizedBox(height: 5),
-
                 Text(
                   formula,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 15,
-                    height: 1.4,
+                    fontSize: 14.5,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -721,114 +810,56 @@ class _FormulaCard extends StatelessWidget {
   }
 }
 
-class _KeywordsSection extends StatelessWidget {
-  final List<String> keywords;
+class _ExampleProgress extends StatelessWidget {
+  final int current;
+  final int total;
+  final double value;
 
-  const _KeywordsSection({
-    required this.keywords,
+  const _ExampleProgress({
+    required this.current,
+    required this.total,
+    required this.value,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Important words',
-          style: TextStyle(
-            color: AppColors.navy,
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-
-        const SizedBox(height: 11),
-
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: keywords.map((keyword) {
-            return Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.mint,
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(
-                  color: AppColors.primary.withAlpha(30),
-                ),
-              ),
+        Row(
+          children: [
+            const Expanded(
               child: Text(
-                keyword,
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-}
-
-class _ExamplesHeader extends StatelessWidget {
-  final int exampleCount;
-
-  const _ExamplesHeader({
-    required this.exampleCount,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        const Expanded(
-          child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Examples',
+                'Learn with a visual example',
                 style: TextStyle(
                   color: AppColors.navy,
-                  fontSize: 21,
+                  fontSize: 19,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              SizedBox(height: 4),
-              Text(
-                'বাংলা পড়ে English sentence বুঝুন',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
+            ),
+            Text(
+              '$current of $total',
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 11,
-            vertical: 7,
-          ),
-          decoration: BoxDecoration(
-            color: AppColors.mint,
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: Text(
-            '$exampleCount examples',
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
+        const SizedBox(height: 9),
+        ClipRRect(
+          borderRadius:
+          BorderRadius.circular(20),
+          child: LinearProgressIndicator(
+            value: value,
+            minHeight: 6,
+            backgroundColor:
+            const Color(0xFFE1EAE5),
+            valueColor:
+            const AlwaysStoppedAnimation<
+                Color>(
+              AppColors.primary,
             ),
           ),
         ),
@@ -837,39 +868,164 @@ class _ExamplesHeader extends StatelessWidget {
   }
 }
 
-class _ExampleCard extends StatelessWidget {
-  final int index;
-  final RuleExample example;
-  final Color color;
+class _VisualCard extends StatelessWidget {
+  final _VisualInfo visual;
 
-  const _ExampleCard({
-    required this.index,
-    required this.example,
-    required this.color,
+  const _VisualCard({
+    super.key,
+    required this.visual,
   });
-
-  String get _typeLabel {
-    switch (example.type) {
-      case RuleExampleType.simple:
-        return 'Simple';
-      case RuleExampleType.positive:
-        return 'Positive';
-      case RuleExampleType.negative:
-        return 'Negative';
-      case RuleExampleType.question:
-        return 'Question';
-      case RuleExampleType.conversation:
-        return 'Conversation';
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      height: 205,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            visual.color.withAlpha(35),
+            Colors.white,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius:
+        BorderRadius.circular(24),
+        border: Border.all(
+          color: visual.color.withAlpha(60),
+        ),
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned(
+            top: 18,
+            left: 25,
+            child: _Dot(
+              size: 24,
+              color: visual.color.withAlpha(38),
+            ),
+          ),
+          Positioned(
+            top: 30,
+            right: 30,
+            child: _Dot(
+              size: 42,
+              color: visual.color.withAlpha(24),
+            ),
+          ),
+          Positioned(
+            bottom: 22,
+            right: 56,
+            child: _Dot(
+              size: 20,
+              color: visual.color.withAlpha(42),
+            ),
+          ),
+          Container(
+            width: 122,
+            height: 122,
+            decoration: BoxDecoration(
+              color: visual.color.withAlpha(22),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: visual.color.withAlpha(68),
+                width: 2,
+              ),
+            ),
+            child: Container(
+              margin: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: visual.color,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: visual.color.withAlpha(75),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Icon(
+                visual.icon,
+                color: Colors.white,
+                size: 53,
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 17,
+            child: Container(
+              padding:
+              const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 7,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                BorderRadius.circular(22),
+              ),
+              child: Text(
+                visual.label,
+                style: TextStyle(
+                  color: visual.color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Dot extends StatelessWidget {
+  final double size;
+  final Color color;
+
+  const _Dot({
+    required this.size,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+class _SentenceCard extends StatelessWidget {
+  final RuleExample example;
+  final Color color;
+  final bool isSpeaking;
+  final VoidCallback onSpeak;
+
+  const _SentenceCard({
+    super.key,
+    required this.example,
+    required this.color,
+    required this.isSpeaking,
+    required this.onSpeak,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(19),
+        borderRadius:
+        BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.border,
         ),
@@ -878,76 +1034,55 @@ class _ExampleCard extends StatelessWidget {
         crossAxisAlignment:
         CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 35,
-            height: 35,
-            decoration: BoxDecoration(
-              color: color.withAlpha(18),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                '${index + 1}',
-                style: TextStyle(
-                  color: color,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
-
-          const SizedBox(width: 12),
-
           Expanded(
             child: Column(
               crossAxisAlignment:
               CrossAxisAlignment.start,
               children: [
+                const Text(
+                  'বাংলা অর্থ',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 5),
                 Text(
                   example.bengali,
                   style: const TextStyle(
                     color: AppColors.navy,
-                    fontSize: 15,
-                    height: 1.45,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-
-                const SizedBox(height: 7),
-
-                Text(
-                  example.english,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 15,
+                    fontSize: 17,
                     height: 1.4,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-
-                const SizedBox(height: 9),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: color.withAlpha(14),
-                    borderRadius:
-                    BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    _typeLabel,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w700,
-                    ),
+                const SizedBox(height: 10),
+                Text(
+                  example.english,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 17,
+                    height: 1.4,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            onPressed: onSpeak,
+            tooltip: 'Listen',
+            style: IconButton.styleFrom(
+              backgroundColor: color.withAlpha(18),
+              foregroundColor: color,
+            ),
+            icon: Icon(
+              isSpeaking
+                  ? Icons.volume_up_rounded
+                  : Icons.volume_up_outlined,
+              size: 24,
             ),
           ),
         ],
@@ -956,52 +1091,45 @@ class _ExampleCard extends StatelessWidget {
   }
 }
 
-class _LearningCompletionCard
-    extends StatelessWidget {
-  final bool isCompleted;
+class _TipCard extends StatelessWidget {
+  final RuleExample example;
 
-  const _LearningCompletionCard({
-    required this.isCompleted,
+  const _TipCard({
+    required this.example,
   });
 
   @override
   Widget build(BuildContext context) {
+    final firstWord =
+        example.english.split(' ').first;
+
     return Container(
-      padding: const EdgeInsets.all(17),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isCompleted
-            ? AppColors.mint
-            : AppColors.amber.withAlpha(18),
-        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFFF0F7FF),
+        borderRadius:
+        BorderRadius.circular(16),
         border: Border.all(
-          color: isCompleted
-              ? AppColors.primary.withAlpha(45)
-              : AppColors.amber.withAlpha(55),
+          color: const Color(0xFFC8DFF7),
         ),
       ),
       child: Row(
+        crossAxisAlignment:
+        CrossAxisAlignment.start,
         children: [
-          Icon(
-            isCompleted
-                ? Icons.check_circle_rounded
-                : Icons.lightbulb_rounded,
-            color: isCompleted
-                ? AppColors.primary
-                : AppColors.amber,
-            size: 27,
+          const Icon(
+            Icons.lightbulb_rounded,
+            color: AppColors.amber,
+            size: 23,
           ),
-
-          const SizedBox(width: 12),
-
+          const SizedBox(width: 9),
           Expanded(
             child: Text(
-              isCompleted
-                  ? 'Learning section complete হয়েছে। এখন Rule Test দিন।'
-                  : 'সব example বুঝে পড়ার পর নিচের Complete Learning button চাপুন।',
+              '"$firstWord" sentence-এর গুরুত্বপূর্ণ word হিসেবে ব্যবহার হয়েছে।',
               style: const TextStyle(
                 color: AppColors.navy,
-                fontSize: 13,
-                height: 1.5,
+                fontSize: 12.5,
+                height: 1.45,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1012,26 +1140,36 @@ class _LearningCompletionCard
   }
 }
 
-class _BottomActionArea extends StatelessWidget {
+class _BottomControls extends StatelessWidget {
+  final bool isFirst;
+  final bool isLast;
+  final bool isCompleted;
   final bool isLoading;
-  final bool isLearningCompleted;
-  final VoidCallback onCompleteLearning;
-  final VoidCallback onOpenTest;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
 
-  const _BottomActionArea({
+  const _BottomControls({
+    required this.isFirst,
+    required this.isLast,
+    required this.isCompleted,
     required this.isLoading,
-    required this.isLearningCompleted,
-    required this.onCompleteLearning,
-    required this.onOpenTest,
+    required this.onPrevious,
+    required this.onNext,
   });
 
   @override
   Widget build(BuildContext context) {
+    final nextLabel = isCompleted
+        ? 'Take Rule Test'
+        : isLast
+        ? 'Complete Learning'
+        : 'Next Sentence';
+
     return Container(
       padding: const EdgeInsets.fromLTRB(
-        18,
-        12,
-        18,
+        16,
+        11,
+        16,
         14,
       ),
       decoration: BoxDecoration(
@@ -1043,7 +1181,7 @@ class _BottomActionArea extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.navy.withAlpha(10),
+            color: AppColors.navy.withAlpha(12),
             blurRadius: 18,
             offset: const Offset(0, -5),
           ),
@@ -1051,38 +1189,42 @@ class _BottomActionArea extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: FilledButton(
-          onPressed: isLoading
-              ? null
-              : isLearningCompleted
-              ? onOpenTest
-              : onCompleteLearning,
-          child: isLoading
-              ? const SizedBox(
-            width: 23,
-            height: 23,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2.5,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 112,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: isFirst || isLoading
+                    ? null
+                    : onPrevious,
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  size: 18,
+                ),
+                label: const Text('Previous'),
+              ),
             ),
-          )
-              : Row(
-            mainAxisAlignment:
-            MainAxisAlignment.center,
-            children: [
-              Icon(
-                isLearningCompleted
-                    ? Icons.quiz_rounded
-                    : Icons.check_circle_rounded,
+            const SizedBox(width: 10),
+            Expanded(
+              child: SizedBox(
+                height: 50,
+                child: FilledButton.icon(
+                  onPressed:
+                  isLoading ? null : onNext,
+                  icon: Icon(
+                    isCompleted
+                        ? Icons.quiz_rounded
+                        : isLast
+                        ? Icons.check_circle_rounded
+                        : Icons.arrow_forward_rounded,
+                    size: 19,
+                  ),
+                  label: Text(nextLabel),
+                ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                isLearningCompleted
-                    ? 'Take Rule Test'
-                    : 'Complete Learning',
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

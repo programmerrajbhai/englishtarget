@@ -13,85 +13,77 @@ abstract final class RulesProgressService {
 
   static Future<Map<String, RuleProgress>>
   loadAllProgress() async {
-    final encodedData =
+    final String? data =
     await _preferences.getString(_storageKey);
 
-    if (encodedData == null || encodedData.isEmpty) {
-      return {};
+    if (data == null || data.isEmpty) {
+      return <String, RuleProgress>{};
     }
 
     try {
-      final decodedData = jsonDecode(encodedData);
+      final dynamic decoded = jsonDecode(data);
 
-      if (decodedData is! Map<String, dynamic>) {
-        return {};
+      if (decoded is! Map<String, dynamic>) {
+        return <String, RuleProgress>{};
       }
 
-      return decodedData.map(
-            (ruleId, progressData) {
-          final json = Map<String, dynamic>.from(
-            progressData as Map,
-          );
-
+      return decoded.map(
+            (String ruleId, dynamic value) {
           return MapEntry(
             ruleId,
-            RuleProgress.fromJson(json),
+            RuleProgress.fromJson(
+              Map<String, dynamic>.from(value as Map),
+            ),
           );
         },
       );
     } catch (_) {
-      return {};
+      return <String, RuleProgress>{};
     }
   }
 
   static Future<RuleProgress> getRuleProgress(
       String ruleId,
       ) async {
-    final allProgress = await loadAllProgress();
+    final progress = await loadAllProgress();
 
-    return allProgress[ruleId] ??
+    return progress[ruleId] ??
         const RuleProgress();
   }
 
-  static Future<void> _saveAllProgress(
-      Map<String, RuleProgress> allProgress,
+  static Future<void> _save(
+      Map<String, RuleProgress> progress,
       ) async {
-    final jsonMap = allProgress.map(
-          (ruleId, progress) {
-        return MapEntry(
-          ruleId,
-          progress.toJson(),
-        );
+    final data = progress.map(
+          (String ruleId, RuleProgress value) {
+        return MapEntry(ruleId, value.toJson());
       },
     );
 
     await _preferences.setString(
       _storageKey,
-      jsonEncode(jsonMap),
+      jsonEncode(data),
     );
   }
 
-  static Future<void> _updateRule(
+  static Future<void> _update(
       String ruleId,
-      RuleProgress Function(
-          RuleProgress currentProgress,
-          ) update,
+      RuleProgress Function(RuleProgress current) update,
       ) async {
-    final allProgress = await loadAllProgress();
+    final all = await loadAllProgress();
 
-    final currentProgress =
-        allProgress[ruleId] ??
-            const RuleProgress();
+    final current =
+        all[ruleId] ?? const RuleProgress();
 
-    allProgress[ruleId] = update(currentProgress);
+    all[ruleId] = update(current);
 
-    await _saveAllProgress(allProgress);
+    await _save(all);
   }
 
   static Future<void> completeLearn(
       String ruleId,
       ) async {
-    await _updateRule(
+    await _update(
       ruleId,
           (current) {
         return current.copyWith(
@@ -108,17 +100,16 @@ abstract final class RulesProgressService {
   }) async {
     if (totalQuestions <= 0) return;
 
-    final percentage =
+    final double score =
         correctAnswers / totalQuestions;
 
-    final passed = percentage >= 0.70;
-
-    await _updateRule(
+    await _update(
       ruleId,
           (current) {
         return current.copyWith(
           testCompleted:
-          current.testCompleted || passed,
+          current.testCompleted ||
+              score >= 0.70,
           testCorrectAnswers: correctAnswers,
         );
       },
@@ -132,18 +123,28 @@ abstract final class RulesProgressService {
   }) async {
     if (totalQuestions <= 0) return;
 
-    final percentage =
-        correctAnswers / totalQuestions;
-
-    final passed = percentage >= 0.60;
-
-    await _updateRule(
+    await _update(
       ruleId,
           (current) {
         return current.copyWith(
-          speakingCompleted:
-          current.speakingCompleted || passed,
-          speakingCorrectAnswers: correctAnswers,
+          speakingCorrectAnswers:
+          correctAnswers,
+        );
+      },
+    );
+  }
+
+  static Future<void> completeSpeaking({
+    required String ruleId,
+    required int correctAnswers,
+  }) async {
+    await _update(
+      ruleId,
+          (current) {
+        return current.copyWith(
+          speakingCompleted: true,
+          speakingCorrectAnswers:
+          correctAnswers,
         );
       },
     );
@@ -158,14 +159,14 @@ abstract final class RulesProgressService {
       return true;
     }
 
-    final previousRuleId =
+    final String previousId =
     orderedRuleIds[ruleIndex - 1];
 
-    final previousProgress =
-        progressMap[previousRuleId] ??
+    final RuleProgress previous =
+        progressMap[previousId] ??
             const RuleProgress();
 
-    return previousProgress.isCompleted;
+    return previous.isCompleted;
   }
 
   static Future<void> resetAllProgress() async {

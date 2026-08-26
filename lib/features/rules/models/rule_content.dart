@@ -27,10 +27,14 @@ class RuleExample {
   final String english;
   final RuleExampleType type;
 
+  // প্রতিটি sentence-এর visual identifier
+  final String visualKey;
+
   const RuleExample({
     required this.bengali,
     required this.english,
     required this.type,
+    this.visualKey = 'default',
   });
 }
 
