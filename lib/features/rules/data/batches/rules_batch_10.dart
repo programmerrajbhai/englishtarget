@@ -1,0 +1,550 @@
+import 'package:flutter/material.dart';
+
+import '../../../../core/constants/app_colors.dart';
+import '../../models/rule_content.dart';
+
+abstract final class Batch10Rules {
+  static final List<RuleContent> rules = <RuleContent>[
+    _frequencyAdverbs,
+    _likeLoveHate,
+    _wantNeed,
+  ];
+
+  static RuleExample _example(
+      String bangla,
+      String english,
+      String visualKey,
+      ) {
+    return RuleExample(
+      bengali: bangla,
+      english: english,
+      type: RuleExampleType.simple,
+      visualKey: visualKey,
+    );
+  }
+
+  static RuleTest _test(
+      String id,
+      String question,
+      List<String> options,
+      String answer,
+      String explanation,
+      ) {
+    return RuleTest(
+      id: id,
+      type: RuleTestType.multipleChoice,
+      question: question,
+      options: options,
+      correctAnswer: answer,
+      explanation: explanation,
+    );
+  }
+
+  static SpeakingTest _speaking(
+      String id,
+      String instruction,
+      String answer,
+      IconData icon,
+      Color color,
+      ) {
+    return SpeakingTest(
+      id: id,
+      instruction: instruction,
+      expectedAnswer: answer,
+      acceptedAnswers: <String>[
+        answer,
+        answer.replaceAll('.', ''),
+      ],
+      visualIcon: icon,
+      visualColor: color,
+    );
+  }
+
+  static final RuleContent _frequencyAdverbs = RuleContent(
+    id: 'frequency_adverbs',
+    order: 28,
+    title: 'Frequency Adverbs',
+    shortMeaning: 'কাজ কতবার হয় তা বোঝাতে',
+    usage:
+    'কোনো কাজ কতবার হয় তা বোঝাতে Always, Usually, Often, Sometimes এবং Never ব্যবহার হয়।',
+    formula: 'Subject + Adverb + Main Verb',
+    category: 'Daily',
+    level: RuleLevel.beginner,
+    icon: Icons.timelapse_rounded,
+    color: AppColors.purple,
+    keywords: <String>[
+      'Always',
+      'Usually',
+      'Often',
+      'Sometimes',
+      'Never',
+    ],
+    examples: <RuleExample>[
+      _example('আমি সবসময় সকালে উঠি।', 'I always wake up early.', 'wake_up'),
+      _example('সে সাধারণত চা পান করে।', 'She usually drinks tea.', 'tea'),
+      _example('সে প্রায়ই ফুটবল খেলে।', 'He often plays football.', 'football'),
+      _example('আমরা মাঝে মাঝে সিনেমা দেখি।', 'We sometimes watch movies.', 'movie'),
+      _example('তারা কখনো মিথ্যা বলে না।', 'They never tell lies.', 'truth'),
+      _example('আমি সবসময় সময়মতো আসি।', 'I always arrive on time.', 'on_time'),
+      _example('সে সাধারণত বাসে যায়।', 'She usually goes by bus.', 'bus'),
+      _example('সে প্রায়ই বই পড়ে।', 'He often reads books.', 'reading'),
+      _example('আমরা মাঝে মাঝে বাইরে খাই।', 'We sometimes eat outside.', 'restaurant'),
+      _example('তারা কখনো দেরি করে না।', 'They never get late.', 'clock'),
+      _example('আমি সবসময় English practice করি।', 'I always practice English.', 'practice'),
+      _example('সে সাধারণত রাতে ঘুমায়।', 'She usually sleeps at night.', 'sleep'),
+      _example('সে প্রায়ই তার বন্ধুকে ফোন করে।', 'He often calls his friend.', 'call'),
+      _example('আমরা মাঝে মাঝে পার্কে যাই।', 'We sometimes go to the park.', 'park'),
+      _example('আমি কখনো ধূমপান করি না।', 'I never smoke.', 'no_smoking'),
+    ],
+    tests: <RuleTest>[
+      _test(
+        'frequency_adverbs_test_01',
+        'I ___ wake up early.',
+        <String>['always', 'never', 'sometimes'],
+        'always',
+        'সবসময় বোঝাতে always ব্যবহার হয়।',
+      ),
+      _test(
+        'frequency_adverbs_test_02',
+        'She ___ drinks tea.',
+        <String>['usually', 'never', 'rarely'],
+        'usually',
+        'সাধারণত বোঝাতে usually ব্যবহার হয়।',
+      ),
+      _test(
+        'frequency_adverbs_test_03',
+        'He ___ plays football.',
+        <String>['often', 'never', 'always'],
+        'often',
+        'প্রায়ই বোঝাতে often ব্যবহার হয়।',
+      ),
+      _test(
+        'frequency_adverbs_test_04',
+        'We ___ watch movies.',
+        <String>['sometimes', 'never', 'always'],
+        'sometimes',
+        'মাঝে মাঝে বোঝাতে sometimes ব্যবহার হয়।',
+      ),
+      _test(
+        'frequency_adverbs_test_05',
+        'They ___ tell lies.',
+        <String>['never', 'often', 'usually'],
+        'never',
+        'কখনো না বোঝাতে never ব্যবহার হয়।',
+      ),
+      _test(
+        'frequency_adverbs_test_06',
+        'Choose the correct sentence:',
+        <String>[
+          'I always practice English.',
+          'I practice always English.',
+          'Always I English practice.',
+        ],
+        'I always practice English.',
+        'Main verb-এর আগে adverb বসে।',
+      ),
+      _test(
+        'frequency_adverbs_test_07',
+        'সে সাধারণত বাসে যায়।',
+        <String>[
+          'She usually goes by bus.',
+          'She goes usually by bus.',
+          'Usually she by bus goes.',
+        ],
+        'She usually goes by bus.',
+        'Subject-এর পরে usually বসে।',
+      ),
+      _test(
+        'frequency_adverbs_test_08',
+        'সে প্রায়ই বই পড়ে।',
+        <String>[
+          'He often reads books.',
+          'He reads often books.',
+          'Often he books reads.',
+        ],
+        'He often reads books.',
+        'He-এর পরে often বসে।',
+      ),
+      _test(
+        'frequency_adverbs_test_09',
+        'তারা কখনো দেরি করে না।',
+        <String>[
+          'They never get late.',
+          'They get never late.',
+          'Never they get late.',
+        ],
+        'They never get late.',
+        'Never সাধারণত main verb-এর আগে বসে।',
+      ),
+      _test(
+        'frequency_adverbs_test_10',
+        'আমি মাঝে মাঝে পার্কে যাই।',
+        <String>[
+          'I sometimes go to the park.',
+          'I go sometimes to the park.',
+          'Sometimes I to the park go.',
+        ],
+        'I sometimes go to the park.',
+        'Sometimes main verb-এর আগে বসতে পারে।',
+      ),
+    ],
+    speakingTests: <SpeakingTest>[
+      _speaking(
+        'frequency_adverbs_speaking_01',
+        'বলুন: আমি সবসময় সকালে উঠি।',
+        'I always wake up early.',
+        Icons.wb_sunny_rounded,
+        AppColors.primary,
+      ),
+      _speaking(
+        'frequency_adverbs_speaking_02',
+        'বলুন: সে সাধারণত চা পান করে।',
+        'She usually drinks tea.',
+        Icons.local_cafe_rounded,
+        Colors.blue,
+      ),
+      _speaking(
+        'frequency_adverbs_speaking_03',
+        'বলুন: সে প্রায়ই ফুটবল খেলে।',
+        'He often plays football.',
+        Icons.sports_soccer_rounded,
+        Colors.orange,
+      ),
+      _speaking(
+        'frequency_adverbs_speaking_04',
+        'বলুন: আমরা মাঝে মাঝে সিনেমা দেখি।',
+        'We sometimes watch movies.',
+        Icons.movie_rounded,
+        Colors.deepPurple,
+      ),
+      _speaking(
+        'frequency_adverbs_speaking_05',
+        'বলুন: তারা কখনো মিথ্যা বলে না।',
+        'They never tell lies.',
+        Icons.verified_rounded,
+        Colors.green,
+      ),
+    ],
+  );
+
+  static final RuleContent _likeLoveHate = RuleContent(
+    id: 'like_love_hate',
+    order: 29,
+    title: 'Like, Love & Hate',
+    shortMeaning: 'পছন্দ, ভালোবাসা ও অপছন্দ বোঝাতে',
+    usage:
+    'কোনো ব্যক্তি, বস্তু বা কাজ পছন্দ, ভালোবাসা বা অপছন্দ প্রকাশ করতে Like, Love এবং Hate ব্যবহার হয়।',
+    formula: 'Subject + like/love/hate + noun/verb-ing',
+    category: 'Daily',
+    level: RuleLevel.beginner,
+    icon: Icons.favorite_rounded,
+    color: AppColors.purple,
+    keywords: <String>[
+      'Like',
+      'Love',
+      'Hate',
+      'Preference',
+      'Verb-ing',
+    ],
+    examples: <RuleExample>[
+      _example('আমি চা পছন্দ করি।', 'I like tea.', 'tea'),
+      _example('সে গান ভালোবাসে।', 'She loves music.', 'music'),
+      _example('সে মিথ্যা বলা ঘৃণা করে।', 'He hates telling lies.', 'no_lie'),
+      _example('আমরা English পছন্দ করি।', 'We like English.', 'english'),
+      _example('তারা ভ্রমণ ভালোবাসে।', 'They love travelling.', 'travel'),
+      _example('আমি বই পড়তে পছন্দ করি।', 'I like reading books.', 'reading'),
+      _example('সে রান্না করতে ভালোবাসে।', 'She loves cooking.', 'cooking'),
+      _example('সে সকালে উঠতে অপছন্দ করে।', 'He hates waking up early.', 'wake_up'),
+      _example('আমরা ফুটবল খেলতে পছন্দ করি।', 'We like playing football.', 'football'),
+      _example('তারা অপেক্ষা করতে অপছন্দ করে।', 'They hate waiting.', 'waiting'),
+      _example('আমি আমার কাজ ভালোবাসি।', 'I love my work.', 'work'),
+      _example('সে কফি পছন্দ করে।', 'She likes coffee.', 'coffee'),
+      _example('সে শব্দ পছন্দ করে না।', 'He does not like noise.', 'noise'),
+      _example('আমরা একসঙ্গে সময় কাটাতে ভালোবাসি।', 'We love spending time together.', 'together'),
+      _example('তারা ঝগড়া অপছন্দ করে।', 'They hate arguing.', 'arguing'),
+    ],
+    tests: <RuleTest>[
+      _test(
+        'like_love_hate_test_01',
+        'I ___ tea.',
+        <String>['like', 'likes', 'liking'],
+        'like',
+        'I-এর সঙ্গে like ব্যবহার হয়।',
+      ),
+      _test(
+        'like_love_hate_test_02',
+        'She ___ music.',
+        <String>['love', 'loves', 'loving'],
+        'loves',
+        'She-এর সঙ্গে loves হবে।',
+      ),
+      _test(
+        'like_love_hate_test_03',
+        'He ___ telling lies.',
+        <String>['hate', 'hates', 'hating'],
+        'hates',
+        'He-এর সঙ্গে hates হবে।',
+      ),
+      _test(
+        'like_love_hate_test_04',
+        'We ___ English.',
+        <String>['like', 'likes', 'liking'],
+        'like',
+        'We-এর সঙ্গে like হবে।',
+      ),
+      _test(
+        'like_love_hate_test_05',
+        'They ___ travelling.',
+        <String>['love', 'loves', 'loving'],
+        'love',
+        'They-এর সঙ্গে love হবে।',
+      ),
+      _test(
+        'like_love_hate_test_06',
+        'I like ___ books.',
+        <String>['read', 'reading', 'reads'],
+        'reading',
+        'Like-এর পরে কাজ বোঝালে verb-ing ব্যবহার করা যায়।',
+      ),
+      _test(
+        'like_love_hate_test_07',
+        'She loves ___.',
+        <String>['cook', 'cooking', 'cooks'],
+        'cooking',
+        'Love-এর পরে verb-ing ব্যবহার হয়।',
+      ),
+      _test(
+        'like_love_hate_test_08',
+        'সে সকালে উঠতে অপছন্দ করে।',
+        <String>[
+          'He hates waking up early.',
+          'He hate waking up early.',
+          'He hates wake up early.',
+        ],
+        'He hates waking up early.',
+        'He-এর সঙ্গে hates এবং hates-এর পরে waking হবে।',
+      ),
+      _test(
+        'like_love_hate_test_09',
+        'সে কফি পছন্দ করে।',
+        <String>[
+          'She likes coffee.',
+          'She like coffee.',
+          'She liking coffee.',
+        ],
+        'She likes coffee.',
+        'She-এর সঙ্গে likes ব্যবহার হয়।',
+      ),
+      _test(
+        'like_love_hate_test_10',
+        'সে শব্দ পছন্দ করে না।',
+        <String>[
+          'He does not like noise.',
+          'He do not likes noise.',
+          'He does not likes noise.',
+        ],
+        'He does not like noise.',
+        'Does not-এর পরে base verb like হবে।',
+      ),
+    ],
+    speakingTests: <SpeakingTest>[
+      _speaking(
+        'like_love_hate_speaking_01',
+        'বলুন: আমি চা পছন্দ করি।',
+        'I like tea.',
+        Icons.local_cafe_rounded,
+        AppColors.primary,
+      ),
+      _speaking(
+        'like_love_hate_speaking_02',
+        'বলুন: সে গান ভালোবাসে।',
+        'She loves music.',
+        Icons.music_note_rounded,
+        Colors.blue,
+      ),
+      _speaking(
+        'like_love_hate_speaking_03',
+        'বলুন: আমি বই পড়তে পছন্দ করি।',
+        'I like reading books.',
+        Icons.menu_book_rounded,
+        Colors.deepPurple,
+      ),
+      _speaking(
+        'like_love_hate_speaking_04',
+        'বলুন: সে রান্না করতে ভালোবাসে।',
+        'She loves cooking.',
+        Icons.restaurant_rounded,
+        Colors.orange,
+      ),
+      _speaking(
+        'like_love_hate_speaking_05',
+        'বলুন: তারা ঝগড়া অপছন্দ করে।',
+        'They hate arguing.',
+        Icons.do_not_disturb_rounded,
+        Colors.green,
+      ),
+    ],
+  );
+
+  static final RuleContent _wantNeed = RuleContent(
+    id: 'want_need',
+    order: 30,
+    title: 'Want & Need',
+    shortMeaning: 'ইচ্ছা ও প্রয়োজন বোঝাতে',
+    usage:
+    'কোনো কিছু চাওয়া বোঝাতে Want এবং কোনো কিছু প্রয়োজন বোঝাতে Need ব্যবহার হয়।',
+    formula: 'Subject + want/need + noun/to + verb',
+    category: 'Daily',
+    level: RuleLevel.beginner,
+    icon: Icons.lightbulb_rounded,
+    color: AppColors.purple,
+    keywords: <String>[
+      'Want',
+      'Need',
+      'Desire',
+      'Necessary',
+    ],
+    examples: <RuleExample>[
+      _example('আমি পানি চাই।', 'I want water.', 'water'),
+      _example('আমার সাহায্য দরকার।', 'I need help.', 'help'),
+      _example('তুমি একটি নতুন ফোন চাও।', 'You want a new phone.', 'phone'),
+      _example('তোমার বিশ্রাম দরকার।', 'You need rest.', 'rest'),
+      _example('সে একটি গাড়ি চায়।', 'He wants a car.', 'car'),
+      _example('তার একটি ডাক্তার দরকার।', 'She needs a doctor.', 'doctor'),
+      _example('আমরা English শিখতে চাই।', 'We want to learn English.', 'learn'),
+      _example('আমাদের আরও সময় দরকার।', 'We need more time.', 'time'),
+      _example('তারা বাইরে যেতে চায়।', 'They want to go outside.', 'outside'),
+      _example('তাদের নতুন জুতা দরকার।', 'They need new shoes.', 'shoes'),
+      _example('আমি একটি কাজ চাই।', 'I want a job.', 'job'),
+      _example('সে ঘুমাতে চায়।', 'He wants to sleep.', 'sleep'),
+      _example('আমার তোমার সাহায্য দরকার।', 'I need your help.', 'your_help'),
+      _example('সে English বলতে চায়।', 'She wants to speak English.', 'speak'),
+      _example('আমাদের এখন যেতে হবে।', 'We need to go now.', 'go_now'),
+    ],
+    tests: <RuleTest>[
+      _test(
+        'want_need_test_01',
+        'I ___ water.',
+        <String>['want', 'wants', 'wanting'],
+        'want',
+        'I-এর সঙ্গে want ব্যবহার হয়।',
+      ),
+      _test(
+        'want_need_test_02',
+        'I ___ help.',
+        <String>['need', 'needs', 'needing'],
+        'need',
+        'I-এর সঙ্গে need ব্যবহার হয়।',
+      ),
+      _test(
+        'want_need_test_03',
+        'He ___ a car.',
+        <String>['want', 'wants', 'wanting'],
+        'wants',
+        'He-এর সঙ্গে wants হবে।',
+      ),
+      _test(
+        'want_need_test_04',
+        'She ___ a doctor.',
+        <String>['need', 'needs', 'needing'],
+        'needs',
+        'She-এর সঙ্গে needs হবে।',
+      ),
+      _test(
+        'want_need_test_05',
+        'We ___ to learn English.',
+        <String>['want', 'wants', 'wanting'],
+        'want',
+        'We-এর সঙ্গে want হবে।',
+      ),
+      _test(
+        'want_need_test_06',
+        'They ___ to go outside.',
+        <String>['want', 'wants', 'wanting'],
+        'want',
+        'They-এর সঙ্গে want হবে।',
+      ),
+      _test(
+        'want_need_test_07',
+        'সে ঘুমাতে চায়।',
+        <String>[
+          'He wants to sleep.',
+          'He want to sleep.',
+          'He wants sleep.',
+        ],
+        'He wants to sleep.',
+        'He-এর সঙ্গে wants to + verb ব্যবহার হয়।',
+      ),
+      _test(
+        'want_need_test_08',
+        'আমাদের আরও সময় দরকার।',
+        <String>[
+          'We need more time.',
+          'We needs more time.',
+          'We need to more time.',
+        ],
+        'We need more time.',
+        'We-এর সঙ্গে need ব্যবহার হয়।',
+      ),
+      _test(
+        'want_need_test_09',
+        'সে English বলতে চায়।',
+        <String>[
+          'She wants to speak English.',
+          'She want to speak English.',
+          'She wants speaking English.',
+        ],
+        'She wants to speak English.',
+        'She-এর সঙ্গে wants to + base verb হবে।',
+      ),
+      _test(
+        'want_need_test_10',
+        'আমাদের এখন যেতে হবে।',
+        <String>[
+          'We need to go now.',
+          'We needs to go now.',
+          'We need go now.',
+        ],
+        'We need to go now.',
+        'Need-এর পরে to + base verb ব্যবহার হয়।',
+      ),
+    ],
+    speakingTests: <SpeakingTest>[
+      _speaking(
+        'want_need_speaking_01',
+        'বলুন: আমি পানি চাই।',
+        'I want water.',
+        Icons.water_drop_rounded,
+        AppColors.primary,
+      ),
+      _speaking(
+        'want_need_speaking_02',
+        'বলুন: আমার সাহায্য দরকার।',
+        'I need help.',
+        Icons.help_rounded,
+        Colors.blue,
+      ),
+      _speaking(
+        'want_need_speaking_03',
+        'বলুন: সে একটি গাড়ি চায়।',
+        'He wants a car.',
+        Icons.directions_car_rounded,
+        Colors.orange,
+      ),
+      _speaking(
+        'want_need_speaking_04',
+        'বলুন: আমরা English শিখতে চাই।',
+        'We want to learn English.',
+        Icons.school_rounded,
+        Colors.deepPurple,
+      ),
+      _speaking(
+        'want_need_speaking_05',
+        'বলুন: আমাদের এখন যেতে হবে।',
+        'We need to go now.',
+        Icons.arrow_forward_rounded,
+        Colors.green,
+      ),
+    ],
+  );
+}

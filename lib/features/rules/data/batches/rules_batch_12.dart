@@ -1,0 +1,551 @@
+import 'package:flutter/material.dart';
+
+import '../../../../core/constants/app_colors.dart';
+import '../../models/rule_content.dart';
+
+abstract final class Batch12Rules {
+  static final List<RuleContent> rules = <RuleContent>[
+    _regularPastVerbs,
+    _irregularPastVerbs,
+    _didQuestions,
+  ];
+
+  static RuleExample _example(
+      String bangla,
+      String english,
+      String visualKey,
+      ) {
+    return RuleExample(
+      bengali: bangla,
+      english: english,
+      type: RuleExampleType.simple,
+      visualKey: visualKey,
+    );
+  }
+
+  static RuleTest _test(
+      String id,
+      String question,
+      List<String> options,
+      String answer,
+      String explanation,
+      ) {
+    return RuleTest(
+      id: id,
+      type: RuleTestType.multipleChoice,
+      question: question,
+      options: options,
+      correctAnswer: answer,
+      explanation: explanation,
+    );
+  }
+
+  static SpeakingTest _speaking(
+      String id,
+      String instruction,
+      String answer,
+      IconData icon,
+      Color color,
+      ) {
+    return SpeakingTest(
+      id: id,
+      instruction: instruction,
+      expectedAnswer: answer,
+      acceptedAnswers: <String>[
+        answer,
+        answer.replaceAll('.', ''),
+      ],
+      visualIcon: icon,
+      visualColor: color,
+    );
+  }
+
+  static final RuleContent _regularPastVerbs = RuleContent(
+    id: 'regular_past_verbs',
+    order: 34,
+    title: 'Regular Past Verbs',
+    shortMeaning: 'Verb-এর সঙ্গে ed যোগ করে past তৈরি',
+    usage:
+    'যেসব verb-এর past form সাধারণত ed যোগ করে তৈরি হয়, সেগুলো Regular Verb।',
+    formula: 'Base Verb + ed',
+    category: 'Past & Future',
+    level: RuleLevel.beginner,
+    icon: Icons.add_rounded,
+    color: AppColors.amber,
+    keywords: <String>[
+      'Regular Verb',
+      'Past',
+      'Ed',
+      'Worked',
+      'Played',
+    ],
+    examples: <RuleExample>[
+      _example('আমি গতকাল কাজ করেছি।', 'I worked yesterday.', 'worked'),
+      _example('সে ফুটবল খেলেছে।', 'He played football.', 'played'),
+      _example('সে আমাকে ফোন করেছে।', 'She called me.', 'called'),
+      _example('আমরা সিনেমা দেখেছি।', 'We watched a movie.', 'watched'),
+      _example('তারা English practice করেছে।', 'They practiced English.', 'practiced'),
+      _example('আমি সকালে হাঁটলাম।', 'I walked in the morning.', 'walked'),
+      _example('সে দরজা খুলেছে।', 'He opened the door.', 'opened'),
+      _example('সে ঘরটি পরিষ্কার করেছে।', 'She cleaned the room.', 'cleaned'),
+      _example('আমরা রাতের খাবার রান্না করেছি।', 'We cooked dinner.', 'cooked'),
+      _example('তারা আমাকে সাহায্য করেছে।', 'They helped me.', 'helped'),
+      _example('আমি বন্ধুকে আমন্ত্রণ জানিয়েছি।', 'I invited my friend.', 'invited'),
+      _example('সে প্রশ্নটি উত্তর দিয়েছে।', 'He answered the question.', 'answered'),
+      _example('সে গত রাতে নাচ করেছে।', 'She danced last night.', 'danced'),
+      _example('আমরা অপেক্ষা করেছি।', 'We waited.', 'waited'),
+      _example('তারা বৃষ্টির পরে খেলেছে।', 'They played after the rain.', 'played_rain'),
+    ],
+    tests: <RuleTest>[
+      _test(
+        'regular_past_verbs_test_01',
+        'work → ___',
+        <String>['worked', 'works', 'working'],
+        'worked',
+        'Regular verb-এ ed যোগ হয়।',
+      ),
+      _test(
+        'regular_past_verbs_test_02',
+        'play → ___',
+        <String>['played', 'plays', 'playing'],
+        'played',
+        'Play-এর past form played।',
+      ),
+      _test(
+        'regular_past_verbs_test_03',
+        'call → ___',
+        <String>['called', 'calls', 'calling'],
+        'called',
+        'Call-এর past form called।',
+      ),
+      _test(
+        'regular_past_verbs_test_04',
+        'watch → ___',
+        <String>['watched', 'watchs', 'watching'],
+        'watched',
+        'Watch-এর past form watched।',
+      ),
+      _test(
+        'regular_past_verbs_test_05',
+        'clean → ___',
+        <String>['cleaned', 'cleans', 'cleaning'],
+        'cleaned',
+        'Clean-এর past form cleaned।',
+      ),
+      _test(
+        'regular_past_verbs_test_06',
+        'help → ___',
+        <String>['helped', 'helps', 'helping'],
+        'helped',
+        'Help-এর past form helped।',
+      ),
+      _test(
+        'regular_past_verbs_test_07',
+        'আমি গতকাল কাজ করেছি।',
+        <String>[
+          'I work yesterday.',
+          'I worked yesterday.',
+          'I working yesterday.',
+        ],
+        'I worked yesterday.',
+        'Yesterday থাকলে past form worked হবে।',
+      ),
+      _test(
+        'regular_past_verbs_test_08',
+        'সে আমাকে ফোন করেছে।',
+        <String>[
+          'She called me.',
+          'She call me.',
+          'She calling me.',
+        ],
+        'She called me.',
+        'Call-এর past form called।',
+      ),
+      _test(
+        'regular_past_verbs_test_09',
+        'আমরা সিনেমা দেখেছি।',
+        <String>[
+          'We watched a movie.',
+          'We watch a movie yesterday.',
+          'We watching a movie.',
+        ],
+        'We watched a movie.',
+        'Watch-এর past form watched।',
+      ),
+      _test(
+        'regular_past_verbs_test_10',
+        'তারা আমাকে সাহায্য করেছে।',
+        <String>[
+          'They help me.',
+          'They helped me.',
+          'They helping me.',
+        ],
+        'They helped me.',
+        'Help-এর past form helped।',
+      ),
+    ],
+    speakingTests: <SpeakingTest>[
+      _speaking(
+        'regular_past_verbs_speaking_01',
+        'বলুন: আমি গতকাল কাজ করেছি।',
+        'I worked yesterday.',
+        Icons.work_rounded,
+        AppColors.amber,
+      ),
+      _speaking(
+        'regular_past_verbs_speaking_02',
+        'বলুন: সে ফুটবল খেলেছে।',
+        'He played football.',
+        Icons.sports_soccer_rounded,
+        Colors.blue,
+      ),
+      _speaking(
+        'regular_past_verbs_speaking_03',
+        'বলুন: সে আমাকে ফোন করেছে।',
+        'She called me.',
+        Icons.call_rounded,
+        Colors.pink,
+      ),
+      _speaking(
+        'regular_past_verbs_speaking_04',
+        'বলুন: আমরা সিনেমা দেখেছি।',
+        'We watched a movie.',
+        Icons.movie_rounded,
+        Colors.deepPurple,
+      ),
+      _speaking(
+        'regular_past_verbs_speaking_05',
+        'বলুন: তারা আমাকে সাহায্য করেছে।',
+        'They helped me.',
+        Icons.volunteer_activism_rounded,
+        Colors.green,
+      ),
+    ],
+  );
+
+  static final RuleContent _irregularPastVerbs = RuleContent(
+    id: 'irregular_past_verbs',
+    order: 35,
+    title: 'Irregular Past Verbs',
+    shortMeaning: 'নিয়ম ছাড়া verb-এর past form',
+    usage:
+    'যেসব verb-এর past form ed যোগ করে তৈরি হয় না, সেগুলো Irregular Verb।',
+    formula: 'go → went | eat → ate | see → saw',
+    category: 'Past & Future',
+    level: RuleLevel.beginner,
+    icon: Icons.swap_horiz_rounded,
+    color: AppColors.amber,
+    keywords: <String>[
+      'Irregular Verb',
+      'Went',
+      'Ate',
+      'Saw',
+      'Bought',
+      'Wrote',
+    ],
+    examples: <RuleExample>[
+      _example('আমি স্কুলে গেলাম।', 'I went to school.', 'went_school'),
+      _example('সে ভাত খেল।', 'He ate rice.', 'ate_rice'),
+      _example('আমি তাকে দেখলাম।', 'I saw him.', 'saw_him'),
+      _example('সে একটি চিঠি লিখল।', 'She wrote a letter.', 'wrote_letter'),
+      _example('আমরা পানি পান করলাম।', 'We drank water.', 'drank_water'),
+      _example('তারা একটি গাড়ি কিনল।', 'They bought a car.', 'bought_car'),
+      _example('সে বাড়িতে এল।', 'He came home.', 'came_home'),
+      _example('আমি আমার ব্যাগ নিলাম।', 'I took my bag.', 'took_bag'),
+      _example('সে আমাকে একটি বই দিল।', 'She gave me a book.', 'gave_book'),
+      _example('আমরা সত্যটি জানলাম।', 'We knew the truth.', 'knew_truth'),
+      _example('তারা বাসে উঠল।', 'They got on the bus.', 'got_bus'),
+      _example('সে দরজাটি ভাঙল।', 'He broke the door.', 'broke_door'),
+      _example('আমি আমার বন্ধুর সঙ্গে দেখা করলাম।', 'I met my friend.', 'met_friend'),
+      _example('সে তার কাজ শুরু করল।', 'She began her work.', 'began_work'),
+      _example('আমরা একটি সুন্দর গান গাইলাম।', 'We sang a beautiful song.', 'sang_song'),
+    ],
+    tests: <RuleTest>[
+      _test(
+        'irregular_past_verbs_test_01',
+        'go → ___',
+        <String>['went', 'goed', 'gone'],
+        'went',
+        'Go-এর past form went।',
+      ),
+      _test(
+        'irregular_past_verbs_test_02',
+        'eat → ___',
+        <String>['ate', 'eated', 'eats'],
+        'ate',
+        'Eat-এর past form ate।',
+      ),
+      _test(
+        'irregular_past_verbs_test_03',
+        'see → ___',
+        <String>['saw', 'seed', 'sees'],
+        'saw',
+        'See-এর past form saw।',
+      ),
+      _test(
+        'irregular_past_verbs_test_04',
+        'write → ___',
+        <String>['wrote', 'writed', 'writes'],
+        'wrote',
+        'Write-এর past form wrote।',
+      ),
+      _test(
+        'irregular_past_verbs_test_05',
+        'drink → ___',
+        <String>['drank', 'drinked', 'drinks'],
+        'drank',
+        'Drink-এর past form drank।',
+      ),
+      _test(
+        'irregular_past_verbs_test_06',
+        'buy → ___',
+        <String>['bought', 'buyed', 'buys'],
+        'bought',
+        'Buy-এর past form bought।',
+      ),
+      _test(
+        'irregular_past_verbs_test_07',
+        'আমি স্কুলে গেলাম।',
+        <String>[
+          'I went to school.',
+          'I goed to school.',
+          'I go to school yesterday.',
+        ],
+        'I went to school.',
+        'Go-এর সঠিক past form went।',
+      ),
+      _test(
+        'irregular_past_verbs_test_08',
+        'সে ভাত খেল।',
+        <String>[
+          'He eated rice.',
+          'He ate rice.',
+          'He eats rice yesterday.',
+        ],
+        'He ate rice.',
+        'Eat-এর সঠিক past form ate।',
+      ),
+      _test(
+        'irregular_past_verbs_test_09',
+        'সে একটি চিঠি লিখল।',
+        <String>[
+          'She writed a letter.',
+          'She wrote a letter.',
+          'She writes a letter yesterday.',
+        ],
+        'She wrote a letter.',
+        'Write-এর সঠিক past form wrote।',
+      ),
+      _test(
+        'irregular_past_verbs_test_10',
+        'তারা একটি গাড়ি কিনল।',
+        <String>[
+          'They buyed a car.',
+          'They bought a car.',
+          'They buys a car yesterday.',
+        ],
+        'They bought a car.',
+        'Buy-এর সঠিক past form bought।',
+      ),
+    ],
+    speakingTests: <SpeakingTest>[
+      _speaking(
+        'irregular_past_verbs_speaking_01',
+        'বলুন: আমি স্কুলে গেলাম।',
+        'I went to school.',
+        Icons.school_rounded,
+        AppColors.amber,
+      ),
+      _speaking(
+        'irregular_past_verbs_speaking_02',
+        'বলুন: সে ভাত খেল।',
+        'He ate rice.',
+        Icons.restaurant_rounded,
+        Colors.blue,
+      ),
+      _speaking(
+        'irregular_past_verbs_speaking_03',
+        'বলুন: আমি তাকে দেখলাম।',
+        'I saw him.',
+        Icons.visibility_rounded,
+        Colors.deepPurple,
+      ),
+      _speaking(
+        'irregular_past_verbs_speaking_04',
+        'বলুন: সে একটি চিঠি লিখল।',
+        'She wrote a letter.',
+        Icons.mail_rounded,
+        Colors.orange,
+      ),
+      _speaking(
+        'irregular_past_verbs_speaking_05',
+        'বলুন: তারা একটি গাড়ি কিনল।',
+        'They bought a car.',
+        Icons.directions_car_rounded,
+        Colors.green,
+      ),
+    ],
+  );
+
+  static final RuleContent _didQuestions = RuleContent(
+    id: 'did_questions',
+    order: 36,
+    title: 'Did Questions',
+    shortMeaning: 'অতীতের কাজ সম্পর্কে প্রশ্ন',
+    usage:
+    'অতীতে কোনো কাজ হয়েছিল কি না জানতে Did দিয়ে question তৈরি হয়।',
+    formula: 'Did + Subject + Base Verb?',
+    category: 'Past & Future',
+    level: RuleLevel.beginner,
+    icon: Icons.help_rounded,
+    color: AppColors.amber,
+    keywords: <String>[
+      'Did',
+      'Past Question',
+      'Base Verb',
+      'Yesterday',
+    ],
+    examples: <RuleExample>[
+      _example('তুমি কি গতকাল কাজ করেছিলে?', 'Did you work yesterday?', 'work_question'),
+      _example('সে কি স্কুলে গিয়েছিল?', 'Did he go to school?', 'school_question'),
+      _example('সে কি ভাত খেয়েছিল?', 'Did she eat rice?', 'eat_question'),
+      _example('তারা কি সিনেমাটি দেখেছিল?', 'Did they watch the movie?', 'movie_question'),
+      _example('তুমি কি তাকে দেখেছিলে?', 'Did you see him?', 'see_question'),
+      _example('সে কি চিঠি লিখেছিল?', 'Did she write a letter?', 'write_question'),
+      _example('তোমরা কি English শিখেছিলে?', 'Did you learn English?', 'learn_question'),
+      _example('সে কি গাড়ি কিনেছিল?', 'Did he buy a car?', 'buy_question'),
+      _example('তারা কি আমাকে সাহায্য করেছিল?', 'Did they help me?', 'help_question'),
+      _example('তুমি কি পানি পান করেছিলে?', 'Did you drink water?', 'drink_question'),
+      _example('সে কি এখানে এসেছিল?', 'Did she come here?', 'come_question'),
+      _example('তারা কি ফুটবল খেলেছিল?', 'Did they play football?', 'play_question'),
+      _example('সে কি কাজ শুরু করেছিল?', 'Did he begin the work?', 'begin_question'),
+      _example('তুমি কি তোমার বন্ধুর সঙ্গে দেখা করেছিলে?', 'Did you meet your friend?', 'meet_question'),
+      _example('সে কি সত্যটি জানত?', 'Did she know the truth?', 'know_question'),
+    ],
+    tests: <RuleTest>[
+      _test(
+        'did_questions_test_01',
+        '___ you work yesterday?',
+        <String>['Did', 'Do', 'Does'],
+        'Did',
+        'Past question-এ Did ব্যবহার হয়।',
+      ),
+      _test(
+        'did_questions_test_02',
+        '___ he go to school?',
+        <String>['Did', 'Does', 'Is'],
+        'Did',
+        'অতীতের প্রশ্নে Did বসে।',
+      ),
+      _test(
+        'did_questions_test_03',
+        '___ she eat rice?',
+        <String>['Did', 'Do', 'Does'],
+        'Did',
+        'Did-এর পরে subject এবং base verb হয়।',
+      ),
+      _test(
+        'did_questions_test_04',
+        '___ they watch the movie?',
+        <String>['Did', 'Do', 'Are'],
+        'Did',
+        'They-এর past question-এ Did হবে।',
+      ),
+      _test(
+        'did_questions_test_05',
+        'Did you ___ him?',
+        <String>['see', 'saw', 'seen'],
+        'see',
+        'Did-এর পরে verb-এর base form হয়।',
+      ),
+      _test(
+        'did_questions_test_06',
+        'Did she ___ a letter?',
+        <String>['write', 'wrote', 'written'],
+        'write',
+        'Did-এর পরে write হবে, wrote নয়।',
+      ),
+      _test(
+        'did_questions_test_07',
+        'তুমি কি গতকাল কাজ করেছিলে?',
+        <String>[
+          'Did you work yesterday?',
+          'Did you worked yesterday?',
+          'Do you work yesterday?',
+        ],
+        'Did you work yesterday?',
+        'Did-এর পরে work-এর base form ব্যবহার হয়।',
+      ),
+      _test(
+        'did_questions_test_08',
+        'সে কি স্কুলে গিয়েছিল?',
+        <String>[
+          'Did he go to school?',
+          'Did he went to school?',
+          'Does he go to school yesterday?',
+        ],
+        'Did he go to school?',
+        'Did-এর পরে go হবে, went নয়।',
+      ),
+      _test(
+        'did_questions_test_09',
+        'তারা কি আমাকে সাহায্য করেছিল?',
+        <String>[
+          'Did they help me?',
+          'Did they helped me?',
+          'Do they help me yesterday?',
+        ],
+        'Did they help me?',
+        'Did-এর পরে help হবে।',
+      ),
+      _test(
+        'did_questions_test_10',
+        'সে কি গাড়ি কিনেছিল?',
+        <String>[
+          'Did he buy a car?',
+          'Did he bought a car?',
+          'Does he buy a car yesterday?',
+        ],
+        'Did he buy a car?',
+        'Did-এর পরে buy-এর base form হয়।',
+      ),
+    ],
+    speakingTests: <SpeakingTest>[
+      _speaking(
+        'did_questions_speaking_01',
+        'প্রশ্ন করুন: তুমি কি গতকাল কাজ করেছিলে?',
+        'Did you work yesterday?',
+        Icons.work_rounded,
+        AppColors.amber,
+      ),
+      _speaking(
+        'did_questions_speaking_02',
+        'প্রশ্ন করুন: সে কি স্কুলে গিয়েছিল?',
+        'Did he go to school?',
+        Icons.school_rounded,
+        Colors.blue,
+      ),
+      _speaking(
+        'did_questions_speaking_03',
+        'প্রশ্ন করুন: সে কি ভাত খেয়েছিল?',
+        'Did she eat rice?',
+        Icons.restaurant_rounded,
+        Colors.orange,
+      ),
+      _speaking(
+        'did_questions_speaking_04',
+        'প্রশ্ন করুন: তারা কি সিনেমাটি দেখেছিল?',
+        'Did they watch the movie?',
+        Icons.movie_rounded,
+        Colors.deepPurple,
+      ),
+      _speaking(
+        'did_questions_speaking_05',
+        'প্রশ্ন করুন: সে কি গাড়ি কিনেছিল?',
+        'Did he buy a car?',
+        Icons.directions_car_rounded,
+        Colors.green,
+      ),
+    ],
+  );
+}

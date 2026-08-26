@@ -1,0 +1,525 @@
+import 'package:flutter/material.dart';
+
+import '../../../../core/constants/app_colors.dart';
+import '../../models/rule_content.dart';
+
+abstract final class Batch11Rules {
+  static final List<RuleContent> rules = <RuleContent>[
+    _wasWere,
+    _wasNotWereNot,
+    _pastSimple,
+  ];
+
+  static RuleExample _example(
+      String bangla,
+      String english,
+      String visualKey,
+      ) {
+    return RuleExample(
+      bengali: bangla,
+      english: english,
+      type: RuleExampleType.simple,
+      visualKey: visualKey,
+    );
+  }
+
+  static RuleTest _test(
+      String id,
+      String question,
+      List<String> options,
+      String answer,
+      String explanation,
+      ) {
+    return RuleTest(
+      id: id,
+      type: RuleTestType.multipleChoice,
+      question: question,
+      options: options,
+      correctAnswer: answer,
+      explanation: explanation,
+    );
+  }
+
+  static SpeakingTest _speaking(
+      String id,
+      String instruction,
+      String answer,
+      IconData icon,
+      Color color,
+      ) {
+    return SpeakingTest(
+      id: id,
+      instruction: instruction,
+      expectedAnswer: answer,
+      acceptedAnswers: <String>[
+        answer,
+        answer.replaceAll('.', ''),
+      ],
+      visualIcon: icon,
+      visualColor: color,
+    );
+  }
+
+  static final RuleContent _wasWere = RuleContent(
+    id: 'was_were',
+    order: 31,
+    title: 'Was & Were',
+    shortMeaning: 'অতীতের পরিচয়, অবস্থা বা অবস্থান',
+    usage:
+    'অতীতে কোনো ব্যক্তি বা বস্তুর অবস্থা, পরিচয় বা অবস্থান বোঝাতে Was এবং Were ব্যবহার হয়।',
+    formula: 'I/He/She/It + was | You/We/They + were',
+    category: 'Past & Future',
+    level: RuleLevel.beginner,
+    icon: Icons.history_toggle_off_rounded,
+    color: AppColors.amber,
+    keywords: <String>['Was', 'Were', 'Past', 'Be Verb'],
+    examples: <RuleExample>[
+      _example('আমি গতকাল ব্যস্ত ছিলাম।', 'I was busy yesterday.', 'busy'),
+      _example('আমি গতকাল বাড়িতে ছিলাম।', 'I was at home yesterday.', 'home'),
+      _example('তুমি খুব খুশি ছিলে।', 'You were very happy.', 'happy'),
+      _example('তুমি কি স্কুলে ছিলে?', 'You were at school.', 'school'),
+      _example('সে একজন ছাত্র ছিল।', 'He was a student.', 'student'),
+      _example('সে অসুস্থ ছিল।', 'He was sick.', 'sick'),
+      _example('সে গতকাল ব্যস্ত ছিল।', 'She was busy yesterday.', 'busy_girl'),
+      _example('সে আমার বন্ধু ছিল।', 'She was my friend.', 'friend'),
+      _example('এটি একটি পুরোনো ফোন ছিল।', 'It was an old phone.', 'old_phone'),
+      _example('এটি টেবিলের উপর ছিল।', 'It was on the table.', 'table'),
+      _example('আমরা গতকাল প্রস্তুত ছিলাম।', 'We were ready yesterday.', 'ready'),
+      _example('আমরা পার্কে ছিলাম।', 'We were in the park.', 'park'),
+      _example('তারা খুব ক্লান্ত ছিল।', 'They were very tired.', 'tired'),
+      _example('তারা ক্লাসে ছিল।', 'They were in the class.', 'class'),
+      _example('তারা আমার প্রতিবেশী ছিল।', 'They were my neighbours.', 'neighbours'),
+    ],
+    tests: <RuleTest>[
+      _test(
+        'was_were_test_01',
+        'I ___ busy yesterday.',
+        <String>['was', 'were', 'am'],
+        'was',
+        'I-এর সঙ্গে was বসে।',
+      ),
+      _test(
+        'was_were_test_02',
+        'You ___ very happy.',
+        <String>['was', 'were', 'are'],
+        'were',
+        'You-এর সঙ্গে were বসে।',
+      ),
+      _test(
+        'was_were_test_03',
+        'He ___ a student.',
+        <String>['was', 'were', 'is'],
+        'was',
+        'He-এর সঙ্গে was বসে।',
+      ),
+      _test(
+        'was_were_test_04',
+        'She ___ my friend.',
+        <String>['was', 'were', 'is'],
+        'was',
+        'She-এর সঙ্গে was বসে।',
+      ),
+      _test(
+        'was_were_test_05',
+        'It ___ on the table.',
+        <String>['was', 'were', 'is'],
+        'was',
+        'It-এর সঙ্গে was বসে।',
+      ),
+      _test(
+        'was_were_test_06',
+        'We ___ ready yesterday.',
+        <String>['was', 'were', 'are'],
+        'were',
+        'We-এর সঙ্গে were বসে।',
+      ),
+      _test(
+        'was_were_test_07',
+        'They ___ very tired.',
+        <String>['was', 'were', 'are'],
+        'were',
+        'They-এর সঙ্গে were বসে।',
+      ),
+      _test(
+        'was_were_test_08',
+        'আমি গতকাল বাড়িতে ছিলাম।',
+        <String>[
+          'I was at home yesterday.',
+          'I were at home yesterday.',
+          'I am at home yesterday.',
+        ],
+        'I was at home yesterday.',
+        'I-এর past form হলো was।',
+      ),
+      _test(
+        'was_were_test_09',
+        'আমরা পার্কে ছিলাম।',
+        <String>[
+          'We was in the park.',
+          'We were in the park.',
+          'We are in the park yesterday.',
+        ],
+        'We were in the park.',
+        'We-এর সঙ্গে were ব্যবহার হয়।',
+      ),
+      _test(
+        'was_were_test_10',
+        'তারা ক্লাসে ছিল।',
+        <String>[
+          'They was in the class.',
+          'They were in the class.',
+          'They are in the class yesterday.',
+        ],
+        'They were in the class.',
+        'They-এর সঙ্গে were বসে।',
+      ),
+    ],
+    speakingTests: <SpeakingTest>[
+      _speaking(
+        'was_were_speaking_01',
+        'বলুন: আমি গতকাল ব্যস্ত ছিলাম।',
+        'I was busy yesterday.',
+        Icons.work_rounded,
+        AppColors.amber,
+      ),
+      _speaking(
+        'was_were_speaking_02',
+        'বলুন: সে অসুস্থ ছিল।',
+        'He was sick.',
+        Icons.sick_rounded,
+        Colors.blue,
+      ),
+      _speaking(
+        'was_were_speaking_03',
+        'বলুন: সে আমার বন্ধু ছিল।',
+        'She was my friend.',
+        Icons.person_rounded,
+        Colors.pink,
+      ),
+      _speaking(
+        'was_were_speaking_04',
+        'বলুন: আমরা পার্কে ছিলাম।',
+        'We were in the park.',
+        Icons.park_rounded,
+        Colors.green,
+      ),
+      _speaking(
+        'was_were_speaking_05',
+        'বলুন: তারা খুব ক্লান্ত ছিল।',
+        'They were very tired.',
+        Icons.hotel_rounded,
+        Colors.deepPurple,
+      ),
+    ],
+  );
+
+  static final RuleContent _wasNotWereNot = RuleContent(
+    id: 'was_not_were_not',
+    order: 32,
+    title: 'Was not & Were not',
+    shortMeaning: 'অতীতের negative অবস্থা বোঝাতে',
+    usage:
+    'অতীতে কোনো ব্যক্তি বা বস্তু কোনো অবস্থায় ছিল না বোঝাতে Was not বা Were not ব্যবহার হয়।',
+    formula: 'Subject + was/were not + information',
+    category: 'Past & Future',
+    level: RuleLevel.beginner,
+    icon: Icons.remove_circle_rounded,
+    color: AppColors.amber,
+    keywords: <String>['Was not', 'Were not', 'Wasn’t', 'Weren’t'],
+    examples: <RuleExample>[
+      _example('আমি গতকাল ব্যস্ত ছিলাম না।', 'I was not busy yesterday.', 'not_busy'),
+      _example('আমি বাড়িতে ছিলাম না।', 'I was not at home.', 'not_home'),
+      _example('তুমি প্রস্তুত ছিলে না।', 'You were not ready.', 'not_ready'),
+      _example('তুমি অসুস্থ ছিলে না।', 'You were not sick.', 'healthy'),
+      _example('সে ছাত্র ছিল না।', 'He was not a student.', 'not_student'),
+      _example('সে অফিসে ছিল না।', 'He was not in the office.', 'not_office'),
+      _example('সে খুশি ছিল না।', 'She was not happy.', 'not_happy'),
+      _example('সে আমার বোন ছিল না।', 'She was not my sister.', 'not_sister'),
+      _example('এটি নতুন ছিল না।', 'It was not new.', 'not_new'),
+      _example('এটি টেবিলে ছিল না।', 'It was not on the table.', 'not_table'),
+      _example('আমরা দেরি করিনি।', 'We were not late.', 'not_late'),
+      _example('আমরা পার্কে ছিলাম না।', 'We were not in the park.', 'not_park'),
+      _example('তারা ব্যস্ত ছিল না।', 'They were not busy.', 'not_busy_group'),
+      _example('তারা ক্লাসে ছিল না।', 'They were not in the class.', 'not_class'),
+      _example('তারা প্রস্তুত ছিল না।', 'They were not ready.', 'not_ready_group'),
+    ],
+    tests: <RuleTest>[
+      _test(
+        'was_not_were_not_test_01',
+        'I ___ busy yesterday.',
+        <String>['was not', 'were not', 'am not'],
+        'was not',
+        'I-এর সঙ্গে was not হয়।',
+      ),
+      _test(
+        'was_not_were_not_test_02',
+        'You ___ ready.',
+        <String>['was not', 'were not', 'are not'],
+        'were not',
+        'You-এর সঙ্গে were not হয়।',
+      ),
+      _test(
+        'was_not_were_not_test_03',
+        'He ___ a student.',
+        <String>['was not', 'were not', 'is not'],
+        'was not',
+        'He-এর সঙ্গে was not হয়।',
+      ),
+      _test(
+        'was_not_were_not_test_04',
+        'She ___ happy.',
+        <String>['was not', 'were not', 'is not'],
+        'was not',
+        'She-এর সঙ্গে was not হয়।',
+      ),
+      _test(
+        'was_not_were_not_test_05',
+        'It ___ new.',
+        <String>['was not', 'were not', 'is not'],
+        'was not',
+        'It-এর সঙ্গে was not হয়।',
+      ),
+      _test(
+        'was_not_were_not_test_06',
+        'We ___ late.',
+        <String>['was not', 'were not', 'are not'],
+        'were not',
+        'We-এর সঙ্গে were not হয়।',
+      ),
+      _test(
+        'was_not_were_not_test_07',
+        'They ___ in the class.',
+        <String>['was not', 'were not', 'are not'],
+        'were not',
+        'They-এর সঙ্গে were not হয়।',
+      ),
+      _test(
+        'was_not_were_not_test_08',
+        'আমি বাড়িতে ছিলাম না।',
+        <String>[
+          'I was not at home.',
+          'I were not at home.',
+          'I am not at home yesterday.',
+        ],
+        'I was not at home.',
+        'I-এর negative past form হলো was not।',
+      ),
+      _test(
+        'was_not_were_not_test_09',
+        'আমরা পার্কে ছিলাম না।',
+        <String>[
+          'We was not in the park.',
+          'We were not in the park.',
+          'We are not in the park yesterday.',
+        ],
+        'We were not in the park.',
+        'We-এর সঙ্গে were not হয়।',
+      ),
+      _test(
+        'was_not_were_not_test_10',
+        'তারা প্রস্তুত ছিল না।',
+        <String>[
+          'They was not ready.',
+          'They were not ready.',
+          'They are not ready yesterday.',
+        ],
+        'They were not ready.',
+        'They-এর সঙ্গে were not ব্যবহার হয়।',
+      ),
+    ],
+    speakingTests: <SpeakingTest>[
+      _speaking(
+        'was_not_were_not_speaking_01',
+        'বলুন: আমি গতকাল ব্যস্ত ছিলাম না।',
+        'I was not busy yesterday.',
+        Icons.work_off_rounded,
+        AppColors.amber,
+      ),
+      _speaking(
+        'was_not_were_not_speaking_02',
+        'বলুন: সে প্রস্তুত ছিল না।',
+        'He was not ready.',
+        Icons.hourglass_empty_rounded,
+        Colors.blue,
+      ),
+      _speaking(
+        'was_not_were_not_speaking_03',
+        'বলুন: সে খুশি ছিল না।',
+        'She was not happy.',
+        Icons.sentiment_dissatisfied_rounded,
+        Colors.pink,
+      ),
+      _speaking(
+        'was_not_were_not_speaking_04',
+        'বলুন: আমরা দেরি করিনি।',
+        'We were not late.',
+        Icons.schedule_rounded,
+        Colors.green,
+      ),
+      _speaking(
+        'was_not_were_not_speaking_05',
+        'বলুন: তারা ক্লাসে ছিল না।',
+        'They were not in the class.',
+        Icons.school_rounded,
+        Colors.deepPurple,
+      ),
+    ],
+  );
+
+  static final RuleContent _pastSimple = RuleContent(
+    id: 'past_simple',
+    order: 33,
+    title: 'Past Simple',
+    shortMeaning: 'অতীতে শেষ হওয়া কাজ বোঝাতে',
+    usage:
+    'অতীতে শুরু হয়ে শেষ হয়ে যাওয়া কাজ প্রকাশ করতে Past Simple ব্যবহার হয়।',
+    formula: 'Subject + Past Verb + Object',
+    category: 'Past & Future',
+    level: RuleLevel.beginner,
+    icon: Icons.update_rounded,
+    color: AppColors.amber,
+    keywords: <String>['Past Simple', 'Yesterday', 'Last', 'Ago'],
+    examples: <RuleExample>[
+      _example('আমি গতকাল কাজ করেছি।', 'I worked yesterday.', 'work'),
+      _example('আমি সকালে হাঁটলাম।', 'I walked in the morning.', 'walk'),
+      _example('সে বইটি পড়ল।', 'She read the book.', 'read_book'),
+      _example('সে ফুটবল খেলল।', 'He played football.', 'play'),
+      _example('তুমি আমাকে ফোন করলে।', 'You called me.', 'call'),
+      _example('আমরা সিনেমাটি দেখলাম।', 'We watched the movie.', 'movie'),
+      _example('তারা স্কুলে গেল।', 'They went to school.', 'school'),
+      _example('আমি পানি পান করলাম।', 'I drank water.', 'water'),
+      _example('সে একটি চিঠি লিখল।', 'She wrote a letter.', 'letter'),
+      _example('সে দরজা খুলল।', 'He opened the door.', 'door'),
+      _example('আমরা রাতের খাবার খেলাম।', 'We ate dinner.', 'dinner'),
+      _example('তারা আমাকে সাহায্য করল।', 'They helped me.', 'help'),
+      _example('আমি গত সপ্তাহে ঢাকা গেলাম।', 'I visited Dhaka last week.', 'dhaka'),
+      _example('সে একটি নতুন ফোন কিনল।', 'She bought a new phone.', 'phone'),
+      _example('আমরা গতকাল English practice করলাম।', 'We practiced English yesterday.', 'practice'),
+    ],
+    tests: <RuleTest>[
+      _test(
+        'past_simple_test_01',
+        'I ___ yesterday.',
+        <String>['work', 'worked', 'working'],
+        'worked',
+        'Yesterday থাকলে past verb worked হবে।',
+      ),
+      _test(
+        'past_simple_test_02',
+        'She ___ the book.',
+        <String>['read', 'reads', 'reading'],
+        'read',
+        'Read-এর past form spelling একই, pronunciation আলাদা।',
+      ),
+      _test(
+        'past_simple_test_03',
+        'He ___ football.',
+        <String>['play', 'played', 'playing'],
+        'played',
+        'Regular verb play-এর past form played।',
+      ),
+      _test(
+        'past_simple_test_04',
+        'You ___ me.',
+        <String>['call', 'called', 'calling'],
+        'called',
+        'Call-এর past form called।',
+      ),
+      _test(
+        'past_simple_test_05',
+        'We ___ the movie.',
+        <String>['watch', 'watched', 'watching'],
+        'watched',
+        'Watch-এর past form watched।',
+      ),
+      _test(
+        'past_simple_test_06',
+        'They ___ to school.',
+        <String>['go', 'went', 'going'],
+        'went',
+        'Go-এর irregular past form went।',
+      ),
+      _test(
+        'past_simple_test_07',
+        'আমি পানি পান করলাম।',
+        <String>[
+          'I drink water.',
+          'I drank water.',
+          'I drinking water.',
+        ],
+        'I drank water.',
+        'Drink-এর past form drank।',
+      ),
+      _test(
+        'past_simple_test_08',
+        'সে একটি চিঠি লিখল।',
+        <String>[
+          'She writes a letter.',
+          'She wrote a letter.',
+          'She writing a letter.',
+        ],
+        'She wrote a letter.',
+        'Write-এর past form wrote।',
+      ),
+      _test(
+        'past_simple_test_09',
+        'আমরা রাতের খাবার খেলাম।',
+        <String>[
+          'We eat dinner.',
+          'We ate dinner.',
+          'We eating dinner.',
+        ],
+        'We ate dinner.',
+        'Eat-এর past form ate।',
+      ),
+      _test(
+        'past_simple_test_10',
+        'সে একটি ফোন কিনল।',
+        <String>[
+          'She buys a phone.',
+          'She bought a phone.',
+          'She buying a phone.',
+        ],
+        'She bought a phone.',
+        'Buy-এর past form bought।',
+      ),
+    ],
+    speakingTests: <SpeakingTest>[
+      _speaking(
+        'past_simple_speaking_01',
+        'বলুন: আমি গতকাল কাজ করেছি।',
+        'I worked yesterday.',
+        Icons.work_rounded,
+        AppColors.amber,
+      ),
+      _speaking(
+        'past_simple_speaking_02',
+        'বলুন: সে ফুটবল খেলল।',
+        'He played football.',
+        Icons.sports_soccer_rounded,
+        Colors.blue,
+      ),
+      _speaking(
+        'past_simple_speaking_03',
+        'বলুন: তারা স্কুলে গেল।',
+        'They went to school.',
+        Icons.school_rounded,
+        Colors.deepPurple,
+      ),
+      _speaking(
+        'past_simple_speaking_04',
+        'বলুন: সে একটি চিঠি লিখল।',
+        'She wrote a letter.',
+        Icons.mail_rounded,
+        Colors.orange,
+      ),
+      _speaking(
+        'past_simple_speaking_05',
+        'বলুন: আমরা রাতের খাবার খেলাম।',
+        'We ate dinner.',
+        Icons.restaurant_rounded,
+        Colors.green,
+      ),
+    ],
+  );
+}
