@@ -532,7 +532,10 @@ class _RuleDetailsScreenState
     }
 
     final progress = _controller.progress;
-    final visual = _visualForExample(_currentExample);
+    final visual = _SentenceVisualResolver.resolve(
+      example: _currentExample,
+      rule: widget.rule,
+    );
 
 
     return Scaffold(
@@ -1383,4 +1386,354 @@ class _BottomControls extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Resolves every example key to a semantic icon.
+///
+/// The batch files use descriptive keys such as `book_near`,
+/// `car_question`, `rain_future`, and `write_letter`. This resolver reads
+/// those keys (and the sentence text when a key is missing), so visuals are
+/// deterministic and meaning-based rather than random.
+abstract final class _SentenceVisualResolver {
+  static _VisualInfo resolve({
+    required RuleExample example,
+    required RuleContent rule,
+  }) {
+    final raw = '${example.visualKey} ${example.bengali} ${example.english}'
+        .toLowerCase();
+    final text = _normalize(raw);
+
+    for (final _VisualRule item in _rules) {
+      if (_containsAny(text, item.words)) {
+        return _applyModifier(item.info, text);
+      }
+    }
+
+    final _VisualInfo typeVisual = _typeVisual(example.type);
+    return _applyModifier(typeVisual, text);
+  }
+
+  static String _normalize(String value) {
+    return ' ${value
+        .replaceAll('_', ' ')
+        .replaceAll(RegExp(r'[^a-z0-9\u0980-\u09ff]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim()} ';
+  }
+
+  static bool _containsAny(String text, List<String> words) {
+    return words.any((String word) {
+      final normalizedWord = word.toLowerCase();
+      if (RegExp(r'^[a-z0-9 ]+$').hasMatch(normalizedWord)) {
+        return text.contains(' $normalizedWord ');
+      }
+      return text.contains(normalizedWord);
+    });
+  }
+
+  static _VisualInfo _applyModifier(_VisualInfo base, String text) {
+    if (_containsAny(text, <String>['question', 'কি', 'কেন', 'কখন', 'কীভাবে'])) {
+      return _VisualInfo(
+        icon: base.icon,
+        color: const Color(0xFF0D9E9A),
+        label: '${base.label} question',
+      );
+    }
+
+    if (_containsAny(text, <String>['negative', 'not', 'নয়', 'নেই', 'না'])) {
+      return _VisualInfo(
+        icon: base.icon,
+        color: const Color(0xFFE94B4B),
+        label: '${base.label} negative',
+      );
+    }
+
+    if (_containsAny(text, <String>['near', 'কাছের', 'কাছে'])) {
+      return _VisualInfo(
+        icon: base.icon,
+        color: base.color,
+        label: 'Near ${base.label}',
+      );
+    }
+
+    if (_containsAny(text, <String>['far', 'দূরের', 'দূরে'])) {
+      return _VisualInfo(
+        icon: base.icon,
+        color: base.color,
+        label: 'Far ${base.label}',
+      );
+    }
+
+    return base;
+  }
+
+  static _VisualInfo _typeVisual(RuleExampleType type) {
+    switch (type) {
+      case RuleExampleType.question:
+        return const _VisualInfo(
+          icon: Icons.help_outline_rounded,
+          color: Color(0xFF0D9E9A),
+          label: 'Question',
+        );
+      case RuleExampleType.negative:
+        return const _VisualInfo(
+          icon: Icons.block_rounded,
+          color: Color(0xFFE94B4B),
+          label: 'Negative sentence',
+        );
+      case RuleExampleType.positive:
+        return const _VisualInfo(
+          icon: Icons.check_circle_rounded,
+          color: Color(0xFF16A36A),
+          label: 'Positive sentence',
+        );
+      case RuleExampleType.conversation:
+        return const _VisualInfo(
+          icon: Icons.forum_rounded,
+          color: Color(0xFF7756D8),
+          label: 'Conversation',
+        );
+      case RuleExampleType.simple:
+        return const _VisualInfo(
+          icon: Icons.chat_bubble_outline_rounded,
+          color: Color(0xFF4285F4),
+          label: 'Sentence',
+        );
+    }
+  }
+
+  static _VisualInfo _i(
+      IconData icon,
+      Color color,
+      String label,
+      ) {
+    return _VisualInfo(
+      icon: icon,
+      color: color,
+      label: label,
+    );
+  }
+
+  static _VisualRule _r(
+      List<String> words,
+      IconData icon,
+      int color,
+      String label,
+      ) {
+    return _VisualRule(
+      words,
+      _i(icon, Color(color), label),
+    );
+  }
+
+  static final List<_VisualRule> _rules = <_VisualRule>[
+    _r(<String>['blue car'], Icons.directions_car_rounded, 0xFF4285F4, 'Blue car'),
+    _r(<String>['fast food'], Icons.restaurant_rounded, 0xFFE94B4B, 'Fast food'),
+    _r(<String>['read book'], Icons.menu_book_rounded, 0xFF4285F4, 'Reading a book'),
+    _r(<String>['write letter'], Icons.mail_rounded, 0xFF4285F4, 'Writing a letter'),
+    _r(<String>['play football'], Icons.sports_soccer_rounded, 0xFF16A36A, 'Playing football'),
+    _r(<String>['watch movie'], Icons.movie_rounded, 0xFF7756D8, 'Watching a movie'),
+    _r(<String>['school', 'স্কুল'], Icons.school_rounded, 0xFF4285F4, 'School'),
+    _r(<String>['teacher', 'শিক্ষক'], Icons.school_rounded, 0xFF7756D8, 'Teacher'),
+    _r(<String>['doctor', 'ডাক্তার'], Icons.medical_services_rounded, 0xFFE94B4B, 'Doctor'),
+    _r(<String>['student', 'ছাত্র', 'ছাত্রী'], Icons.school_rounded, 0xFF16A36A, 'Student'),
+    _r(<String>['friend', 'বন্ধু'], Icons.groups_rounded, 0xFF7756D8, 'Friends'),
+    _r(<String>['mother', 'মা'], Icons.person_rounded, 0xFFE94B4B, 'Mother'),
+    _r(<String>['brother', 'ভাই'], Icons.person_rounded, 0xFF16A36A, 'Brother'),
+    _r(<String>['sister', 'বোন'], Icons.face_rounded, 0xFF7756D8, 'Sister'),
+    _r(<String>['children', 'child', 'শিশু'], Icons.child_care_rounded, 0xFFFFA51F, 'Children'),
+    _r(<String>['book', 'বই'], Icons.menu_book_rounded, 0xFF4285F4, 'Book'),
+    _r(<String>['pen', 'কলম'], Icons.edit_rounded, 0xFF4285F4, 'Pen'),
+    _r(<String>['phone', 'ফোন'], Icons.phone_android_rounded, 0xFF0D9E70, 'Phone'),
+    _r(<String>['computer', 'কম্পিউটার'], Icons.computer_rounded, 0xFF4285F4, 'Computer'),
+    _r(<String>['chair', 'চেয়ার', 'চেয়ার'], Icons.chair_rounded, 0xFFFFA51F, 'Chair'),
+    _r(<String>['car', 'গাড়ি', 'গাড়ি'], Icons.directions_car_rounded, 0xFF4285F4, 'Car'),
+    _r(<String>['house', 'home', 'বাড়ি', 'বাড়ি'], Icons.home_rounded, 0xFF16A36A, 'Home'),
+    _r(<String>['hospital', 'হাসপাতাল'], Icons.local_hospital_rounded, 0xFFE94B4B, 'Hospital'),
+    _r(<String>['tree', 'গাছ'], Icons.park_rounded, 0xFF16A36A, 'Tree'),
+    _r(<String>['flower', 'ফুল'], Icons.local_florist_rounded, 0xFFE94B4B, 'Flower'),
+    _r(<String>['ball', 'বল'], Icons.sports_baseball_rounded, 0xFFFFA51F, 'Ball'),
+    _r(<String>['bus', 'বাস'], Icons.directions_bus_rounded, 0xFF0D9E70, 'Bus'),
+    _r(<String>['bicycle', 'bike', 'সাইকেল'], Icons.directions_bike_rounded, 0xFF16A36A, 'Bicycle'),
+    _r(<String>['bag', 'ব্যাগ'], Icons.backpack_rounded, 0xFF7756D8, 'Bag'),
+    _r(<String>['key', 'keys', 'চাবি'], Icons.key_rounded, 0xFFFFA51F, 'Key'),
+    _r(<String>['shoe', 'shoes', 'জুতা'], Icons.shopping_bag_rounded, 0xFF7756D8, 'Shoes'),
+    _r(<String>['cup', 'cups', 'কাপ'], Icons.local_cafe_rounded, 0xFFFFA51F, 'Cup'),
+    _r(<String>['table', 'টেবিল'], Icons.table_restaurant_rounded, 0xFFFFA51F, 'Table'),
+    _r(<String>['tea', 'চা'], Icons.local_cafe_rounded, 0xFFFFA51F, 'Tea'),
+    _r(<String>['coffee', 'কফি'], Icons.coffee_rounded, 0xFF795548, 'Coffee'),
+    _r(<String>['food', 'খাবার', 'restaurant'], Icons.restaurant_rounded, 0xFFE94B4B, 'Food'),
+    _r(<String>['water', 'পানি', 'জল'], Icons.water_drop_rounded, 0xFF4285F4, 'Water'),
+    _r(<String>['apple', 'আপেল'], Icons.shopping_basket_rounded, 0xFFE94B4B, 'Apple'),
+    _r(<String>['rain', 'raining', 'বৃষ্টি'], Icons.umbrella_rounded, 0xFF4285F4, 'Rain'),
+    _r(<String>['sunrise', 'sun', 'সূর্য'], Icons.wb_sunny_rounded, 0xFFFFA51F, 'Sun'),
+    _r(<String>['moon', 'চাঁদ'], Icons.nightlight_round, 0xFF7756D8, 'Moon'),
+    _r(<String>['sky', 'আকাশ'], Icons.cloud_rounded, 0xFF4285F4, 'Sky'),
+    _r(<String>['river', 'নদী'], Icons.water_rounded, 0xFF4285F4, 'River'),
+    _r(<String>['park', 'পার্ক'], Icons.park_rounded, 0xFF16A36A, 'Park'),
+    _r(<String>['office', 'অফিস'], Icons.business_rounded, 0xFF7756D8, 'Office'),
+    _r(<String>['class', 'ক্লাস'], Icons.class_rounded, 0xFF4285F4, 'Class'),
+    _r(<String>['exam', 'পরীক্ষা'], Icons.assignment_rounded, 0xFFE94B4B, 'Exam'),
+    _r(<String>['traffic', 'ট্রাফিক'], Icons.traffic_rounded, 0xFFE94B4B, 'Traffic'),
+    _r(<String>['work', 'works', 'working', 'কাজ'], Icons.work_rounded, 0xFFFFA51F, 'Work'),
+    _r(<String>['cook', 'cooking', 'রান্না'], Icons.soup_kitchen_rounded, 0xFFE94B4B, 'Cooking'),
+    _r(<String>['eat', 'eating', 'খাই', 'খাওয়া'], Icons.restaurant_rounded, 0xFFE94B4B, 'Eating'),
+    _r(<String>['drink', 'drank', 'পান'], Icons.local_drink_rounded, 0xFF4285F4, 'Drinking'),
+    _r(<String>['read', 'reading', 'পড়ি', 'পড়া'], Icons.chrome_reader_mode_rounded, 0xFF4285F4, 'Reading'),
+    _r(<String>['write', 'writing', 'wrote', 'লিখি', 'লেখা'], Icons.edit_note_rounded, 0xFF7756D8, 'Writing'),
+    _r(<String>['speak', 'speaking', 'বল', 'কথা'], Icons.record_voice_over_rounded, 0xFF4285F4, 'Speaking'),
+    _r(<String>['listen', 'listening', 'শুনি'], Icons.hearing_rounded, 0xFF0D9E70, 'Listening'),
+    _r(<String>['talk', 'talking'], Icons.forum_rounded, 0xFF7756D8, 'Talking'),
+    _r(<String>['call', 'কল'], Icons.call_rounded, 0xFF0D9E70, 'Calling'),
+    _r(<String>['help', 'helped', 'সাহায্য'], Icons.volunteer_activism_rounded, 0xFF16A36A, 'Helping'),
+    _r(<String>['teach', 'teaches', 'শেখাই'], Icons.school_rounded, 0xFF7756D8, 'Teaching'),
+    _r(<String>['study', 'studying', 'পড়াশোনা'], Icons.school_rounded, 0xFF4285F4, 'Studying'),
+    _r(<String>['run', 'running', 'দৌড়'], Icons.directions_run_rounded, 0xFF16A36A, 'Running'),
+    _r(<String>['walk', 'walking', 'হাঁটা'], Icons.directions_walk_rounded, 0xFF16A36A, 'Walking'),
+    _r(<String>['drive', 'driving'], Icons.drive_eta_rounded, 0xFF4285F4, 'Driving'),
+    _r(<String>['swim', 'সাঁতার'], Icons.pool_rounded, 0xFF4285F4, 'Swimming'),
+    _r(<String>['sleep', 'sleeping', 'ঘুম'], Icons.bedtime_rounded, 0xFF7756D8, 'Sleeping'),
+    _r(<String>['open', 'opened', 'খোলা'], Icons.lock_open_rounded, 0xFF16A36A, 'Opening'),
+    _r(<String>['close', 'closed', 'বন্ধ'], Icons.lock_rounded, 0xFFE94B4B, 'Closing'),
+    _r(<String>['play', 'playing', 'খেলে'], Icons.sports_rounded, 0xFF16A36A, 'Playing'),
+    _r(<String>['watch', 'watching', 'দেখি'], Icons.visibility_rounded, 0xFF4285F4, 'Watching'),
+    _r(<String>['sing', 'sang', 'গান'], Icons.music_note_rounded, 0xFFE94B4B, 'Singing'),
+    _r(<String>['dance', 'danced', 'নাচ'], Icons.music_video_rounded, 0xFFE94B4B, 'Dancing'),
+    _r(<String>['travel', 'ভ্রমণ'], Icons.travel_explore_rounded, 0xFF4285F4, 'Travel'),
+    _r(<String>['go', 'going', 'went', 'যাই', 'যাওয়া'], Icons.directions_walk_rounded, 0xFF0D9E70, 'Going'),
+    _r(<String>['come', 'coming', 'came', 'আসি', 'আসা'], Icons.login_rounded, 0xFF16A36A, 'Coming'),
+    _r(<String>['leave', 'left', 'চলে'], Icons.logout_rounded, 0xFFE94B4B, 'Leaving'),
+    _r(<String>['wait', 'waiting', 'অপেক্ষা'], Icons.hourglass_top_rounded, 0xFFFFA51F, 'Waiting'),
+    _r(<String>['happy', 'খুশি', 'সুখী'], Icons.sentiment_satisfied_alt_rounded, 0xFFFFA51F, 'Happy'),
+    _r(<String>['sad', 'দুঃখিত'], Icons.sentiment_dissatisfied_rounded, 0xFF4285F4, 'Sad'),
+    _r(<String>['cry', 'crying', 'কাঁদ'], Icons.sentiment_very_dissatisfied_rounded, 0xFF4285F4, 'Crying'),
+    _r(<String>['sick', 'fever', 'অসুস্থ', 'জ্বর'], Icons.sick_rounded, 0xFFE94B4B, 'Sick'),
+    _r(<String>['busy', 'ব্যস্ত'], Icons.timer_rounded, 0xFFE94B4B, 'Busy'),
+    _r(<String>['late', 'দেরি'], Icons.schedule_rounded, 0xFFE94B4B, 'Late'),
+    _r(<String>['ready', 'প্রস্তুত'], Icons.check_circle_rounded, 0xFF16A36A, 'Ready'),
+    _r(<String>['problem', 'সমস্যা'], Icons.report_problem_rounded, 0xFFE94B4B, 'Problem'),
+    _r(<String>['idea', 'আইডিয়া'], Icons.lightbulb_rounded, 0xFFFFA51F, 'Idea'),
+    _r(<String>['success', 'সফল'], Icons.emoji_events_rounded, 0xFFFFA51F, 'Success'),
+    _r(<String>['truth', 'true', 'সত্য'], Icons.verified_rounded, 0xFF16A36A, 'Truth'),
+    _r(<String>['fear', 'ভয়'], Icons.warning_rounded, 0xFFE94B4B, 'Fear'),
+    _r(<String>['careful', 'সাবধান'], Icons.health_and_safety_rounded, 0xFFFFA51F, 'Careful'),
+    _r(<String>['time', 'সময়'], Icons.access_time_rounded, 0xFF4285F4, 'Time'),
+    _r(<String>['morning', 'সকাল'], Icons.wb_sunny_rounded, 0xFFFFA51F, 'Morning'),
+    _r(<String>['night', 'রাত'], Icons.nightlight_round, 0xFF7756D8, 'Night'),
+    _r(<String>['country', 'বাংলাদেশ'], Icons.public_rounded, 0xFF16A36A, 'Country'),
+    _r(<String>['answer', 'answered'], Icons.question_answer_rounded, 0xFF4285F4, 'Answer'),
+    _r(<String>['argue', 'arguing'], Icons.forum_rounded, 0xFFE94B4B, 'Discussion'),
+    _r(<String>['arrive'], Icons.place_rounded, 0xFF4285F4, 'Arrival'),
+    _r(<String>['ate rice', 'eat rice', 'dinner', 'lunch'], Icons.restaurant_rounded, 0xFFE94B4B, 'Meal'),
+    _r(<String>['begin question', 'begin'], Icons.play_circle_rounded, 0xFF16A36A, 'Beginning'),
+    _r(<String>['bird', 'birds'], Icons.pets_rounded, 0xFF16A36A, 'Bird'),
+    _r(<String>['birth', 'birthday'], Icons.cake_rounded, 0xFFE94B4B, 'Birthday'),
+    _r(<String>['break', 'broke'], Icons.broken_image_rounded, 0xFFE94B4B, 'Broken'),
+    _r(<String>['door'], Icons.door_back_door, 0xFFFFA51F, 'Door'),
+    _r(<String>['buy', 'bought', 'shop', 'shopping'], Icons.shopping_cart_rounded, 0xFF16A36A, 'Shopping'),
+    _r(<String>['can do', 'doing', 'do work'], Icons.task_alt_rounded, 0xFF16A36A, 'Doing'),
+    _r(<String>['cat', 'dog', 'doll', 'pet'], Icons.pets_rounded, 0xFFFFA51F, 'Pet'),
+    _r(<String>['clean', 'cleaned'], Icons.cleaning_services_rounded, 0xFF16A36A, 'Cleaning'),
+    _r(<String>['clock'], Icons.access_time_rounded, 0xFF4285F4, 'Clock'),
+    _r(<String>['cold'], Icons.ac_unit_rounded, 0xFF4285F4, 'Cold'),
+    _r(<String>['color', 'orange'], Icons.palette_rounded, 0xFFE94B4B, 'Color'),
+    _r(<String>['correct question', 'correct'], Icons.fact_check_rounded, 0xFF16A36A, 'Correct'),
+    _r(<String>['course'], Icons.school_rounded, 0xFF4285F4, 'Course'),
+    _r(<String>['cricket'], Icons.sports_cricket_rounded, 0xFF16A36A, 'Cricket'),
+    _r(<String>['difficult'], Icons.psychology_rounded, 0xFFE94B4B, 'Difficult'),
+    _r(<String>['easy'], Icons.lightbulb_rounded, 0xFFFFA51F, 'Easy'),
+    _r(<String>['earth'], Icons.public_rounded, 0xFF16A36A, 'Earth'),
+    _r(<String>['english', 'language', 'languages'], Icons.translate_rounded, 0xFF4285F4, 'Language'),
+    _r(<String>['experience'], Icons.workspace_premium_rounded, 0xFFFFA51F, 'Experience'),
+    _r(<String>['explain'], Icons.menu_book_rounded, 0xFF4285F4, 'Explanation'),
+    _r(<String>['feeling', 'doing well'], Icons.sentiment_satisfied_alt_rounded, 0xFFFFA51F, 'Feeling'),
+    _r(<String>['finish', 'finish work'], Icons.task_alt_rounded, 0xFF16A36A, 'Finished'),
+    _r(<String>['follow me'], Icons.follow_the_signs_rounded, 0xFF4285F4, 'Follow'),
+    _r(<String>['form'], Icons.assignment_rounded, 0xFF4285F4, 'Form'),
+    _r(<String>['funny'], Icons.sentiment_very_satisfied_rounded, 0xFFFFA51F, 'Funny'),
+    _r(<String>['have opportunity', 'opportunity'], Icons.lightbulb_rounded, 0xFFFFA51F, 'Opportunity'),
+    _r(<String>['have project', 'project'], Icons.work_rounded, 0xFF7756D8, 'Project'),
+    _r(<String>['has tail', 'tail'], Icons.pets_rounded, 0xFFFFA51F, 'Tail'),
+    _r(<String>['has voice', 'hear', 'hearing'], Icons.record_voice_over_rounded, 0xFF4285F4, 'Voice'),
+    _r(<String>['healthy'], Icons.health_and_safety_rounded, 0xFF16A36A, 'Healthy'),
+    _r(<String>['helmet'], Icons.health_and_safety_rounded, 0xFFFFA51F, 'Helmet'),
+    _r(<String>['hot'], Icons.local_fire_department_rounded, 0xFFE94B4B, 'Hot'),
+    _r(<String>['inside'], Icons.home_rounded, 0xFF16A36A, 'Inside'),
+    _r(<String>['invite', 'invited'], Icons.event_rounded, 0xFF7756D8, 'Invitation'),
+    _r(<String>['job'], Icons.work_rounded, 0xFFFFA51F, 'Job'),
+    _r(<String>['kind'], Icons.volunteer_activism_rounded, 0xFF16A36A, 'Kind'),
+    _r(<String>['know', 'knew'], Icons.psychology_rounded, 0xFF7756D8, 'Knowledge'),
+    _r(<String>['lie', 'lies', 'truth'], Icons.gavel_rounded, 0xFFE94B4B, 'Truth'),
+    _r(<String>['light'], Icons.light_mode_rounded, 0xFFFFA51F, 'Light'),
+    _r(<String>['like', 'love'], Icons.favorite_rounded, 0xFFE94B4B, 'Love'),
+    _r(<String>['live'], Icons.home_rounded, 0xFF16A36A, 'Living'),
+    _r(<String>['look', 'see', 'saw'], Icons.visibility_rounded, 0xFF4285F4, 'Seeing'),
+    _r(<String>['man', 'men'], Icons.person_rounded, 0xFF4285F4, 'Person'),
+    _r(<String>['meet', 'met', 'meeting'], Icons.handshake_rounded, 0xFF16A36A, 'Meeting'),
+    _r(<String>['monday'], Icons.calendar_today_rounded, 0xFF4285F4, 'Monday'),
+    _r(<String>['music'], Icons.music_note_rounded, 0xFFE94B4B, 'Music'),
+    _r(<String>['name'], Icons.badge_rounded, 0xFF7756D8, 'Name'),
+    _r(<String>['need'], Icons.priority_high_rounded, 0xFFE94B4B, 'Need'),
+    _r(<String>['neighbours'], Icons.groups_rounded, 0xFF7756D8, 'Neighbours'),
+    _r(<String>['new', 'old'], Icons.new_releases_rounded, 0xFFFFA51F, 'New or old'),
+    _r(<String>['no smoking'], Icons.smoke_free_rounded, 0xFFE94B4B, 'No smoking'),
+    _r(<String>['noise'], Icons.volume_up_rounded, 0xFFE94B4B, 'Noise'),
+    _r(<String>['object'], Icons.category_rounded, 0xFF7756D8, 'Object'),
+    _r(<String>['okay'], Icons.check_circle_rounded, 0xFF16A36A, 'Okay'),
+    _r(<String>['outside'], Icons.landscape_rounded, 0xFF16A36A, 'Outside'),
+    _r(<String>['person'], Icons.person_rounded, 0xFF4285F4, 'Person'),
+    _r(<String>['please'], Icons.volunteer_activism_rounded, 0xFF16A36A, 'Please'),
+    _r(<String>['practice', 'practiced'], Icons.fitness_center_rounded, 0xFF16A36A, 'Practice'),
+    _r(<String>['promise'], Icons.handshake_rounded, 0xFF7756D8, 'Promise'),
+    _r(<String>['quiet'], Icons.volume_off_rounded, 0xFF4285F4, 'Quiet'),
+    _r(<String>['rest'], Icons.hotel_rounded, 0xFF7756D8, 'Rest'),
+    _r(<String>['right'], Icons.check_rounded, 0xFF16A36A, 'Right'),
+    _r(<String>['road'], Icons.route_rounded, 0xFF4285F4, 'Road'),
+    _r(<String>['rules'], Icons.rule_rounded, 0xFF7756D8, 'Rules'),
+    _r(<String>['solve'], Icons.lightbulb_rounded, 0xFFFFA51F, 'Solution'),
+    _r(<String>['stay'], Icons.home_rounded, 0xFF16A36A, 'Staying'),
+    _r(<String>['tell'], Icons.chat_rounded, 0xFF4285F4, 'Telling'),
+    _r(<String>['touch'], Icons.touch_app_rounded, 0xFF4285F4, 'Touching'),
+    _r(<String>['umbrella'], Icons.umbrella_rounded, 0xFF4285F4, 'Umbrella'),
+    _r(<String>['visit'], Icons.location_on_rounded, 0xFF4285F4, 'Visiting'),
+    _r(<String>['watch', 'watching'], Icons.visibility_rounded, 0xFF4285F4, 'Watching'),
+    _r(<String>['window'], Icons.window_rounded, 0xFF4285F4, 'Window'),
+    _r(<String>['boy'], Icons.person_rounded, 0xFF16A36A, 'Boy'),
+    _r(<String>['girl'], Icons.face_rounded, 0xFF7756D8, 'Girl'),
+    _r(<String>['company'], Icons.business_center_rounded, 0xFF7756D8, 'Company'),
+    _r(<String>['device'], Icons.devices_rounded, 0xFF4285F4, 'Device'),
+    _r(<String>['dhaka'], Icons.location_city_rounded, 0xFF4285F4, 'Dhaka'),
+    _r(<String>['draw picture', 'picture'], Icons.image_rounded, 0xFF7756D8, 'Picture'),
+    _r(<String>['egg'], Icons.circle_rounded, 0xFFFFA51F, 'Egg'),
+    _r(<String>['gift'], Icons.card_giftcard_rounded, 0xFFE94B4B, 'Gift'),
+    _r(<String>['hand'], Icons.back_hand_rounded, 0xFFFFA51F, 'Hand'),
+    _r(<String>['knife'], Icons.restaurant_rounded, 0xFFE94B4B, 'Knife'),
+    _r(<String>['learn', 'learners', 'learning'], Icons.menu_book_rounded, 0xFF4285F4, 'Learning'),
+    _r(<String>['letter'], Icons.mail_rounded, 0xFF4285F4, 'Letter'),
+    _r(<String>['market'], Icons.storefront_rounded, 0xFFFFA51F, 'Market'),
+    _r(<String>['movie'], Icons.movie_rounded, 0xFF7756D8, 'Movie'),
+    _r(<String>['question'], Icons.help_outline_rounded, 0xFF0D9E9A, 'Question'),
+    _r(<String>['sit'], Icons.event_seat_rounded, 0xFF7756D8, 'Sitting'),
+    _r(<String>['stand'], Icons.accessibility_new_rounded, 0xFF16A36A, 'Standing'),
+    _r(<String>['start'], Icons.play_circle_rounded, 0xFF16A36A, 'Starting'),
+    _r(<String>['ticket'], Icons.confirmation_number_rounded, 0xFFFFA51F, 'Ticket'),
+    _r(<String>['tired'], Icons.battery_alert_rounded, 0xFFE94B4B, 'Tired'),
+    _r(<String>['together'], Icons.groups_rounded, 0xFF16A36A, 'Together'),
+    _r(<String>['two boxes', 'one box'], Icons.inventory_2_rounded, 0xFFFFA51F, 'Box'),
+    _r(<String>['vehicle'], Icons.directions_car_rounded, 0xFF4285F4, 'Vehicle'),
+    _r(<String>['wake', 'wake up'], Icons.alarm_rounded, 0xFFFFA51F, 'Waking up'),
+    _r(<String>['want'], Icons.favorite_border_rounded, 0xFFE94B4B, 'Want'),
+    _r(<String>['not do'], Icons.block_rounded, 0xFFE94B4B, 'Not doing'),
+    _r(<String>['not mine'], Icons.inventory_2_rounded, 0xFFE94B4B, 'Not mine'),
+    _r(<String>['not there'], Icons.location_off_rounded, 0xFFE94B4B, 'Not there'),
+    _r(<String>['thing near'], Icons.category_rounded, 0xFFFFA51F, 'Thing'),
+    _r(<String>['this', 'those'], Icons.touch_app_rounded, 0xFF4285F4, 'This or those'),
+  ];
+}
+
+class _VisualRule {
+  const _VisualRule(this.words, this.info);
+
+  final List<String> words;
+  final _VisualInfo info;
 }
