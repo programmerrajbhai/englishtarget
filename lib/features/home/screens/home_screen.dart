@@ -16,6 +16,44 @@ class HomeScreen extends StatelessWidget {
     this.onBottomNavigationTap,
   });
 
+  void _openCategory(
+      BuildContext context,
+      String categoryTitle,
+      ) {
+    switch (categoryTitle) {
+      case 'Learn Rules':
+        Navigator.pushNamed(context, AppRoutes.rules);
+        return;
+
+      case 'Basic Sentences':
+        Navigator.pushNamed(context, AppRoutes.basicSentences);
+        return;
+
+      case 'Question Making':
+        Navigator.pushNamed(context, AppRoutes.questionMaking);
+        return;
+
+      case 'Daily Challenge':
+        Navigator.pushNamed(context, AppRoutes.dailyChallenge);
+        return;
+
+      default:
+        _showComingSoon(context, categoryTitle);
+    }
+  }
+
+  void _openDailyChallenge(BuildContext context) {
+    if (onBottomNavigationTap != null) {
+      onBottomNavigationTap!.call(2);
+      return;
+    }
+
+    Navigator.pushNamed(
+      context,
+      AppRoutes.dailyChallenge,
+    );
+  }
+
   void _showComingSoon(
       BuildContext context,
       String feature,
@@ -24,51 +62,15 @@ class HomeScreen extends StatelessWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
-          content: Text('$feature screen coming next'),
+          content: Text('$feature screen coming soon'),
           behavior: SnackBarBehavior.floating,
           backgroundColor: AppColors.navy,
+          margin: const EdgeInsets.all(16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
           ),
-          margin: const EdgeInsets.all(16),
         ),
       );
-  }
-
-  void _openCategory(
-      BuildContext context,
-      String categoryTitle,
-      ) {
-    if (categoryTitle == 'Basic Sentences') {
-      Navigator.pushNamed(
-        context,
-        AppRoutes.basicSentences,
-      );
-      return;
-    }
-
-    if (categoryTitle == 'Question Making') {
-      Navigator.pushNamed(
-        context,
-        AppRoutes.questionMaking,
-      );
-      return;
-    }
-
-
-
-
-    _showComingSoon(
-      context,
-      categoryTitle,
-    );
-  }
-
-  void _openRules(BuildContext context) {
-    Navigator.pushNamed(
-      context,
-      AppRoutes.rules,
-    );
   }
 
   @override
@@ -78,20 +80,22 @@ class HomeScreen extends StatelessWidget {
       body: SafeArea(
         bottom: false,
         child: LayoutBuilder(
-          builder: (context, constraints) {
-            final width = constraints.maxWidth;
+          builder: (
+              BuildContext context,
+              BoxConstraints constraints,
+              ) {
+            final double width = constraints.maxWidth;
 
-            final horizontalPadding = (width * 0.055)
-                .clamp(18.0, 38.0)
-                .toDouble();
+            final double horizontalPadding =
+            (width * 0.055).clamp(18.0, 38.0).toDouble();
 
-            final crossAxisCount = width >= 900
+            final int crossAxisCount = width >= 900
                 ? 4
                 : width >= 600
                 ? 3
                 : 2;
 
-            final categoryRatio = width < 360
+            final double categoryRatio = width < 360
                 ? 0.76
                 : width >= 900
                 ? 0.90
@@ -118,39 +122,31 @@ class HomeScreen extends StatelessWidget {
                         delegate: SliverChildListDelegate(
                           [
                             const _ModernHomeHeader(),
-
-
-
-
                             const SizedBox(height: 23),
-
                             const LearningProgressCard(),
-
                             const SizedBox(height: 19),
-
                             const _QuickStatsRow(),
-
                             const SizedBox(height: 29),
-
                             const _SectionHeader(
                               title: 'Start learning',
                               subtitle:
                               'Choose a category to continue',
                             ),
-
                             const SizedBox(height: 15),
                           ],
                         ),
                       ),
                     ),
-
                     SliverPadding(
                       padding: EdgeInsets.symmetric(
                         horizontal: horizontalPadding,
                       ),
                       sliver: SliverGrid(
                         delegate: SliverChildBuilderDelegate(
-                              (context, index) {
+                              (
+                              BuildContext context,
+                              int index,
+                              ) {
                             final category =
                             HomeData.categories[index];
 
@@ -175,7 +171,6 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-
                     SliverPadding(
                       padding: EdgeInsets.fromLTRB(
                         horizontalPadding,
@@ -191,23 +186,21 @@ class HomeScreen extends StatelessWidget {
                               subtitle:
                               'Pick up where you left off',
                             ),
-
                             const SizedBox(height: 14),
-
                             ContinueLearningCard(
                               onTap: () {
-                                _openRules(context);
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.rules,
+                                );
                               },
                             ),
-
                             const SizedBox(height: 28),
-
                             _DailyGoalCard(
                               onTap: () {
-                                onBottomNavigationTap?.call(2);
+                                _openDailyChallenge(context);
                               },
                             ),
-
                             const SizedBox(height: 25),
                           ],
                         ),
@@ -253,6 +246,8 @@ class _ModernHomeHeader extends StatelessWidget {
                   Flexible(
                     child: Text(
                       'Build your English every day',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 14.5,
@@ -265,18 +260,12 @@ class _ModernHomeHeader extends StatelessWidget {
             ],
           ),
         ),
-
-        const SizedBox(width: 12),
-
-
+        const SizedBox(width: 10),
         const XpBalancePill(),
-
         const SizedBox(width: 8),
-
-
         Container(
           padding: const EdgeInsets.symmetric(
-            horizontal: 13,
+            horizontal: 11,
             vertical: 10,
           ),
           decoration: BoxDecoration(
@@ -297,14 +286,14 @@ class _ModernHomeHeader extends StatelessWidget {
               Icon(
                 Icons.local_fire_department_rounded,
                 color: AppColors.amber,
-                size: 22,
+                size: 21,
               ),
-              SizedBox(width: 5),
+              SizedBox(width: 4),
               Text(
                 '7 days',
                 style: TextStyle(
                   color: AppColors.navy,
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -405,9 +394,7 @@ class _QuickStat extends StatelessWidget {
             color: color,
             size: 20,
           ),
-
           const SizedBox(width: 7),
-
           Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -462,9 +449,7 @@ class _SectionHeader extends StatelessWidget {
             letterSpacing: -0.3,
           ),
         ),
-
         const SizedBox(height: 4),
-
         Text(
           subtitle,
           style: const TextStyle(
@@ -521,9 +506,7 @@ class _DailyGoalCard extends StatelessWidget {
                   size: 28,
                 ),
               ),
-
               const SizedBox(width: 14),
-
               const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -549,9 +532,7 @@ class _DailyGoalCard extends StatelessWidget {
                   ],
                 ),
               ),
-
               const SizedBox(width: 10),
-
               Container(
                 width: 39,
                 height: 39,

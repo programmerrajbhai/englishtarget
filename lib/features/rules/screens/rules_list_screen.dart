@@ -8,6 +8,72 @@ import '../models/rules_data.dart';
 import '../repositories/rules_repository.dart';
 import '../services/rules_progress_service.dart';
 import 'rule_details_screen.dart';
+String _rawLevelName(RuleLevel level) {
+  return level.toString().split('.').last.toLowerCase();
+}
+
+String _levelTitle(RuleLevel level) {
+  final String raw = _rawLevelName(level);
+
+  return raw
+      .split('_')
+      .map((String word) {
+    if (word.isEmpty) {
+      return word;
+    }
+
+    return '${word[0].toUpperCase()}'
+        '${word.substring(1)}';
+  })
+      .join(' ');
+}
+
+String _levelSubtitle(RuleLevel level) {
+  switch (_rawLevelName(level)) {
+    case 'beginner':
+      return 'Start from the basics';
+    case 'basic':
+      return 'Build strong grammar';
+    case 'speaking':
+      return 'Speak with confidence';
+    case 'intermediate':
+      return 'Improve your sentence skills';
+    case 'advanced':
+      return 'Master English confidently';
+    default:
+      return 'Learn this level step by step';
+  }
+}
+
+IconData _levelIcon(RuleLevel level) {
+  final int index = RuleLevel.values.indexOf(level);
+
+  switch (index) {
+    case 0:
+      return Icons.flag_rounded;
+    case 1:
+      return Icons.school_rounded;
+    case 2:
+      return Icons.record_voice_over_rounded;
+    default:
+      return Icons.auto_awesome_rounded;
+  }
+}
+
+Color _levelColor(RuleLevel level) {
+  final int index = RuleLevel.values.indexOf(level);
+
+  switch (index) {
+    case 0:
+      return AppColors.primary;
+    case 1:
+      return AppColors.blue;
+    case 2:
+      return AppColors.purple;
+    default:
+      return AppColors.amber;
+  }
+}
 
 class RulesListScreen extends StatefulWidget {
   final bool showBackButton;
@@ -22,34 +88,71 @@ class RulesListScreen extends StatefulWidget {
 }
 
 class _RulesListScreenState extends State<RulesListScreen> {
-  final TextEditingController _searchController = TextEditingController();
+  static const String _allLevels = 'All Levels';
 
-  Map<String, RuleProgress> _progressMap = const {};
+  final TextEditingController _searchController =
+  TextEditingController();
+
+  Map<String, RuleProgress> _progressMap =
+  const <String, RuleProgress>{};
+
   String _selectedCategory = 'All';
+  String _selectedLevel = _allLevels;
   String _searchQuery = '';
   bool _isLoading = true;
 
-  List<String> get _orderedRuleIds =>
-      RulesData.rules.map((rule) => rule.id).toList(growable: false);
+  List<String> get _orderedRuleIds {
+    return RulesData.rules
+        .map((RuleItem rule) => rule.id)
+        .toList(growable: false);
+  }
 
   List<RuleItem> get _filteredRules {
-    final query = _searchQuery.trim().toLowerCase();
+    final String query = _searchQuery.trim().toLowerCase();
 
-    return RulesData.rules.where((rule) {
-      final matchesCategory = _selectedCategory == 'All' ||
+    return RulesData.rules.where((RuleItem rule) {
+      final bool matchesCategory = _selectedCategory == 'All' ||
           rule.category == _selectedCategory;
-      final matchesSearch = query.isEmpty ||
+
+      final bool matchesLevel = _selectedLevel == _allLevels ||
+          _levelTitle(rule.level) == _selectedLevel;
+
+      final bool matchesSearch = query.isEmpty ||
           rule.title.toLowerCase().contains(query) ||
           rule.shortMeaning.toLowerCase().contains(query) ||
           rule.explanation.toLowerCase().contains(query);
 
-      return matchesCategory && matchesSearch;
+      return matchesCategory && matchesLevel && matchesSearch;
     }).toList(growable: false);
   }
 
-  int get _completedRulesCount => RulesData.rules.where((rule) {
-    return (_progressMap[rule.id] ?? const RuleProgress()).isCompleted;
-  }).length;
+  Map<RuleLevel, List<RuleItem>> get _groupedRules {
+    final Map<RuleLevel, List<RuleItem>> grouped =
+    <RuleLevel, List<RuleItem>>{
+      for (final RuleLevel level in RuleLevel.values)
+        level: <RuleItem>[],
+    };
+
+    for (final RuleItem rule in _filteredRules) {
+      grouped[rule.level]!.add(rule);
+    }
+
+    return grouped;
+  }
+
+  List<RuleLevel> get _visibleLevels {
+    final Map<RuleLevel, List<RuleItem>> grouped = _groupedRules;
+
+    return RuleLevel.values.where((RuleLevel level) {
+      return grouped[level]!.isNotEmpty;
+    }).toList(growable: false);
+  }
+
+  int get _completedRulesCount {
+    return RulesData.rules.where((RuleItem rule) {
+      return (_progressMap[rule.id] ?? const RuleProgress()).isCompleted;
+    }).length;
+  }
 
   @override
   void initState() {
@@ -58,9 +161,12 @@ class _RulesListScreenState extends State<RulesListScreen> {
   }
 
   Future<void> _loadProgress() async {
-    final progress = await RulesProgressService.loadAllProgress();
+    final Map<String, RuleProgress> progress =
+    await RulesProgressService.loadAllProgress();
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _progressMap = progress;
@@ -70,12 +176,11 @@ class _RulesListScreenState extends State<RulesListScreen> {
 
   bool _isRuleUnlocked(RuleItem rule) {
     if (RuleConfig.unlockAllForTesting) {
-      // যেসব Rule-এর content আছে, শুধু সেগুলো test-এর জন্য unlock হবে।
       return RulesRepository.findById(rule.id) != null;
     }
 
     final int ruleIndex = RulesData.rules.indexWhere(
-          (item) => item.id == rule.id,
+          (RuleItem item) => item.id == rule.id,
     );
 
     return RulesProgressService.isRuleUnlocked(
@@ -90,7 +195,9 @@ class _RulesListScreenState extends State<RulesListScreen> {
       bool isUnlocked,
       ) async {
     if (!isUnlocked) {
-      _showMessage('আগের Rule-এর Learn, Test ও Speaking সম্পূর্ণ করুন।');
+      _showMessage(
+        'আগের Rule-এর Learn, Test ও Speaking সম্পূর্ণ করুন।',
+      );
       return;
     }
 
@@ -123,7 +230,8 @@ class _RulesListScreenState extends State<RulesListScreen> {
         SnackBar(
           content: Text(message),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: isError ? AppColors.error : AppColors.navy,
+          backgroundColor:
+          isError ? AppColors.error : AppColors.navy,
           margin: const EdgeInsets.all(16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),
@@ -140,139 +248,184 @@ class _RulesListScreenState extends State<RulesListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final double horizontalPadding =
+    (MediaQuery.of(context).size.width * 0.05)
+        .clamp(18.0, 30.0)
+        .toDouble();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final horizontalPadding =
-            (constraints.maxWidth * 0.05).clamp(18.0, 32.0).toDouble();
-            final columnCount = constraints.maxWidth >= 980
-                ? 3
-                : constraints.maxWidth >= 650
-                ? 2
-                : 1;
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                horizontalPadding,
+                14,
+                horizontalPadding,
+                0,
+              ),
+              child: Column(
+                children: [
+                  _Header(
+                    showBackButton: widget.showBackButton,
+                    completedRules: _completedRulesCount,
+                    totalRules: RulesData.rules.length,
+                  ),
+                  const SizedBox(height: 18),
+                  _ProgressSummary(
+                    completed: _completedRulesCount,
+                    total: RulesData.rules.length,
+                  ),
+                  const SizedBox(height: 14),
+                  _LevelSelector(
+                    rules: RulesData.rules,
+                    progressMap: _progressMap,
+                    selectedLevel: _selectedLevel,
+                    onSelected: (String value) {
+                      setState(() {
+                        _selectedLevel = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _SearchBox(
+                    controller: _searchController,
+                    query: _searchQuery,
+                    onChanged: (String value) {
+                      setState(() {
+                        _searchQuery = value;
+                      });
+                    },
+                    onClear: () {
+                      _searchController.clear();
+                      setState(() {
+                        _searchQuery = '';
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 39,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                ),
+                itemCount: RulesData.categories.length,
+                separatorBuilder: (_, _) {
+                  return const SizedBox(width: 8);
+                },
+                itemBuilder: (BuildContext context, int index) {
+                  final String category =
+                  RulesData.categories[index];
 
-            return Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.fromLTRB(
-                        horizontalPadding,
-                        14,
-                        horizontalPadding,
-                        0,
-                      ),
-                      child: Column(
-                        children: [
-                          _Header(
-                            showBackButton: widget.showBackButton,
-                            completedRules: _completedRulesCount,
-                          ),
-                          const SizedBox(height: 18),
-                          _ProgressSummary(
-                            completed: _completedRulesCount,
-                            total: RulesData.rules.length,
-                          ),
-                          const SizedBox(height: 15),
-                          _SearchBox(
-                            controller: _searchController,
-                            query: _searchQuery,
-                            onChanged: (value) {
-                              setState(() => _searchQuery = value);
-                            },
-                            onClear: () {
-                              _searchController.clear();
-                              setState(() => _searchQuery = '');
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 39,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: horizontalPadding,
-                        ),
-                        itemCount: RulesData.categories.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemBuilder: (context, index) {
-                          final category = RulesData.categories[index];
-
-                          return _CategoryChip(
-                            label: category,
-                            selected: category == _selectedCategory,
-                            onTap: () {
-                              setState(() => _selectedCategory = category);
-                            },
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: _isLoading
-                          ? const Center(
-                        child: CircularProgressIndicator(
-                          color: AppColors.primary,
-                        ),
-                      )
-                          : RefreshIndicator(
-                        color: AppColors.primary,
-                        onRefresh: _loadProgress,
-                        child: _filteredRules.isEmpty
-                            ? const _EmptyState()
-                            : GridView.builder(
-                          physics:
-                          const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics(),
-                          ),
-                          padding: EdgeInsets.fromLTRB(
-                            horizontalPadding,
-                            2,
-                            horizontalPadding,
-                            28,
-                          ),
-                          itemCount: _filteredRules.length,
-                          gridDelegate:
-                          SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: columnCount,
-                            mainAxisSpacing: 11,
-                            crossAxisSpacing: 11,
-                            mainAxisExtent: 104,
-                          ),
-                          itemBuilder: (context, index) {
-                            final rule = _filteredRules[index];
-                            final progress =
-                                _progressMap[rule.id] ??
-                                    const RuleProgress();
-                            final isUnlocked =
-                            _isRuleUnlocked(rule);
-
-                            return _RuleTile(
-                              rule: rule,
-                              progress: progress,
-                              isUnlocked: isUnlocked,
-                              onTap: () =>
-                                  _openRule(rule, isUnlocked),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
+                  return _CategoryChip(
+                    label: category,
+                    selected: category == _selectedCategory,
+                    onTap: () {
+                      setState(() {
+                        _selectedCategory = category;
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                ),
+              )
+                  : RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: _loadProgress,
+                child: _filteredRules.isEmpty
+                    ? const _EmptyState()
+                    : _RulesGroupedList(
+                  levels: _visibleLevels,
+                  groupedRules: _groupedRules,
+                  progressMap: _progressMap,
+                  isRuleUnlocked: _isRuleUnlocked,
+                  onRuleTap: _openRule,
+                  horizontalPadding:
+                  horizontalPadding,
                 ),
               ),
-            );
-          },
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class _RulesGroupedList extends StatelessWidget {
+  final List<RuleLevel> levels;
+  final Map<RuleLevel, List<RuleItem>> groupedRules;
+  final Map<String, RuleProgress> progressMap;
+  final bool Function(RuleItem rule) isRuleUnlocked;
+  final Future<void> Function(
+      RuleItem rule,
+      bool isUnlocked,
+      ) onRuleTap;
+  final double horizontalPadding;
+
+  const _RulesGroupedList({
+    required this.levels,
+    required this.groupedRules,
+    required this.progressMap,
+    required this.isRuleUnlocked,
+    required this.onRuleTap,
+    required this.horizontalPadding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(
+        parent: BouncingScrollPhysics(),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding,
+        2,
+        horizontalPadding,
+        30,
+      ),
+      children: [
+        for (final RuleLevel level in levels) ...[
+          _LevelSectionHeader(
+            level: level,
+            rules: groupedRules[level]!,
+            progressMap: progressMap,
+          ),
+          const SizedBox(height: 10),
+          for (final RuleItem rule in groupedRules[level]!)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 11),
+              child: _RuleTile(
+                rule: rule,
+                progress:
+                progressMap[rule.id] ?? const RuleProgress(),
+                isUnlocked: isRuleUnlocked(rule),
+                onTap: () {
+                  onRuleTap(
+                    rule,
+                    isRuleUnlocked(rule),
+                  );
+                },
+              ),
+            ),
+          const SizedBox(height: 8),
+        ],
+      ],
     );
   }
 }
@@ -280,10 +433,12 @@ class _RulesListScreenState extends State<RulesListScreen> {
 class _Header extends StatelessWidget {
   final bool showBackButton;
   final int completedRules;
+  final int totalRules;
 
   const _Header({
     required this.showBackButton,
     required this.completedRules,
+    required this.totalRules,
   });
 
   @override
@@ -293,7 +448,9 @@ class _Header extends StatelessWidget {
         if (showBackButton) ...[
           IconButton(
             onPressed: () => Navigator.maybePop(context),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+            ),
             color: AppColors.navy,
             visualDensity: VisualDensity.compact,
           ),
@@ -311,11 +468,16 @@ class _Header extends StatelessWidget {
           ),
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 11,
+            vertical: 7,
+          ),
           decoration: BoxDecoration(
             color: const Color(0xFFFFF8EA),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: const Color(0xFFFFDDA2)),
+            border: Border.all(
+              color: const Color(0xFFFFDDA2),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -327,7 +489,7 @@ class _Header extends StatelessWidget {
               ),
               const SizedBox(width: 5),
               Text(
-                '$completedRules',
+                '$completedRules/$totalRules',
                 style: const TextStyle(
                   color: AppColors.navy,
                   fontSize: 13,
@@ -353,25 +515,36 @@ class _ProgressSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final value = total == 0 ? 0.0 : completed / total;
+    final double value =
+    total == 0 ? 0 : (completed / total).clamp(0.0, 1.0);
+
+    final int percentage = (value * 100).round();
 
     return Container(
-      height: 99,
-      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+      height: 104,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 15,
+        vertical: 13,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFF2FBF6), Color(0xFFE9F8F1)],
+          colors: [
+            Color(0xFFF2FBF6),
+            Color(0xFFE7F8EF),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFCBE8D9)),
+        borderRadius: BorderRadius.circular(19),
+        border: Border.all(
+          color: const Color(0xFFCBE8D9),
+        ),
       ),
       child: Row(
         children: [
           SizedBox(
-            width: 67,
-            height: 67,
+            width: 70,
+            height: 70,
             child: Stack(
               alignment: Alignment.center,
               children: [
@@ -381,16 +554,17 @@ class _ProgressSummary extends StatelessWidget {
                     strokeWidth: 6,
                     strokeCap: StrokeCap.round,
                     backgroundColor: const Color(0xFFD5EADF),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
+                    valueColor:
+                    const AlwaysStoppedAnimation<Color>(
                       AppColors.primary,
                     ),
                   ),
                 ),
                 Text(
-                  '$completed',
+                  '$percentage%',
                   style: const TextStyle(
                     color: AppColors.navy,
-                    fontSize: 23,
+                    fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -404,16 +578,16 @@ class _ProgressSummary extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'rules learned',
+                  'Your learning journey',
                   style: TextStyle(
                     color: AppColors.navy,
                     fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 5),
                 Text(
-                  '$completed of $total completed',
+                  '$completed of $total rules completed',
                   style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 12.5,
@@ -424,16 +598,337 @@ class _ProgressSummary extends StatelessWidget {
             ),
           ),
           Container(
-            width: 48,
-            height: 48,
+            width: 49,
+            height: 49,
             decoration: BoxDecoration(
-              color: AppColors.primary.withAlpha(18),
+              color: AppColors.primary.withAlpha(20),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.school_rounded,
               color: AppColors.primary,
               size: 27,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LevelSelector extends StatelessWidget {
+  final List<RuleItem> rules;
+  final Map<String, RuleProgress> progressMap;
+  final String selectedLevel;
+  final ValueChanged<String> onSelected;
+
+  const _LevelSelector({
+    required this.rules,
+    required this.progressMap,
+    required this.selectedLevel,
+    required this.onSelected,
+  });
+
+  int _completedFor(List<RuleItem> items) {
+    return items.where((RuleItem rule) {
+      return (progressMap[rule.id] ?? const RuleProgress())
+          .isCompleted;
+    }).length;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 84,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: RuleLevel.values.length + 1,
+        separatorBuilder: (_, _) {
+          return const SizedBox(width: 9);
+        },
+        itemBuilder: (BuildContext context, int index) {
+          if (index == 0) {
+            final int completed = _completedFor(rules);
+
+            return _AllLevelCard(
+              total: rules.length,
+              completed: completed,
+              selected: selectedLevel == 'All Levels',
+              onTap: () => onSelected('All Levels'),
+            );
+          }
+
+          final RuleLevel level = RuleLevel.values[index - 1];
+
+          final List<RuleItem> levelRules = rules
+              .where((RuleItem rule) => rule.level == level)
+              .toList(growable: false);
+
+          return _LevelMiniCard(
+            level: level,
+            total: levelRules.length,
+            completed: _completedFor(levelRules),
+            selected: selectedLevel == _levelTitle(level),
+            onTap: () => onSelected(_levelTitle(level)),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _AllLevelCard extends StatelessWidget {
+  final int total;
+  final int completed;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _AllLevelCard({
+    required this.total,
+    required this.completed,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SelectorCard(
+      width: 142,
+      color: AppColors.primary,
+      selected: selected,
+      onTap: onTap,
+      icon: Icons.auto_awesome_rounded,
+      title: 'All Levels',
+      subtitle: '$completed/$total completed',
+    );
+  }
+}
+
+class _LevelMiniCard extends StatelessWidget {
+  final RuleLevel level;
+  final int total;
+  final int completed;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _LevelMiniCard({
+    required this.level,
+    required this.total,
+    required this.completed,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SelectorCard(
+      width: 142,
+      color: _levelColor(level),
+      selected: selected,
+      onTap: onTap,
+      icon: _levelIcon(level),
+      title: _levelTitle(level),
+      subtitle: '$completed/$total completed',
+    );
+  }
+}
+
+class _SelectorCard extends StatelessWidget {
+  final double width;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+
+  const _SelectorCard({
+    required this.width,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      width: width,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: selected ? color : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: selected ? color : AppColors.border,
+          width: selected ? 1.4 : 1,
+        ),
+        boxShadow: selected
+            ? [
+          BoxShadow(
+            color: color.withAlpha(35),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ]
+            : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Row(
+            children: [
+              Container(
+                width: 35,
+                height: 35,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? Colors.white.withAlpha(38)
+                      : color.withAlpha(20),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  color: selected ? Colors.white : color,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: selected
+                            ? Colors.white
+                            : AppColors.navy,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: selected
+                            ? Colors.white.withAlpha(220)
+                            : AppColors.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LevelSectionHeader extends StatelessWidget {
+  final RuleLevel level;
+  final List<RuleItem> rules;
+  final Map<String, RuleProgress> progressMap;
+
+  const _LevelSectionHeader({
+    required this.level,
+    required this.rules,
+    required this.progressMap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final int completed = rules.where((RuleItem rule) {
+      return (progressMap[rule.id] ?? const RuleProgress())
+          .isCompleted;
+    }).length;
+
+    final double progress =
+    rules.isEmpty ? 0 : completed / rules.length;
+
+    final Color color = _levelColor(level);
+
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: color.withAlpha(14),
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+          color: color.withAlpha(45),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 45,
+            height: 45,
+            decoration: BoxDecoration(
+              color: color.withAlpha(28),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              _levelIcon(level),
+              color: color,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _levelTitle(level),
+                  style: const TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _levelSubtitle(level),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 5,
+                    backgroundColor: color.withAlpha(30),
+                    valueColor:
+                    AlwaysStoppedAnimation<Color>(color),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            '$completed/${rules.length}',
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
@@ -478,11 +973,16 @@ class _SearchBox extends StatelessWidget {
               ? null
               : IconButton(
             onPressed: onClear,
-            icon: const Icon(Icons.close_rounded, size: 20),
+            icon: const Icon(
+              Icons.close_rounded,
+              size: 20,
+            ),
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 12,
+          ),
           border: _border(),
           enabledBorder: _border(),
           focusedBorder: _border(
@@ -500,7 +1000,10 @@ class _SearchBox extends StatelessWidget {
   }) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: BorderSide(color: color, width: width),
+      borderSide: BorderSide(
+        color: color,
+        width: width,
+      ),
     );
   }
 }
@@ -522,18 +1025,25 @@ class _CategoryChip extends StatelessWidget {
       color: selected ? AppColors.primary : Colors.white,
       shape: StadiumBorder(
         side: BorderSide(
-          color: selected ? AppColors.primary : AppColors.border,
+          color: selected
+              ? AppColors.primary
+              : AppColors.border,
         ),
       ),
       child: InkWell(
         onTap: onTap,
         customBorder: const StadiumBorder(),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 15,
+            vertical: 8,
+          ),
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.white : AppColors.navy,
+              color: selected
+                  ? Colors.white
+                  : AppColors.navy,
               fontSize: 12.5,
               fontWeight: FontWeight.w700,
             ),
@@ -558,67 +1068,87 @@ class _RuleTile extends StatelessWidget {
   });
 
   String get _buttonText {
-    if (!isUnlocked) return 'Locked';
-    if (progress.isCompleted) return 'Done';
-    if (progress.isStarted) return 'Continue';
+    if (!isUnlocked) {
+      return 'Locked';
+    }
+
+    if (progress.isCompleted) {
+      return 'Done';
+    }
+
+    if (progress.isStarted) {
+      return 'Continue';
+    }
+
     return 'Start';
   }
 
   IconData get _statusIcon {
-    if (!isUnlocked) return Icons.lock_rounded;
-    if (progress.isCompleted) return Icons.check_rounded;
+    if (!isUnlocked) {
+      return Icons.lock_rounded;
+    }
+
+    if (progress.isCompleted) {
+      return Icons.check_rounded;
+    }
+
     return Icons.arrow_forward_rounded;
   }
 
   @override
   Widget build(BuildContext context) {
-    final activeColor = isUnlocked ? AppColors.primary : const Color(0xFF98A2B3);
+    final Color activeColor = isUnlocked
+        ? rule.color
+        : const Color(0xFF98A2B3);
+
+    final bool completed =
+        progress.isCompleted && isUnlocked;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(17),
+        borderRadius: BorderRadius.circular(18),
         child: Ink(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
-            color: isUnlocked ? const Color(0xFFF3FBF7) : const Color(0xFFF6F7F7),
-            borderRadius: BorderRadius.circular(17),
+            color: isUnlocked
+                ? rule.color.withAlpha(12)
+                : const Color(0xFFF6F7F7),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: isUnlocked
-                  ? const Color(0xFFCBE7D8)
+                  ? rule.color.withAlpha(55)
                   : const Color(0xFFE3E6E5),
             ),
           ),
           child: Row(
             children: [
               Container(
-                width: 49,
-                height: 49,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                  color: activeColor,
+                  color: isUnlocked
+                      ? rule.color.withAlpha(25)
+                      : const Color(0xFFE9ECEF),
                   shape: BoxShape.circle,
-                  boxShadow: isUnlocked
-                      ? [
-                    BoxShadow(
-                      color: AppColors.primary.withAlpha(35),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ]
-                      : null,
+                  border: Border.all(
+                    color: activeColor.withAlpha(75),
+                  ),
                 ),
                 child: Icon(
-                  isUnlocked ? rule.icon : Icons.lock_rounded,
-                  color: Colors.white,
-                  size: 24,
+                  isUnlocked
+                      ? rule.icon
+                      : Icons.lock_rounded,
+                  color: activeColor,
+                  size: 25,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                  CrossAxisAlignment.start,
                   children: [
                     Text(
                       rule.title,
@@ -628,8 +1158,8 @@ class _RuleTile extends StatelessWidget {
                         color: isUnlocked
                             ? AppColors.navy
                             : AppColors.textSecondary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                     const SizedBox(height: 3),
@@ -640,41 +1170,55 @@ class _RuleTile extends StatelessWidget {
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 8),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(20),
                       child: LinearProgressIndicator(
-                        value: isUnlocked ? progress.progress : 0,
+                        value: isUnlocked
+                            ? progress.progress
+                            : 0,
                         minHeight: 5,
-                        backgroundColor: const Color(0xFFDCEAE3),
-                        valueColor: AlwaysStoppedAnimation<Color>(activeColor),
+                        backgroundColor:
+                        activeColor.withAlpha(22),
+                        valueColor:
+                        AlwaysStoppedAnimation<Color>(
+                          activeColor,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 11),
+              const SizedBox(width: 10),
               Container(
-                constraints: const BoxConstraints(minWidth: 76),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                constraints: const BoxConstraints(
+                  minWidth: 75,
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 9,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: progress.isCompleted && isUnlocked
-                      ? AppColors.primary
+                  color: completed
+                      ? activeColor
                       : Colors.white,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: activeColor),
+                  border: Border.all(
+                    color: activeColor,
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment:
+                  MainAxisAlignment.center,
                   children: [
                     Icon(
                       _statusIcon,
                       size: 15,
-                      color: progress.isCompleted && isUnlocked
+                      color: completed
                           ? Colors.white
                           : activeColor,
                     ),
@@ -682,11 +1226,11 @@ class _RuleTile extends StatelessWidget {
                     Text(
                       _buttonText,
                       style: TextStyle(
-                        color: progress.isCompleted && isUnlocked
+                        color: completed
                             ? Colors.white
                             : activeColor,
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ],

@@ -1,8 +1,10 @@
-import 'package:englishtarget/features/question_making/screens/question_practice_screen.dart';
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
-import '../widgets/question_making_topic.dart';
 
+import '../../../core/constants/app_colors.dart';
+
+import '../services/question_making_audio_service.dart';
+import '../widgets/question_making_topic.dart';
+import 'question_practice_screen.dart';
 
 class QuestionTopicLearningScreen
     extends StatelessWidget {
@@ -28,8 +30,8 @@ class QuestionTopicLearningScreen
 
   @override
   Widget build(BuildContext context) {
-    final visibleQuestions =
-    topic.questions.take(2).toList();
+    final List questions =
+    topic.questions.take(3).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -45,7 +47,9 @@ class QuestionTopicLearningScreen
         ),
         actions: <Widget>[
           Container(
-            margin: const EdgeInsets.only(right: 16),
+            margin: const EdgeInsets.only(
+              right: 16,
+            ),
             padding: const EdgeInsets.symmetric(
               horizontal: 12,
               vertical: 8,
@@ -54,7 +58,7 @@ class QuestionTopicLearningScreen
               color: topic.color.withAlpha(20),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: topic.color.withAlpha(80),
+                color: topic.color.withAlpha(75),
               ),
             ),
             child: Text(
@@ -70,11 +74,12 @@ class QuestionTopicLearningScreen
       ),
       body: SafeArea(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(
             20,
             8,
             20,
-            25,
+            28,
           ),
           child: Column(
             crossAxisAlignment:
@@ -83,8 +88,13 @@ class QuestionTopicLearningScreen
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: topic.color.withAlpha(22),
-                  borderRadius: BorderRadius.circular(22),
+                  gradient: LinearGradient(
+                    colors: <Color>[
+                      topic.color.withAlpha(38),
+                      topic.color.withAlpha(12),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: topic.color.withAlpha(65),
                   ),
@@ -92,17 +102,24 @@ class QuestionTopicLearningScreen
                 child: Row(
                   children: <Widget>[
                     Container(
-                      width: 62,
-                      height: 62,
+                      width: 65,
+                      height: 65,
                       decoration: BoxDecoration(
                         color: topic.color,
                         borderRadius:
-                        BorderRadius.circular(18),
+                        BorderRadius.circular(19),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: topic.color.withAlpha(55),
+                            blurRadius: 12,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
                       ),
                       child: Icon(
                         topic.icon,
                         color: Colors.white,
-                        size: 32,
+                        size: 34,
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -115,7 +132,7 @@ class QuestionTopicLearningScreen
                             topic.title,
                             style: const TextStyle(
                               color: AppColors.navy,
-                              fontSize: 20,
+                              fontSize: 21,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
@@ -133,14 +150,14 @@ class QuestionTopicLearningScreen
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
-              _CoachTip(color: topic.color),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
+              _TipCard(color: topic.color),
+              const SizedBox(height: 23),
               const Text(
                 'Question structure',
                 style: TextStyle(
                   color: AppColors.navy,
-                  fontSize: 17,
+                  fontSize: 18,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -160,23 +177,23 @@ class QuestionTopicLearningScreen
                   style: TextStyle(
                     color: topic.color,
                     fontSize: 15,
-                    height: 1.4,
-                    fontWeight: FontWeight.w800,
+                    height: 1.45,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 23),
               const Text(
                 'Examples',
                 style: TextStyle(
                   color: AppColors.navy,
-                  fontSize: 17,
+                  fontSize: 18,
                   fontWeight: FontWeight.w900,
                 ),
               ),
               const SizedBox(height: 10),
-              ...visibleQuestions.map(
-                    (question) {
+              ...questions.map(
+                    (dynamic question) {
                   return Padding(
                     padding: const EdgeInsets.only(
                       bottom: 10,
@@ -189,12 +206,12 @@ class QuestionTopicLearningScreen
                   );
                 },
               ),
-              const SizedBox(height: 13),
+              const SizedBox(height: 15),
               const Text(
                 'Question words',
                 style: TextStyle(
                   color: AppColors.navy,
-                  fontSize: 17,
+                  fontSize: 18,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -203,87 +220,87 @@ class QuestionTopicLearningScreen
                 spacing: 8,
                 runSpacing: 8,
                 children: const <Widget>[
-                  _WordChip(
+                  _WordCard(
                     word: 'What',
                     meaning: 'কী',
                     color: Colors.green,
                   ),
-                  _WordChip(
+                  _WordCard(
                     word: 'Where',
                     meaning: 'কোথায়',
                     color: Colors.blue,
                   ),
-                  _WordChip(
+                  _WordCard(
                     word: 'Why',
                     meaning: 'কেন',
                     color: Colors.deepPurple,
                   ),
-                  _WordChip(
+                  _WordCard(
                     word: 'When',
                     meaning: 'কখন',
                     color: Colors.orange,
                   ),
-                  _WordChip(
+                  _WordCard(
                     word: 'Who',
                     meaning: 'কে',
                     color: Colors.teal,
                   ),
-                  _WordChip(
+                  _WordCard(
                     word: 'How',
                     meaning: 'কীভাবে',
                     color: Colors.pink,
                   ),
                 ],
               ),
-              const SizedBox(height: 26),
+              const SizedBox(height: 27),
               Row(
                 children: <Widget>[
                   Expanded(
-                    child: OutlinedButton(
+                    child: OutlinedButton.icon(
                       onPressed: () {
                         _startPractice(context);
                       },
+                      icon: const Icon(
+                        Icons.play_arrow_rounded,
+                      ),
+                      label: const Text(
+                        'Take Test',
+                      ),
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: topic.color,
                         minimumSize:
-                        const Size.fromHeight(54),
+                        const Size.fromHeight(55),
                         side: BorderSide(
                           color: topic.color,
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius:
-                          BorderRadius.circular(15),
-                        ),
-                      ),
-                      child: Text(
-                        'Take a Test',
-                        style: TextStyle(
-                          color: topic.color,
-                          fontWeight: FontWeight.w900,
+                          BorderRadius.circular(16),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 11),
                   Expanded(
-                    child: ElevatedButton(
+                    child: ElevatedButton.icon(
                       onPressed: () {
                         _startPractice(context);
                       },
+                      icon: const Icon(
+                        Icons.extension_rounded,
+                      ),
+                      label: const Text(
+                        'Build',
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: topic.color,
                         foregroundColor: Colors.white,
                         minimumSize:
-                        const Size.fromHeight(54),
+                        const Size.fromHeight(55),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius:
-                          BorderRadius.circular(15),
-                        ),
-                      ),
-                      child: const Text(
-                        'Build Questions',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
+                          BorderRadius.circular(16),
                         ),
                       ),
                     ),
@@ -298,22 +315,23 @@ class QuestionTopicLearningScreen
   }
 }
 
-class _CoachTip extends StatelessWidget {
+class _TipCard extends StatelessWidget {
   final Color color;
 
-  const _CoachTip({
+  const _TipCard({
     required this.color,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(15),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: color.withAlpha(55),
+          color: color.withAlpha(60),
         ),
       ),
       child: Row(
@@ -323,14 +341,14 @@ class _CoachTip extends StatelessWidget {
             color: color,
             size: 28,
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 11),
           const Expanded(
             child: Text(
-              'Use a question word first, then arrange the rest of the sentence.',
+              'Start with a question word and arrange the sentence carefully.',
               style: TextStyle(
                 color: AppColors.navy,
                 fontSize: 13,
-                height: 1.35,
+                height: 1.4,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -355,13 +373,15 @@ class _ExampleCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 13,
+      padding: const EdgeInsets.fromLTRB(
+        13,
+        12,
+        8,
+        12,
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: Colors.black.withAlpha(18),
         ),
@@ -369,15 +389,23 @@ class _ExampleCard extends StatelessWidget {
       child: Row(
         children: <Widget>[
           CircleAvatar(
-            radius: 17,
+            radius: 18,
             backgroundColor: color,
-            child: const Icon(
-              Icons.volume_up_rounded,
-              color: Colors.white,
-              size: 18,
+            child: IconButton(
+              padding: EdgeInsets.zero,
+              onPressed: () {
+                QuestionMakingAudioService.speak(
+                  english,
+                );
+              },
+              icon: const Icon(
+                Icons.volume_up_rounded,
+                color: Colors.white,
+                size: 18,
+              ),
             ),
           ),
-          const SizedBox(width: 11),
+          const SizedBox(width: 10),
           Expanded(
             child: Text.rich(
               TextSpan(
@@ -394,7 +422,7 @@ class _ExampleCard extends StatelessWidget {
                     style: TextStyle(
                       color: color,
                       fontSize: 14,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w900,
                     ),
                   ),
                 ],
@@ -407,12 +435,12 @@ class _ExampleCard extends StatelessWidget {
   }
 }
 
-class _WordChip extends StatelessWidget {
+class _WordCard extends StatelessWidget {
   final String word;
   final String meaning;
   final Color color;
 
-  const _WordChip({
+  const _WordCard({
     required this.word,
     required this.meaning,
     required this.color,

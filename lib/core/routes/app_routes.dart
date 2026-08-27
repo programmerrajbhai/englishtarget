@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../features/basic_sentences/screens/basic_sentences_screen.dart';
+import '../../features/daily_challenge/screens/daily_challenge_screen.dart';
 import '../../features/home/screens/main_navigation_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/question_making/screens/question_making_screen.dart';
@@ -21,6 +22,10 @@ abstract final class AppRoutes {
 
   static const String questionMaking =
       '/question-making';
+
+
+  static const String dailyChallenge =
+      '/daily-challenge';
 
   static Route<dynamic> onGenerateRoute(
       RouteSettings settings,
@@ -61,6 +66,13 @@ abstract final class AppRoutes {
           const QuestionMakingScreen(),
           settings,
         );
+
+      case dailyChallenge:
+        return _buildRoute(
+          const DailyChallengeScreen(),
+          settings,
+        );
+
 
       default:
         return _buildRoute(
