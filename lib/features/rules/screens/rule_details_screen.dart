@@ -233,109 +233,264 @@ class _RuleDetailsScreenState
       return 'ready';
     }
 
-    return 'default';
+
+    return 'example_$_currentIndex';
+  }
+  static _VisualInfo _v(
+      IconData icon,
+      int color,
+      String label,
+      ) {
+    return _VisualInfo(
+      icon: icon,
+      color: Color(color),
+      label: label,
+    );
   }
 
-  _VisualInfo _visualInfo(String key) {
-    switch (key) {
-      case 'student':
-        return const _VisualInfo(
-          icon: Icons.school_rounded,
-          color: Color(0xFF16A36A),
-          label: 'Student',
-        );
+  static final Map<String, _VisualInfo> _visualCatalog =
+  <String, _VisualInfo>{
+    'student': _v(Icons.school_rounded, 0xFF16A36A, 'Student'),
+    'students': _v(Icons.groups_rounded, 0xFF16A36A, 'Students'),
+    'school': _v(Icons.school_rounded, 0xFF4285F4, 'School'),
+    'teacher': _v(Icons.co_present_rounded, 0xFF7756D8, 'Teacher'),
+    'friend': _v(Icons.person_add_rounded, 0xFF7756D8, 'Friend'),
+    'friends': _v(Icons.groups_rounded, 0xFF7756D8, 'Friends'),
+    'boy': _v(Icons.person_rounded, 0xFF16A36A, 'Boy'),
+    'girl': _v(Icons.face_rounded, 0xFF7756D8, 'Girl'),
+    'mother': _v(Icons.woman_rounded, 0xFFE94B4B, 'Mother'),
+    'sister': _v(Icons.face_3_rounded, 0xFF7756D8, 'Sister'),
 
-      case 'learning':
-        return const _VisualInfo(
-          icon: Icons.menu_book_rounded,
-          color: Color(0xFF4285F4),
-          label: 'Learning English',
-        );
+    'learning': _v(Icons.menu_book_rounded, 0xFF4285F4, 'Learning'),
+    'learn': _v(Icons.auto_stories_rounded, 0xFF4285F4, 'Learn'),
+    'book': _v(Icons.menu_book_rounded, 0xFF4285F4, 'Book'),
+    'books': _v(Icons.library_books_rounded, 0xFF4285F4, 'Books'),
+    'read': _v(Icons.chrome_reader_mode_rounded, 0xFF4285F4, 'Reading'),
+    'write': _v(Icons.edit_note_rounded, 0xFF7756D8, 'Writing'),
+    'speaking': _v(Icons.record_voice_over_rounded, 0xFF4285F4, 'Speaking'),
+    'listen': _v(Icons.hearing_rounded, 0xFF0D9E70, 'Listening'),
 
-      case 'friends':
-      case 'friend':
-        return const _VisualInfo(
-          icon: Icons.groups_rounded,
-          color: Color(0xFF7756D8),
-          label: 'Friends',
-        );
+    'home': _v(Icons.home_rounded, 0xFF4285F4, 'Home'),
+    'dhaka': _v(Icons.location_city_rounded, 0xFF4285F4, 'Dhaka'),
+    'school_place': _v(Icons.school_rounded, 0xFF4285F4, 'School'),
+    'market': _v(Icons.storefront_rounded, 0xFFFFA51F, 'Market'),
+    'office': _v(Icons.business_rounded, 0xFF7756D8, 'Office'),
+    'company': _v(Icons.business_center_rounded, 0xFF7756D8, 'Company'),
 
-      case 'speaking':
-        return const _VisualInfo(
-          icon: Icons.record_voice_over_rounded,
-          color: Color(0xFF4285F4),
-          label: 'Speaking',
-        );
+    'bus': _v(Icons.directions_bus_rounded, 0xFF0D9E70, 'Bus'),
+    'travel': _v(Icons.travel_explore_rounded, 0xFF4285F4, 'Travel'),
+    'go': _v(Icons.directions_walk_rounded, 0xFF0D9E70, 'Going'),
+    'come': _v(Icons.login_rounded, 0xFF16A36A, 'Coming'),
+    'arrive': _v(Icons.place_rounded, 0xFF4285F4, 'Arrival'),
 
-      case 'boy':
-        return const _VisualInfo(
-          icon: Icons.person_rounded,
-          color: Color(0xFF16A36A),
-          label: 'A boy',
-        );
+    'work': _v(Icons.work_rounded, 0xFFFFA51F, 'Work'),
+    'machine': _v(Icons.settings_rounded, 0xFF7756D8, 'Machine'),
+    'make': _v(Icons.build_rounded, 0xFFFFA51F, 'Making'),
+    'cook': _v(Icons.soup_kitchen_rounded, 0xFFE94B4B, 'Cooking'),
+    'run': _v(Icons.directions_run_rounded, 0xFF16A36A, 'Running'),
+    'walk': _v(Icons.directions_walk_rounded, 0xFF16A36A, 'Walking'),
+    'start': _v(Icons.play_circle_rounded, 0xFF16A36A, 'Starting'),
+    'help': _v(Icons.volunteer_activism_rounded, 0xFF16A36A, 'Helping'),
+    'wait': _v(Icons.hourglass_top_rounded, 0xFFFFA51F, 'Waiting'),
+    'waiting': _v(Icons.hourglass_top_rounded, 0xFFFFA51F, 'Waiting'),
 
-      case 'girl':
-        return const _VisualInfo(
-          icon: Icons.face_rounded,
-          color: Color(0xFF7756D8),
-          label: 'A girl',
-        );
+    'phone': _v(Icons.phone_android_rounded, 0xFF0D9E70, 'Phone'),
+    'device': _v(Icons.devices_rounded, 0xFF4285F4, 'Device'),
+    'letter': _v(Icons.mail_rounded, 0xFF4285F4, 'Letter'),
+    'gift': _v(Icons.card_giftcard_rounded, 0xFFE94B4B, 'Gift'),
+    'hand': _v(Icons.back_hand_rounded, 0xFFFFA51F, 'Hand'),
+    'knife': _v(Icons.restaurant_rounded, 0xFFE94B4B, 'Knife'),
 
-      case 'work':
-        return const _VisualInfo(
-          icon: Icons.work_rounded,
-          color: Color(0xFFFFA51F),
-          label: 'Work',
-        );
+    'tea': _v(Icons.local_cafe_rounded, 0xFFFFA51F, 'Tea'),
+    'food': _v(Icons.restaurant_rounded, 0xFFE94B4B, 'Food'),
+    'water': _v(Icons.water_drop_rounded, 0xFF4285F4, 'Water'),
+    'milk': _v(Icons.local_drink_rounded, 0xFFFFFFFF, 'Milk'),
+    'sugar': _v(Icons.grain_rounded, 0xFFFFA51F, 'Sugar'),
+    'apples': _v(Icons.apple_rounded, 0xFFE94B4B, 'Apples'),
+    'apple': _v(Icons.apple_rounded, 0xFFE94B4B, 'Apple'),
 
-      case 'singing':
-        return const _VisualInfo(
-          icon: Icons.music_note_rounded,
-          color: Color(0xFFE94B4B),
-          label: 'Singing',
-        );
+    'rain': _v(Icons.umbrella_rounded, 0xFF4285F4, 'Rain'),
+    'football': _v(Icons.sports_soccer_rounded, 0xFF16A36A, 'Football'),
+    'singing': _v(Icons.music_note_rounded, 0xFFE94B4B, 'Singing'),
+    'happy': _v(Icons.sentiment_satisfied_alt_rounded, 0xFFFFA51F, 'Happy'),
+    'crying': _v(Icons.sentiment_dissatisfied_rounded, 0xFF4285F4, 'Crying'),
+    'sick': _v(Icons.sick_rounded, 0xFFE94B4B, 'Sick'),
+    'busy': _v(Icons.timer_rounded, 0xFFE94B4B, 'Busy'),
+    'late': _v(Icons.schedule_rounded, 0xFFE94B4B, 'Late'),
+    'ready': _v(Icons.check_circle_rounded, 0xFF16A36A, 'Ready'),
 
-      case 'phone':
-        return const _VisualInfo(
-          icon: Icons.phone_android_rounded,
-          color: Color(0xFF0D9E70),
-          label: 'Phone',
-        );
+    'time': _v(Icons.access_time_rounded, 0xFF4285F4, 'Time'),
+    'day': _v(Icons.today_rounded, 0xFF4285F4, 'Day'),
+    'price': _v(Icons.sell_rounded, 0xFFFFA51F, 'Price'),
+    'money': _v(Icons.payments_rounded, 0xFF16A36A, 'Money'),
+    'cars': _v(Icons.directions_car_rounded, 0xFF4285F4, 'Cars'),
+    'shoes': _v(Icons.shopping_bag_rounded, 0xFF7756D8, 'Shoes'),
+    'pens': _v(Icons.edit_rounded, 0xFF4285F4, 'Pens'),
+    'chairs': _v(Icons.chair_rounded, 0xFFFFA51F, 'Chairs'),
 
-      case 'home':
-        return const _VisualInfo(
-          icon: Icons.home_rounded,
-          color: Color(0xFF4285F4),
-          label: 'Home',
-        );
+    'question': _v(Icons.help_outline_rounded, 0xFF0D9E9A, 'Question'),
+    'negative': _v(Icons.block_rounded, 0xFFE94B4B, 'Negative sentence'),
+    'positive': _v(Icons.check_circle_rounded, 0xFF16A36A, 'Positive sentence'),
+    'conversation': _v(Icons.forum_rounded, 0xFF7756D8, 'Conversation'),
+    'simple': _v(Icons.chat_bubble_outline_rounded, 0xFF4285F4, 'Sentence'),
+    'idea': _v(Icons.auto_awesome_rounded, 0xFFFFA51F, 'Example'),
+  };
 
-      case 'learning_together':
-        return const _VisualInfo(
-          icon: Icons.groups_rounded,
-          color: Color(0xFF16A36A),
-          label: 'Learning together',
-        );
+  _VisualInfo _visualForExample(RuleExample example) {
+    final explicitKey = example.visualKey.trim().toLowerCase();
 
-      case 'football':
-        return const _VisualInfo(
-          icon: Icons.sports_soccer_rounded,
-          color: Color(0xFF16A36A),
-          label: 'Playing football',
-        );
+    final explicitVisual = _visualCatalog[explicitKey];
+    if (explicitVisual != null) {
+      return explicitVisual;
+    }
 
-      case 'ready':
-        return const _VisualInfo(
-          icon: Icons.check_circle_rounded,
-          color: Color(0xFF16A36A),
-          label: 'Ready',
-        );
+    final text = '${example.bengali} ${example.english}'
+        .toLowerCase();
 
-      default:
-        return _VisualInfo(
-          icon: widget.rule.icon,
-          color: widget.rule.color,
-          label: 'Example scene',
-        );
+    final detectedKey = _detectVisualKey(
+      text,
+      example.type,
+    );
+
+    final detectedVisual = _visualCatalog[detectedKey];
+    if (detectedVisual != null) {
+      return detectedVisual;
+    }
+
+    return _visualCatalog['idea']!;
+  }
+
+  String _detectVisualKey(
+      String text,
+      RuleExampleType type,
+      ) {
+    bool has(List<String> words) {
+      return words.any(text.contains);
+    }
+
+    if (has(['student', 'ছাত্র', 'ছাত্রী'])) {
+      return 'student';
+    }
+    if (has(['teacher', 'শিক্ষক', 'শিক্ষিকা'])) {
+      return 'teacher';
+    }
+    if (has(['friend', 'বন্ধু'])) {
+      return 'friends';
+    }
+    if (has(['school', 'স্কুল'])) {
+      return 'school';
+    }
+    if (has(['book', 'বই'])) {
+      return 'books';
+    }
+    if (has(['phone', 'ফোন'])) {
+      return 'phone';
+    }
+    if (has(['home', 'বাড়ি', 'বাড়ি', 'বাসায়', 'বাসায়'])) {
+      return 'home';
+    }
+    if (has(['office', 'অফিস'])) {
+      return 'office';
+    }
+    if (has(['market', 'বাজার'])) {
+      return 'market';
+    }
+    if (has(['bus', 'বাস'])) {
+      return 'bus';
+    }
+    if (has(['rain', 'বৃষ্টি'])) {
+      return 'rain';
+    }
+    if (has(['water', 'পানি', 'জল'])) {
+      return 'water';
+    }
+    if (has(['food', 'খাবার'])) {
+      return 'food';
+    }
+    if (has(['tea', 'চা'])) {
+      return 'tea';
+    }
+    if (has(['football', 'ফুটবল', 'মাঠে'])) {
+      return 'football';
+    }
+    if (has(['sing', 'গান'])) {
+      return 'singing';
+    }
+    if (has(['happy', 'খুশি', 'সুখী'])) {
+      return 'happy';
+    }
+    if (has(['cry', 'কাঁদ'])) {
+      return 'crying';
+    }
+    if (has(['sick', 'অসুস্থ'])) {
+      return 'sick';
+    }
+    if (has(['late', 'দেরি'])) {
+      return 'late';
+    }
+    if (has(['busy', 'ব্যস্ত'])) {
+      return 'busy';
+    }
+    if (has(['work', 'কাজ'])) {
+      return 'work';
+    }
+    if (has(['cook', 'রান্না'])) {
+      return 'cook';
+    }
+    if (has(['run', 'দৌড়', 'দৌড়'])) {
+      return 'run';
+    }
+    if (has(['walk', 'হাঁটি', 'হাঁটা'])) {
+      return 'walk';
+    }
+    if (has(['learn', 'শিখি', 'শেখো', 'শেখে'])) {
+      return 'learning';
+    }
+    if (has(['speak', 'বল', 'কথা'])) {
+      return 'speaking';
+    }
+    if (has(['travel', 'ভ্রমণ'])) {
+      return 'travel';
+    }
+    if (has(['time', 'সময়', 'সময়'])) {
+      return 'time';
+    }
+    if (has(['money', 'টাকা'])) {
+      return 'money';
+    }
+    if (has(['price', 'দাম'])) {
+      return 'price';
+    }
+    if (has(['apple', 'আপেল'])) {
+      return 'apples';
+    }
+    if (has(['car', 'গাড়ি', 'গাড়ি'])) {
+      return 'cars';
+    }
+    if (has(['shoe', 'জুতা'])) {
+      return 'shoes';
+    }
+    if (has(['letter', 'চিঠি'])) {
+      return 'letter';
+    }
+    if (has(['gift', 'উপহার'])) {
+      return 'gift';
+    }
+    if (has(['question', '?', 'কেন', 'কীভাবে', 'কখন'])) {
+      return 'question';
+    }
+
+    switch (type) {
+      case RuleExampleType.question:
+        return 'question';
+      case RuleExampleType.negative:
+        return 'negative';
+      case RuleExampleType.positive:
+        return 'positive';
+      case RuleExampleType.conversation:
+        return 'conversation';
+      case RuleExampleType.simple:
+        return 'simple';
     }
   }
 
@@ -377,9 +532,8 @@ class _RuleDetailsScreenState
     }
 
     final progress = _controller.progress;
-    final visual = _visualInfo(
-      _resolveVisualKey(_currentExample),
-    );
+    final visual = _visualForExample(_currentExample);
+
 
     return Scaffold(
       backgroundColor: AppColors.background,

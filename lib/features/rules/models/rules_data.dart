@@ -691,7 +691,7 @@ abstract final class RulesData {
     ),
     _RuleSeed(
       serial: 43,
-      id: 'should',
+      id: 'should_should_not',
       title: 'Should & Should not',
       shortMeaning:
       'পরামর্শ দেওয়া বা না দেওয়া',
@@ -703,7 +703,7 @@ abstract final class RulesData {
     ),
     _RuleSeed(
       serial: 44,
-      id: 'must',
+      id: 'must_must_not',
       title: 'Must & Must not',
       shortMeaning:
       'বাধ্যবাধকতা ও কঠোর নিষেধ',
@@ -739,7 +739,7 @@ abstract final class RulesData {
     ),
     _RuleSeed(
       serial: 47,
-      id: 'have_to',
+      id: 'have_to_has_to',
       title: 'Have to & Has to',
       shortMeaning:
       'প্রয়োজন বা বাধ্য হয়ে কিছু করা',
@@ -775,7 +775,7 @@ abstract final class RulesData {
     ),
     _RuleSeed(
       serial: 50,
-      id: 'imperatives',
+      id: 'imperative_sentences',
       title: 'Imperative Sentences',
       shortMeaning:
       'নির্দেশ, অনুরোধ ও পরামর্শ',
