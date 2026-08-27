@@ -4,7 +4,8 @@ import '../../../core/constants/app_colors.dart';
 import 'learning_category.dart';
 
 abstract final class HomeData {
-  static const List<LearningCategory> categories = [
+  static const List<LearningCategory> categories =
+  <LearningCategory>[
     LearningCategory(
       title: 'Learn Rules',
       subtitle: 'নিয়ম বুঝে শিখুন',
@@ -24,14 +25,14 @@ abstract final class HomeData {
       subtitle: 'সঠিক প্রশ্ন তৈরি করুন',
       icon: Icons.quiz_rounded,
       color: AppColors.purple,
-      progress: 0.20,
+      progress: 0.0,
     ),
     LearningCategory(
       title: 'Daily Challenge',
       subtitle: 'আজকের ১০টি প্রশ্ন',
       icon: Icons.emoji_events_rounded,
       color: AppColors.amber,
-      progress: 0,
+      progress: 0.0,
     ),
   ];
 }

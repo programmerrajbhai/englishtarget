@@ -1,17 +1,26 @@
 import 'package:flutter/material.dart';
 
-import '../../features/home/screens/home_screen.dart';
+import '../../features/basic_sentences/screens/basic_sentences_screen.dart';
 import '../../features/home/screens/main_navigation_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
+import '../../features/question_making/screens/question_making_screen.dart';
 import '../../features/rules/screens/rules_list_screen.dart';
 import '../../features/splash/screens/splash_screen.dart';
 
 abstract final class AppRoutes {
   static const String splash = '/';
+
   static const String onboarding = '/onboarding';
+
   static const String home = '/home';
 
   static const String rules = '/rules';
+
+  static const String basicSentences =
+      '/basic-sentences';
+
+  static const String questionMaking =
+      '/question-making';
 
   static Route<dynamic> onGenerateRoute(
       RouteSettings settings,
@@ -41,6 +50,18 @@ abstract final class AppRoutes {
           settings,
         );
 
+      case basicSentences:
+        return _buildRoute(
+          const BasicSentencesScreen(),
+          settings,
+        );
+
+      case questionMaking:
+        return _buildRoute(
+          const QuestionMakingScreen(),
+          settings,
+        );
+
       default:
         return _buildRoute(
           const SplashScreen(),
@@ -53,7 +74,7 @@ abstract final class AppRoutes {
       Widget screen,
       RouteSettings settings,
       ) {
-    return MaterialPageRoute(
+    return MaterialPageRoute<dynamic>(
       builder: (_) => screen,
       settings: settings,
     );

@@ -6,6 +6,7 @@ import '../models/home_data.dart';
 import '../widgets/category_card.dart';
 import '../widgets/continue_learning_card.dart';
 import '../widgets/learning_progress_card.dart';
+import '../widgets/xp_balance_pill.dart';
 
 class HomeScreen extends StatelessWidget {
   final ValueChanged<int>? onBottomNavigationTap;
@@ -38,13 +39,24 @@ class HomeScreen extends StatelessWidget {
       BuildContext context,
       String categoryTitle,
       ) {
-    if (categoryTitle == 'Learn Rules') {
+    if (categoryTitle == 'Basic Sentences') {
       Navigator.pushNamed(
         context,
-        AppRoutes.rules,
+        AppRoutes.basicSentences,
       );
       return;
     }
+
+    if (categoryTitle == 'Question Making') {
+      Navigator.pushNamed(
+        context,
+        AppRoutes.questionMaking,
+      );
+      return;
+    }
+
+
+
 
     _showComingSoon(
       context,
@@ -106,6 +118,9 @@ class HomeScreen extends StatelessWidget {
                         delegate: SliverChildListDelegate(
                           [
                             const _ModernHomeHeader(),
+
+
+
 
                             const SizedBox(height: 23),
 
@@ -252,6 +267,12 @@ class _ModernHomeHeader extends StatelessWidget {
         ),
 
         const SizedBox(width: 12),
+
+
+        const XpBalancePill(),
+
+        const SizedBox(width: 8),
+
 
         Container(
           padding: const EdgeInsets.symmetric(
