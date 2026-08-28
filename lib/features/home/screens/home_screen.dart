@@ -339,81 +339,119 @@ class _ModernHomeHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Expanded(
-          child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Ready to learn?',
-                style: TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 27,
-                  height: 1.15,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.7,
-                ),
-              ),
-              SizedBox(height: 7),
-              Row(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _OnlineDot(),
-                  SizedBox(width: 7),
-                  Flexible(
-                    child: Text(
-                      'Build your English every day',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  Text(
+                    'Ready to learn?',
+                    style: TextStyle(
+                      color: AppColors.navy,
+                      fontSize: 27,
+                      height: 1.15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.7,
                     ),
+                  ),
+                  SizedBox(height: 7),
+                  Row(
+                    children: [
+                      _OnlineDot(),
+                      SizedBox(width: 7),
+                      Flexible(
+                        child: Text(
+                          'Build your English every day',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 9),
-        const XpBalancePill(),
-        const SizedBox(width: 7),
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 10,
-          ),
-          decoration: BoxDecoration(
-            color: AppColors.amber.withAlpha(18),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: AppColors.amber.withAlpha(65),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.local_fire_department_rounded,
-                color: AppColors.amber,
-                size: 20,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                '$streak days',
-                style: const TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
+            const SizedBox(width: 12),
+            const _SettingsButton(),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            const Expanded(
+              child: XpBalancePill(),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _StreakPill(streak: streak),
+            ),
+          ],
         ),
       ],
+    );
+  }
+}
+
+class _StreakPill extends StatelessWidget {
+  final int streak;
+
+  const _StreakPill({
+    required this.streak,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.amber.withAlpha(18),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.amber.withAlpha(70),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: AppColors.amber.withAlpha(35),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.local_fire_department_rounded,
+              color: AppColors.amber,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              '$streak day streak',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.navy,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -705,26 +743,38 @@ class _QuickStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 13,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(17),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: AppColors.border,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withAlpha(8),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            color: color,
-            size: 20,
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withAlpha(22),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 18,
+            ),
           ),
-          const SizedBox(width: 7),
+          const SizedBox(width: 8),
           Flexible(
             child: Column(
               crossAxisAlignment:
@@ -768,26 +818,42 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: const TextStyle(
-            color: AppColors.navy,
-            fontSize: 21,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
+        Container(
+          width: 5,
+          height: 45,
+          margin: const EdgeInsets.only(top: 1),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(8),
           ),
         ),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: AppColors.navy,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -964,6 +1030,8 @@ class _DailyGoalCard extends StatelessWidget {
     (completed / safeTotal)
         .clamp(0.0, 1.0)
         .toDouble();
+    final Color accent =
+    xpAwarded ? AppColors.primary : AppColors.amber;
 
     return Material(
       color: Colors.transparent,
@@ -975,13 +1043,13 @@ class _DailyGoalCard extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                AppColors.amber.withAlpha(28),
-                AppColors.amber.withAlpha(10),
+                accent.withAlpha(30),
+                accent.withAlpha(9),
               ],
             ),
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color: AppColors.amber.withAlpha(55),
+              color: accent.withAlpha(65),
             ),
           ),
           child: Row(
@@ -990,7 +1058,7 @@ class _DailyGoalCard extends StatelessWidget {
                 width: 53,
                 height: 53,
                 decoration: BoxDecoration(
-                  color: AppColors.amber,
+                  color: accent,
                   borderRadius: BorderRadius.circular(17),
                 ),
                 child: const Icon(
@@ -1034,11 +1102,10 @@ class _DailyGoalCard extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 5,
-                        backgroundColor:
-                        AppColors.amber.withAlpha(28),
+                        backgroundColor: accent.withAlpha(28),
                         valueColor:
-                        const AlwaysStoppedAnimation<Color>(
-                          AppColors.amber,
+                        AlwaysStoppedAnimation<Color>(
+                          accent,
                         ),
                       ),
                     ),
@@ -1053,12 +1120,48 @@ class _DailyGoalCard extends StatelessWidget {
                   color: Colors.white,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.arrow_forward_rounded,
-                  color: AppColors.amber,
+                child: Icon(
+                  xpAwarded
+                      ? Icons.check_rounded
+                      : Icons.arrow_forward_rounded,
+                  color: accent,
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsButton extends StatelessWidget {
+  const _SettingsButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Settings',
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            Navigator.pushNamed(
+              context,
+              AppRoutes.settings,
+            );
+          },
+          child: const SizedBox(
+            width: 40,
+            height: 40,
+            child: Icon(
+              Icons.settings_outlined,
+              color: AppColors.navy,
+              size: 22,
+            ),
           ),
         ),
       ),
