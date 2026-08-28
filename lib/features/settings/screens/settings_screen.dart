@@ -9,16 +9,8 @@ import 'terms_of_use_screen.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  void _open(
-      BuildContext context,
-      Widget screen,
-      ) {
-    Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => screen,
-      ),
-    );
+  void _open(BuildContext context, Widget screen) {
+    Navigator.push(context, MaterialPageRoute<void>(builder: (_) => screen));
   }
 
   @override
@@ -32,10 +24,7 @@ class SettingsScreen extends StatelessWidget {
         foregroundColor: AppColors.navy,
         title: const Text(
           'Settings',
-          style: TextStyle(
-            color: AppColors.navy,
-            fontWeight: FontWeight.w800,
-          ),
+          style: TextStyle(color: AppColors.navy, fontWeight: FontWeight.w800),
         ),
       ),
       body: ListView(
@@ -45,10 +34,7 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: <Color>[
-                  AppColors.primary,
-                  AppColors.primaryDark,
-                ],
+                colors: <Color>[AppColors.primary, AppColors.primaryDark],
               ),
               borderRadius: BorderRadius.circular(24),
             ),
@@ -66,8 +52,7 @@ class SettingsScreen extends StatelessWidget {
                 SizedBox(width: 14),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
                         'English Target',
@@ -80,10 +65,7 @@ class SettingsScreen extends StatelessWidget {
                       SizedBox(height: 5),
                       Text(
                         'Manage your app experience',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12.5,
-                        ),
+                        style: TextStyle(color: Colors.white70, fontSize: 12.5),
                       ),
                     ],
                   ),
@@ -92,19 +74,14 @@ class SettingsScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          const _SectionLabel(
-            title: 'Privacy & Safety',
-          ),
+          const _SectionLabel(title: 'Privacy & Safety'),
           _SettingsTile(
             icon: Icons.privacy_tip_rounded,
             color: AppColors.primary,
             title: 'Privacy Policy',
             subtitle: 'How English Target uses information',
             onTap: () {
-              _open(
-                context,
-                const PrivacyPolicyScreen(),
-              );
+              _open(context, const PrivacyPolicyScreen());
             },
           ),
           _SettingsTile(
@@ -113,42 +90,29 @@ class SettingsScreen extends StatelessWidget {
             title: 'Terms of Use',
             subtitle: 'Rules for using the app',
             onTap: () {
-              _open(
-                context,
-                const TermsOfUseScreen(),
-              );
+              _open(context, const TermsOfUseScreen());
             },
           ),
           const SizedBox(height: 20),
-          const _SectionLabel(
-            title: 'Help',
-          ),
+          const _SectionLabel(title: 'Help'),
           _SettingsTile(
             icon: Icons.support_agent_rounded,
             color: AppColors.purple,
             title: 'Help & Support',
             subtitle: 'Get help or report a problem',
             onTap: () {
-              _open(
-                context,
-                const SupportScreen(),
-              );
+              _open(context, const SupportScreen());
             },
           ),
           const SizedBox(height: 20),
-          const _SectionLabel(
-            title: 'About',
-          ),
+          const _SectionLabel(title: 'About'),
           _SettingsTile(
             icon: Icons.info_outline_rounded,
             color: AppColors.amber,
             title: 'About English Target',
             subtitle: 'App information and version',
             onTap: () {
-              _open(
-                context,
-                const AboutScreen(),
-              );
+              _open(context, const AboutScreen());
             },
           ),
           const SizedBox(height: 24),
@@ -171,17 +135,12 @@ class SettingsScreen extends StatelessWidget {
 class _SectionLabel extends StatelessWidget {
   final String title;
 
-  const _SectionLabel({
-    required this.title,
-  });
+  const _SectionLabel({required this.title});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        left: 3,
-        bottom: 9,
-      ),
+      padding: const EdgeInsets.only(left: 3, bottom: 9),
       child: Text(
         title,
         style: const TextStyle(
@@ -230,17 +189,12 @@ class _SettingsTile extends StatelessWidget {
                     color: color.withAlpha(22),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: 24,
-                  ),
+                  child: Icon(icon, color: color, size: 24),
                 ),
                 const SizedBox(width: 13),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
                         title,
@@ -261,11 +215,7 @@ class _SettingsTile extends StatelessWidget {
                     ],
                   ),
                 ),
-                Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: color,
-                  size: 15,
-                ),
+                Icon(Icons.arrow_forward_ios_rounded, color: color, size: 15),
               ],
             ),
           ),
