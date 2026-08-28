@@ -1,6 +1,6 @@
 {
-    "name": "englishtarget",
-    "short_name": "englishtarget",
+    "name": "English Target",
+    "short_name": "English Target",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

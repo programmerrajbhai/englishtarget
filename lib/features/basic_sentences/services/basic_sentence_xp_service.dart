@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 abstract final class BasicSentenceXpService {
   static const String _xpKey = 'basic_sentence_total_xp_v1';
-  static const int _initialXp = 180;
+  static const int _initialXp = 0;
 
   static final ValueNotifier<int> totalXp =
   ValueNotifier<int>(_initialXp);
