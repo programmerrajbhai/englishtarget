@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../daily_challenge/screens/daily_challenge_screen.dart';
+import '../../progress/screens/achievements_screen.dart';
+import '../../progress/screens/progress_screen.dart';
 import '../../rules/screens/rules_list_screen.dart';
 import 'home_screen.dart';
 
@@ -24,24 +27,14 @@ class _MainNavigationScreenState
     const RulesListScreen(
       showBackButton: false,
     ),
+    const DailyChallengeScreen(),
 
-    const _PlaceholderScreen(
-      title: 'Daily Challenge',
-      subtitle: 'Complete your daily learning challenge.',
-      icon: Icons.emoji_events_rounded,
-    ),
 
-    const _PlaceholderScreen(
-      title: 'Learning Progress',
-      subtitle: 'See your XP, streak and completed lessons.',
-      icon: Icons.bar_chart_rounded,
-    ),
+    const ProgressScreen(),
 
-    const _PlaceholderScreen(
-      title: 'Saved Lessons',
-      subtitle: 'Your bookmarked lessons will appear here.',
-      icon: Icons.bookmark_rounded,
-    ),
+    const AchievementsScreen(),
+
+
   ];
 
   void _changePage(int index) {
@@ -128,13 +121,9 @@ class _MainNavigationScreenState
               label: 'Progress',
             ),
             NavigationDestination(
-              icon: Icon(
-                Icons.bookmark_outline_rounded,
-              ),
-              selectedIcon: Icon(
-                Icons.bookmark_rounded,
-              ),
-              label: 'Saved',
+              icon: Icon(Icons.workspace_premium_outlined),
+              selectedIcon: Icon(Icons.workspace_premium_rounded),
+              label: 'Achievements',
             ),
           ],
         ),

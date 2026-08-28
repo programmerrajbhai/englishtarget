@@ -38,6 +38,16 @@ dependencies:
   flutter_tts: ^4.2.5
   speech_to_text: ^7.4.0
 
+
+
+
+
+  share_plus: ^10.1.4
+  gal: ^2.3.3
+  cross_file: ^0.3.4+2
+  path_provider: ^2.1.5
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
