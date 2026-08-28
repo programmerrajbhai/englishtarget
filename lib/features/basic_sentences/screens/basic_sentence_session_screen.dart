@@ -7,6 +7,7 @@ import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/microphone_disclosure.dart';
 import '../models/basic_sentence_activity.dart';
 import '../models/basic_sentence_topic.dart';
 import '../services/basic_sentence_funnel.dart';
@@ -191,12 +192,26 @@ class _BasicSentenceSessionScreenState
       return;
     }
 
+    final bool accepted =
+    await MicrophoneDisclosure.ensureAccepted(
+      context,
+    );
+
+    if (!accepted || !mounted) {
+      return;
+    }
+
     if (!_speechReady) {
       await _initializeSpeech();
 
+      if (!mounted) {
+        return;
+      }
+
       if (!_speechReady) {
         _showMessage(
-          'Microphone permission allow করুন।',
+          'Microphone permission denied or speech '
+              'service is unavailable.',
         );
         return;
       }
@@ -204,33 +219,58 @@ class _BasicSentenceSessionScreenState
 
     await _tts.stop();
 
+    if (!mounted) {
+      return;
+    }
+
     setState(() {
       _recognizedText = '';
       _speechScore = 0;
       _checked = false;
     });
 
-    await _speech.listen(
-      onResult: (SpeechRecognitionResult result) {
-        if (!mounted) return;
+    try {
+      await _speech.listen(
+        listenOptions: SpeechListenOptions(
+          listenFor:
+          const Duration(seconds: 12),
+          pauseFor:
+          const Duration(seconds: 3),
+          partialResults: true,
+          cancelOnError: true,
+          localeId: 'en_US',
+        ),
+        onResult: (
+            SpeechRecognitionResult result,
+            ) {
+          if (!mounted) return;
 
-        setState(() {
-          _recognizedText = result.recognizedWords;
-        });
-      },
-      listenFor: const Duration(seconds: 12),
-      pauseFor: const Duration(seconds: 3),
-      partialResults: true,
-      cancelOnError: true,
-      localeId: 'en_US',
-    );
+          setState(() {
+            _recognizedText =
+                result.recognizedWords;
+          });
+        },
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isListening = true;
-    });
+      setState(() {
+        _isListening = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _isListening = false;
+      });
+
+      _showMessage(
+        'Speaking practice শুরু করা যায়নি। '
+            'আবার চেষ্টা করুন।',
+      );
+    }
   }
+
 
   int _calculateSpeakingScore({
     required String spoken,

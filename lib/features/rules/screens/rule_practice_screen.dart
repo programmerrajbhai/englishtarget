@@ -4,6 +4,7 @@ import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/microphone_disclosure.dart';
 import '../models/rule_content.dart';
 import '../models/rule_progress.dart';
 import '../models/rules_data.dart';
@@ -37,7 +38,7 @@ class _RulePracticeScreenState
 
   bool _isListening = false;
   bool _speechReady = false;
-  bool _isInitializing = true;
+  bool _isInitializing = false;
   bool _isSaving = false;
   bool _isChecking = false;
   bool _resultShowing = false;
@@ -105,9 +106,8 @@ class _RulePracticeScreenState
   @override
   void initState() {
     super.initState();
-
     _setupTts();
-    _initializeSpeech();
+
   }
 
   Future<void> _setupTts() async {
@@ -118,6 +118,14 @@ class _RulePracticeScreenState
   }
 
   Future<void> _initializeSpeech() async {
+    if (_isInitializing) {
+      return;
+    }
+
+    setState(() {
+      _isInitializing = true;
+    });
+
     try {
       final bool ready =
       await _speech.initialize(
@@ -154,6 +162,8 @@ class _RulePracticeScreenState
     }
   }
 
+
+
   Future<void> _listenFirst() async {
     await _tts.stop();
 
@@ -161,21 +171,7 @@ class _RulePracticeScreenState
       _currentPractice.expectedAnswer,
     );
   }
-
   Future<void> _toggleMicrophone() async {
-    if (_isInitializing) return;
-
-    if (!_speechReady) {
-      await _initializeSpeech();
-
-      if (!_speechReady) {
-        _showMessage(
-          'Microphone permission allow করুন।',
-        );
-        return;
-      }
-    }
-
     if (_isListening) {
       await _speech.stop();
 
@@ -188,40 +184,86 @@ class _RulePracticeScreenState
       return;
     }
 
+    if (_isInitializing) {
+      return;
+    }
+
+    final bool accepted =
+    await MicrophoneDisclosure.ensureAccepted(
+      context,
+    );
+
+    if (!accepted || !mounted) {
+      return;
+    }
+
+    if (!_speechReady) {
+      await _initializeSpeech();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (!_speechReady) {
+        _showMessage(
+          'Microphone permission denied or speech '
+              'service is unavailable.',
+        );
+        return;
+      }
+    }
+
     await _tts.stop();
+
+    if (!mounted) return;
 
     setState(() {
       _transcript = '';
       _matchScore = null;
     });
 
-    await _speech.listen(
-      onResult:
-          (stt.SpeechRecognitionResult result) {
-        if (!mounted) return;
+    try {
+      await _speech.listen(
+        listenOptions: stt.SpeechListenOptions(
+          listenFor:
+          const Duration(seconds: 12),
+          pauseFor:
+          const Duration(seconds: 3),
+          partialResults: true,
+          cancelOnError: true,
+          localeId: 'en_US',
+        ),
+        onResult: (
+            stt.SpeechRecognitionResult result,
+            ) {
+          if (!mounted) return;
 
-        setState(() {
-          _transcript =
-              result.recognizedWords;
-        });
-      },
-      listenFor: const Duration(
-        seconds: 12,
-      ),
-      pauseFor: const Duration(
-        seconds: 3,
-      ),
-      partialResults: true,
-      cancelOnError: true,
-      localeId: 'en_US',
-    );
+          setState(() {
+            _transcript =
+                result.recognizedWords;
+          });
+        },
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isListening = true;
-    });
+      setState(() {
+        _isListening = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _isListening = false;
+      });
+
+      _showMessage(
+        'Speaking practice শুরু করা যায়নি।',
+      );
+    }
   }
+
+
 
   String _normalize(String value) {
     return value

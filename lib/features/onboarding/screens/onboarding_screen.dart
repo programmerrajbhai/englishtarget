@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/routes/app_routes.dart';
@@ -15,56 +16,78 @@ class OnboardingScreen extends StatefulWidget {
       _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
-  final PageController _pageController = PageController();
+class _OnboardingScreenState
+    extends State<OnboardingScreen> {
+  final PageController _pageController =
+  PageController();
 
   int _currentPage = 0;
-  bool _isLoading = false;
+  bool _isFinishing = false;
 
-  int get _lastPageIndex =>
-      OnboardingData.items.length - 1;
+  int get _pageCount =>
+      OnboardingData.items.length;
 
   bool get _isLastPage =>
-      _currentPage == _lastPageIndex;
-
-  void _changePage(int index) {
-    setState(() {
-      _currentPage = index;
-    });
-  }
+      _currentPage == _pageCount - 1;
 
   Future<void> _nextPage() async {
+    if (_isFinishing) return;
+
+    HapticFeedback.selectionClick();
+
     if (_isLastPage) {
       await _finishOnboarding();
       return;
     }
 
     await _pageController.nextPage(
-      duration: const Duration(milliseconds: 350),
+      duration: const Duration(
+        milliseconds: 420,
+      ),
       curve: Curves.easeOutCubic,
     );
   }
 
   Future<void> _skipOnboarding() async {
+    if (_isFinishing) return;
+
     await _finishOnboarding();
   }
 
   Future<void> _finishOnboarding() async {
-    if (_isLoading) return;
+    if (_isFinishing) return;
 
     setState(() {
-      _isLoading = true;
+      _isFinishing = true;
     });
 
-    await LocalStorageService.completeOnboarding();
+    try {
+      await LocalStorageService
+          .completeOnboarding();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.home,
-          (route) => false,
-    );
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.home,
+            (route) => false,
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _isFinishing = false;
+      });
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Something went wrong. Please try again.',
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -75,234 +98,451 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final screenWidth = constraints.maxWidth;
-            final screenHeight = constraints.maxHeight;
+    final OnboardingItem activeItem =
+    OnboardingData.items[_currentPage];
 
-            final horizontalPadding =
-            (screenWidth * 0.06)
-                .clamp(20.0, 36.0)
-                .toDouble();
-
-            final illustrationSize =
-            (screenWidth * 0.58)
-                .clamp(185.0, 280.0)
-                .toDouble();
-
-            return Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: horizontalPadding,
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness:
+        Brightness.dark,
+        statusBarBrightness:
+        Brightness.light,
+        systemNavigationBarColor:
+        AppColors.background,
+        systemNavigationBarIconBrightness:
+        Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Positioned(
+                top: -110,
+                right: -100,
+                child: AnimatedContainer(
+                  duration: const Duration(
+                    milliseconds: 400,
+                  ),
+                  width: 260,
+                  height: 260,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: activeItem
+                        .accentColor
+                        .withAlpha(13),
+                  ),
+                ),
               ),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: (screenHeight * 0.015)
-                        .clamp(8.0, 16.0)
-                        .toDouble(),
-                  ),
 
-                  _TopSection(
-                    currentPage: _currentPage,
-                    totalPages: OnboardingData.items.length,
-                    onSkip: _skipOnboarding,
-                  ),
+              LayoutBuilder(
+                builder: (
+                    context,
+                    constraints,
+                    ) {
+                  final double width =
+                      constraints.maxWidth;
 
-                  SizedBox(
-                    height: (screenHeight * 0.02)
-                        .clamp(10.0, 18.0)
-                        .toDouble(),
-                  ),
+                  final double height =
+                      constraints.maxHeight;
 
-                  Expanded(
-                    child: PageView.builder(
-                      controller: _pageController,
-                      itemCount: OnboardingData.items.length,
-                      onPageChanged: _changePage,
-                      itemBuilder: (context, index) {
-                        return _OnboardingPage(
-                          item: OnboardingData.items[index],
-                          illustrationSize: illustrationSize,
-                          screenHeight: screenHeight,
-                        );
-                      },
-                    ),
-                  ),
+                  final double horizontalPadding =
+                  (width * 0.06)
+                      .clamp(20.0, 34.0)
+                      .toDouble();
 
-                  _BottomSection(
-                    currentPage: _currentPage,
-                    totalPages: OnboardingData.items.length,
-                    isLastPage: _isLastPage,
-                    isLoading: _isLoading,
-                    onPressed: _nextPage,
-                  ),
+                  return Column(
+                    children: [
+                      Padding(
+                        padding:
+                        EdgeInsets.fromLTRB(
+                          horizontalPadding,
+                          10,
+                          horizontalPadding,
+                          0,
+                        ),
+                        child: _OnboardingHeader(
+                          currentPage:
+                          _currentPage,
+                          pageCount:
+                          _pageCount,
+                          onSkip:
+                          _skipOnboarding,
+                        ),
+                      ),
 
-                  SizedBox(
-                    height: (screenHeight * 0.025)
-                        .clamp(16.0, 26.0)
-                        .toDouble(),
-                  ),
-                ],
+                      const SizedBox(height: 8),
+
+                      Expanded(
+                        child: PageView.builder(
+                          controller:
+                          _pageController,
+                          physics:
+                          const BouncingScrollPhysics(),
+                          itemCount: _pageCount,
+                          onPageChanged: (
+                              index,
+                              ) {
+                            setState(() {
+                              _currentPage =
+                                  index;
+                            });
+                          },
+                          itemBuilder: (
+                              context,
+                              index,
+                              ) {
+                            return _OnboardingPage(
+                              item: OnboardingData
+                                  .items[index],
+                              availableHeight:
+                              height,
+                              horizontalPadding:
+                              horizontalPadding,
+                            );
+                          },
+                        ),
+                      ),
+
+                      Padding(
+                        padding:
+                        EdgeInsets.fromLTRB(
+                          horizontalPadding,
+                          10,
+                          horizontalPadding,
+                          18,
+                        ),
+                        child: _OnboardingFooter(
+                          currentPage:
+                          _currentPage,
+                          pageCount:
+                          _pageCount,
+                          isLastPage:
+                          _isLastPage,
+                          isLoading:
+                          _isFinishing,
+                          accentColor:
+                          activeItem
+                              .accentColor,
+                          onPressed:
+                          _nextPage,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-            );
-          },
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _TopSection extends StatelessWidget {
+class _OnboardingHeader
+    extends StatelessWidget {
   final int currentPage;
-  final int totalPages;
+  final int pageCount;
   final VoidCallback onSkip;
 
-  const _TopSection({
+  const _OnboardingHeader({
     required this.currentPage,
-    required this.totalPages,
+    required this.pageCount,
     required this.onSkip,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(
-              totalPages,
-                  (index) {
-                final isSelected = index == currentPage;
-
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 250),
-                  width: isSelected ? 26 : 8,
-                  height: 8,
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.primary
-                        : AppColors.border,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+    return Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A2848),
+            borderRadius:
+            BorderRadius.circular(13),
+            boxShadow: [
+              BoxShadow(
+                color:
+                AppColors.navy.withAlpha(20),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius:
+            BorderRadius.circular(10),
+            child: Image.asset(
+              'assets/branding/app_icon.png',
+              fit: BoxFit.cover,
+              errorBuilder: (
+                  context,
+                  error,
+                  stackTrace,
+                  ) {
+                return const Icon(
+                  Icons.school_rounded,
+                  color: Colors.white,
                 );
               },
             ),
           ),
+        ),
 
-          Positioned(
-            right: 0,
-            child: TextButton(
-              onPressed: onSkip,
-              child: const Text(
-                'Skip',
+        const SizedBox(width: 11),
+
+        const Expanded(
+          child: Column(
+            crossAxisAlignment:
+            CrossAxisAlignment.start,
+            children: [
+              Text(
+                'English Target',
+                maxLines: 1,
+                overflow:
+                TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+                  color: AppColors.navy,
+                  fontSize: 16,
+                  fontWeight:
+                  FontWeight.w900,
+                  letterSpacing: -0.25,
                 ),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'Your speaking journey',
+                style: TextStyle(
+                  color:
+                  AppColors.textSecondary,
+                  fontSize: 11.5,
+                  fontWeight:
+                  FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        if (currentPage < pageCount - 1)
+          TextButton(
+            onPressed: onSkip,
+            style: TextButton.styleFrom(
+              foregroundColor:
+              AppColors.textSecondary,
+              padding:
+              const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
+              ),
+            ),
+            child: const Text(
+              'Skip',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }
 
-class _OnboardingPage extends StatelessWidget {
+class _OnboardingPage
+    extends StatelessWidget {
   final OnboardingItem item;
-  final double illustrationSize;
-  final double screenHeight;
+  final double availableHeight;
+  final double horizontalPadding;
 
   const _OnboardingPage({
     required this.item,
-    required this.illustrationSize,
-    required this.screenHeight,
+    required this.availableHeight,
+    required this.horizontalPadding,
   });
 
   @override
   Widget build(BuildContext context) {
+    final double width =
+        MediaQuery.sizeOf(context).width;
+
+    final double illustrationSize =
+    (width * 0.59)
+        .clamp(
+      185.0,
+      availableHeight < 650
+          ? 210.0
+          : 270.0,
+    )
+        .toDouble();
+
     return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      child: Column(
-        children: [
-          SizedBox(
-            height: (screenHeight * 0.035)
-                .clamp(16.0, 35.0)
-                .toDouble(),
-          ),
-
-          OnboardingIllustration(
-            item: item,
-            size: illustrationSize,
-          ),
-
-          SizedBox(
-            height: (screenHeight * 0.055)
-                .clamp(26.0, 48.0)
-                .toDouble(),
-          ),
-
-          Text(
-            item.title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.navy,
-              fontSize: MediaQuery.sizeOf(context).width < 360
-                  ? 25
-                  : 29,
-              height: 1.20,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.6,
+      physics:
+      const BouncingScrollPhysics(),
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+      ),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight:
+          availableHeight * 0.68,
+        ),
+        child: Column(
+          mainAxisAlignment:
+          MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              height:
+              availableHeight < 650
+                  ? 8
+                  : 18,
             ),
-          ),
 
-          const SizedBox(height: 16),
-
-          ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: 520,
-            ),
-            child: Text(
-              item.description,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 16,
-                height: 1.65,
-                fontWeight: FontWeight.w500,
+            TweenAnimationBuilder<double>(
+              tween: Tween<double>(
+                begin: 0.85,
+                end: 1,
+              ),
+              duration: const Duration(
+                milliseconds: 650,
+              ),
+              curve: Curves.easeOutBack,
+              builder: (
+                  context,
+                  value,
+                  child,
+                  ) {
+                return Opacity(
+                  opacity: value
+                      .clamp(0.0, 1.0)
+                      .toDouble(),
+                  child: Transform.scale(
+                    scale: value,
+                    child: child,
+                  ),
+                );
+              },
+              child: OnboardingIllustration(
+                item: item,
+                size: illustrationSize,
               ),
             ),
-          ),
 
-          const SizedBox(height: 25),
-        ],
+            SizedBox(
+              height:
+              availableHeight < 650
+                  ? 20
+                  : 32,
+            ),
+
+            Container(
+              padding:
+              const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 7,
+              ),
+              decoration: BoxDecoration(
+                color: item.accentColor
+                    .withAlpha(18),
+                borderRadius:
+                BorderRadius.circular(99),
+                border: Border.all(
+                  color: item.accentColor
+                      .withAlpha(35),
+                ),
+              ),
+              child: Text(
+                _pageLabel(),
+                style: TextStyle(
+                  color: item.accentColor,
+                  fontSize: 11,
+                  fontWeight:
+                  FontWeight.w900,
+                  letterSpacing: 0.9,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            Text(
+              item.title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.navy,
+                fontSize:
+                width < 360 ? 25 : 29,
+                height: 1.16,
+                fontWeight:
+                FontWeight.w900,
+                letterSpacing: -0.7,
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            ConstrainedBox(
+              constraints:
+              const BoxConstraints(
+                maxWidth: 480,
+              ),
+              child: Text(
+                item.description,
+                textAlign:
+                TextAlign.center,
+                style: const TextStyle(
+                  color:
+                  AppColors.textSecondary,
+                  fontSize: 15,
+                  height: 1.62,
+                  fontWeight:
+                  FontWeight.w500,
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
+
+  String _pageLabel() {
+    if (item.accentColor ==
+        AppColors.primary) {
+      return 'LEARN WITH CLARITY';
+    }
+
+    if (item.accentColor ==
+        AppColors.blue) {
+      return 'PRACTISE SMARTER';
+    }
+
+    return 'SPEAK WITH CONFIDENCE';
+  }
 }
 
-class _BottomSection extends StatelessWidget {
+class _OnboardingFooter
+    extends StatelessWidget {
   final int currentPage;
-  final int totalPages;
+  final int pageCount;
   final bool isLastPage;
   final bool isLoading;
+  final Color accentColor;
   final VoidCallback onPressed;
 
-  const _BottomSection({
+  const _OnboardingFooter({
     required this.currentPage,
-    required this.totalPages,
+    required this.pageCount,
     required this.isLastPage,
     required this.isLoading,
+    required this.accentColor,
     required this.onPressed,
   });
 
@@ -310,39 +550,105 @@ class _BottomSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Semantics(
-          label: isLastPage
-              ? 'Get Started'
-              : 'Continue to next page',
+        Row(
+          mainAxisAlignment:
+          MainAxisAlignment.center,
+          children: List.generate(
+            pageCount,
+                (index) {
+              final bool selected =
+                  index == currentPage;
+
+              return AnimatedContainer(
+                duration: const Duration(
+                  milliseconds: 260,
+                ),
+                curve: Curves.easeOut,
+                width: selected ? 30 : 8,
+                height: 8,
+                margin:
+                const EdgeInsets.symmetric(
+                  horizontal: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? accentColor
+                      : AppColors.border,
+                  borderRadius:
+                  BorderRadius.circular(99),
+                ),
+              );
+            },
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        SizedBox(
+          width: double.infinity,
+          height: 56,
           child: FilledButton(
-            onPressed: isLoading ? null : onPressed,
+            onPressed:
+            isLoading ? null : onPressed,
+            style: FilledButton.styleFrom(
+              backgroundColor:
+              AppColors.primary,
+              disabledBackgroundColor:
+              AppColors.primary
+                  .withAlpha(150),
+              foregroundColor:
+              Colors.white,
+              elevation: 0,
+              shape:
+              RoundedRectangleBorder(
+                borderRadius:
+                BorderRadius.circular(17),
+              ),
+            ),
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(
+                milliseconds: 220,
+              ),
               child: isLoading
                   ? const SizedBox(
-                key: ValueKey('loading'),
+                key:
+                ValueKey('loading'),
                 width: 23,
                 height: 23,
-                child: CircularProgressIndicator(
+                child:
+                CircularProgressIndicator(
                   strokeWidth: 2.5,
                   color: Colors.white,
                 ),
               )
                   : Row(
-                key: ValueKey(isLastPage),
+                key: ValueKey(
+                  isLastPage,
+                ),
                 mainAxisAlignment:
-                MainAxisAlignment.center,
+                MainAxisAlignment
+                    .center,
                 children: [
                   Text(
                     isLastPage
-                        ? 'Get Started'
+                        ? 'Start Learning'
                         : 'Continue',
+                    style:
+                    const TextStyle(
+                      fontSize: 16,
+                      fontWeight:
+                      FontWeight.w900,
+                    ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(
+                    width: 9,
+                  ),
                   Icon(
                     isLastPage
-                        ? Icons.rocket_launch_rounded
-                        : Icons.arrow_forward_rounded,
+                        ? Icons
+                        .rocket_launch_rounded
+                        : Icons
+                        .arrow_forward_rounded,
                     size: 21,
                   ),
                 ],
@@ -351,14 +657,17 @@ class _BottomSection extends StatelessWidget {
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
         Text(
-          '${currentPage + 1} of $totalPages',
+          isLastPage
+              ? 'Your progress will be saved on this device'
+              : 'Swipe or tap Continue',
+          textAlign: TextAlign.center,
           style: const TextStyle(
             color: AppColors.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],

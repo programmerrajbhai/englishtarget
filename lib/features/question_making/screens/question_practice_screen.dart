@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/microphone_disclosure.dart';
 import '../services/question_making_audio_service.dart';
 import '../services/question_making_funnel.dart';
 import '../services/question_making_progress_service.dart';
@@ -16,23 +17,16 @@ import 'question_result_screen.dart';
 class QuestionPracticeScreen extends StatefulWidget {
   final QuestionMakingTopic topic;
 
-  const QuestionPracticeScreen({
-    super.key,
-    required this.topic,
-  });
+  const QuestionPracticeScreen({super.key, required this.topic});
 
   @override
-  State<QuestionPracticeScreen> createState() =>
-      _QuestionPracticeScreenState();
+  State<QuestionPracticeScreen> createState() => _QuestionPracticeScreenState();
 }
 
-class _QuestionPracticeScreenState
-    extends State<QuestionPracticeScreen> {
-  late final List<QuestionMakingActivity>
-  _activities;
+class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
+  late final List<QuestionMakingActivity> _activities;
 
-  final stt.SpeechToText _speech =
-  stt.SpeechToText();
+  final stt.SpeechToText _speech = stt.SpeechToText();
 
   int _currentIndex = 0;
   int _correctAnswers = 0;
@@ -47,28 +41,25 @@ class _QuestionPracticeScreenState
   bool _isListening = false;
   bool _speechAvailable = false;
 
+  bool _speechInitializing = false;
+  bool _speechInitializationAttempted = false;
+
   String _recognizedText = '';
 
-  QuestionMakingActivity get _currentActivity =>
-      _activities[_currentIndex];
+  QuestionMakingActivity get _currentActivity => _activities[_currentIndex];
 
-  QuestionMakingItem get _question =>
-      _currentActivity.question;
+  QuestionMakingItem get _question => _currentActivity.question;
 
   double get _progress {
     if (_activities.isEmpty) {
       return 0;
     }
 
-    return ((_currentIndex + 1) /
-        _activities.length)
-        .clamp(0.0, 1.0);
+    return ((_currentIndex + 1) / _activities.length).clamp(0.0, 1.0);
   }
 
   bool get _buildIsCorrect {
-    return _normalize(
-      _selectedWords.join(' '),
-    ) ==
+    return _normalize(_selectedWords.join(' ')) ==
         _normalize(_question.english);
   }
 
@@ -76,36 +67,56 @@ class _QuestionPracticeScreenState
   void initState() {
     super.initState();
 
-    _activities =
-        QuestionMakingFunnel.createSession(
-          widget.topic,
-        );
+    _activities = QuestionMakingFunnel.createSession(widget.topic);
 
     _prepareActivity();
 
-    unawaited(
-      QuestionMakingAudioService.initialize(),
-    );
-
-    unawaited(_initializeSpeech());
+    unawaited(QuestionMakingAudioService.initialize());
   }
 
-  Future<void> _initializeSpeech() async {
-    final bool available =
-    await _speech.initialize();
+  Future<bool> _initializeSpeech() async {
+    if (_speechInitializing) {
+      return _speechAvailable;
+    }
 
     if (!mounted) {
-      return;
+      return false;
     }
 
     setState(() {
-      _speechAvailable = available;
+      _speechInitializing = true;
+      _speechInitializationAttempted = true;
     });
+
+    try {
+      final bool available = await _speech.initialize();
+
+      if (!mounted) {
+        return false;
+      }
+
+      setState(() {
+        _speechAvailable = available;
+        _speechInitializing = false;
+      });
+
+      return available;
+    } catch (_) {
+      if (!mounted) {
+        return false;
+      }
+
+      setState(() {
+        _speechAvailable = false;
+        _speechInitializing = false;
+      });
+
+      return false;
+    }
   }
 
   void _prepareActivity() {
-    final List<String> words =
-    List<String>.from(_question.words)
+    final List<String> words = List<String>.from(_question.words)
       ..shuffle(Random());
 
     _selectedWords = <String>[];
@@ -156,8 +167,7 @@ class _QuestionPracticeScreenState
   }
 
   Future<void> _checkBuildAnswer() async {
-    if (_selectedWords.length !=
-        _question.words.length) {
+    if (_selectedWords.length != _question.words.length) {
       return;
     }
 
@@ -166,19 +176,14 @@ class _QuestionPracticeScreenState
         _buildChecked = true;
       });
 
-      await QuestionMakingAudioService.feedback(
-        correct: _buildIsCorrect,
-      );
+      await QuestionMakingAudioService.feedback(correct: _buildIsCorrect);
 
       return;
     }
 
     // Correct হলে Continue
     if (_buildIsCorrect) {
-      await _completeActivity(
-        isCorrect: true,
-        feedbackAlreadyPlayed: true,
-      );
+      await _completeActivity(isCorrect: true, feedbackAlreadyPlayed: true);
       return;
     }
 
@@ -189,8 +194,34 @@ class _QuestionPracticeScreenState
   }
 
   Future<void> _startListening() async {
-    if (!_speechAvailable || _isListening) {
+    if (_isListening || _speechInitializing) {
       return;
+    }
+
+    final bool accepted = await MicrophoneDisclosure.ensureAccepted(context);
+
+    if (!accepted || !mounted) {
+      return;
+    }
+
+    if (!_speechAvailable) {
+      final bool available = await _initializeSpeech();
+
+      if (!available || !mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              behavior: SnackBarBehavior.floating,
+              content: Text(
+                'Microphone permission denied or '
+                'speech service is unavailable.',
+              ),
+            ),
+          );
+
+        return;
+      }
     }
 
     setState(() {
@@ -198,26 +229,41 @@ class _QuestionPracticeScreenState
       _recognizedText = '';
     });
 
-    await _speech.listen(
-      listenOptions: stt.SpeechListenOptions(
-        listenFor: const Duration(seconds: 10),
-        pauseFor: const Duration(seconds: 3),
-        partialResults: true,
-        cancelOnError: true,
-        localeId: 'en_US',
-      ),
-      onResult: (
-          stt.SpeechRecognitionResult result,
-          ) {
-        if (!mounted) {
-          return;
-        }
+    try {
+      await _speech.listen(
+        listenOptions: stt.SpeechListenOptions(
+          listenFor: const Duration(seconds: 10),
+          pauseFor: const Duration(seconds: 3),
+          partialResults: true,
+          cancelOnError: true,
+          localeId: 'en_US',
+        ),
+        onResult: (stt.SpeechRecognitionResult result) {
+          if (!mounted) {
+            return;
+          }
 
-        setState(() {
-          _recognizedText = result.recognizedWords;
-        });
-      },
-    );
+          setState(() {
+            _recognizedText = result.recognizedWords;
+          });
+        },
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _isListening = false;
+      });
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text('Speaking practice শুরু করা যায়নি।'),
+          ),
+        );
+    }
   }
 
   Future<void> _stopListening() async {
@@ -238,17 +284,11 @@ class _QuestionPracticeScreenState
     }
 
     final bool isCorrect =
-        _normalize(_recognizedText) ==
-            _normalize(_question.english);
+        _normalize(_recognizedText) == _normalize(_question.english);
 
-    await QuestionMakingAudioService.feedback(
-      correct: isCorrect,
-    );
+    await QuestionMakingAudioService.feedback(correct: isCorrect);
 
-    await _completeActivity(
-      isCorrect: isCorrect,
-      feedbackAlreadyPlayed: true,
-    );
+    await _completeActivity(isCorrect: isCorrect, feedbackAlreadyPlayed: true);
   }
 
   Future<void> _completeActivity({
@@ -264,14 +304,10 @@ class _QuestionPracticeScreenState
     });
 
     if (!feedbackAlreadyPlayed) {
-      await QuestionMakingAudioService.feedback(
-        correct: isCorrect,
-      );
+      await QuestionMakingAudioService.feedback(correct: isCorrect);
     }
 
-    final int earned =
-    await QuestionMakingProgressService
-        .markAttended(
+    final int earned = await QuestionMakingProgressService.markAttended(
       topicId: widget.topic.id,
       activityId: _currentActivity.id,
     );
@@ -282,16 +318,13 @@ class _QuestionPracticeScreenState
       _correctAnswers++;
     }
 
-    await Future<void>.delayed(
-      const Duration(milliseconds: 300),
-    );
+    await Future<void>.delayed(const Duration(milliseconds: 300));
 
     if (!mounted) {
       return;
     }
 
-    if (_currentIndex >=
-        _activities.length - 1) {
+    if (_currentIndex >= _activities.length - 1) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute<void>(
@@ -323,14 +356,9 @@ class _QuestionPracticeScreenState
 
     _skippedAnswers++;
 
-    await QuestionMakingAudioService.speak(
-      'Skipped',
-    );
+    await QuestionMakingAudioService.speak('Skipped');
 
-    await _completeActivity(
-      isCorrect: false,
-      feedbackAlreadyPlayed: true,
-    );
+    await _completeActivity(isCorrect: false, feedbackAlreadyPlayed: true);
   }
 
   Widget _buildLearnView() {
@@ -339,8 +367,7 @@ class _QuestionPracticeScreenState
       icon: Icons.menu_book_rounded,
       label: 'LEARN',
       child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Text(
             'Understand this question',
@@ -371,11 +398,7 @@ class _QuestionPracticeScreenState
             color: Colors.green,
             icon: Icons.arrow_forward_rounded,
             onPressed: () {
-              unawaited(
-                _completeActivity(
-                  isCorrect: true,
-                ),
-              );
+              unawaited(_completeActivity(isCorrect: true));
             },
           ),
         ],
@@ -403,8 +426,7 @@ class _QuestionPracticeScreenState
       icon: Icons.extension_rounded,
       label: 'BUILD',
       child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Text(
             'Arrange the words correctly',
@@ -419,18 +441,11 @@ class _QuestionPracticeScreenState
           // শুধু বাংলা sentence থাকবে
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(
-              17,
-              16,
-              8,
-              16,
-            ),
+            padding: const EdgeInsets.fromLTRB(17, 16, 8, 16),
             decoration: BoxDecoration(
               color: color.withAlpha(18),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: color.withAlpha(75),
-              ),
+              border: Border.all(color: color.withAlpha(75)),
             ),
             child: Row(
               children: <Widget>[
@@ -477,56 +492,47 @@ class _QuestionPracticeScreenState
           // Selected words
           Container(
             width: double.infinity,
-            constraints: const BoxConstraints(
-              minHeight: 78,
-            ),
+            constraints: const BoxConstraints(minHeight: 78),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(17),
               border: Border.all(
                 color: _buildChecked
-                    ? (_buildIsCorrect
-                    ? Colors.green
-                    : Colors.red)
+                    ? (_buildIsCorrect ? Colors.green : Colors.red)
                     : color.withAlpha(55),
                 width: 1.5,
               ),
             ),
             child: _selectedWords.isEmpty
                 ? const Center(
-              child: Text(
-                'Your question will appear here',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                ),
-              ),
-            )
-                : Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _selectedWords.map(
-                    (String word) {
-                  return InkWell(
-                    onTap: () {
-                      _removeSelectedWord(word);
-                    },
-                    borderRadius:
-                    BorderRadius.circular(10),
-                    child: _WordChip(
-                      word: word,
-                      color: _buildChecked
-                          ? (_buildIsCorrect
-                          ? Colors.green
-                          : Colors.red)
-                          : color,
+                    child: Text(
+                      'Your question will appear here',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
                     ),
-                  );
-                },
-              ).toList(),
-            ),
+                  )
+                : Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _selectedWords.map((String word) {
+                      return InkWell(
+                        onTap: () {
+                          _removeSelectedWord(word);
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: _WordChip(
+                          word: word,
+                          color: _buildChecked
+                              ? (_buildIsCorrect ? Colors.green : Colors.red)
+                              : color,
+                        ),
+                      );
+                    }).toList(),
+                  ),
           ),
 
           const SizedBox(height: 18),
@@ -546,27 +552,20 @@ class _QuestionPracticeScreenState
           Wrap(
             spacing: 8,
             runSpacing: 9,
-            children: _availableWords.map(
-                  (String word) {
-                return InkWell(
-                  onTap: () {
-                    _selectWord(word);
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: _WordChip(
-                    word: word,
-                    color: Colors.blue,
-                  ),
-                );
-              },
-            ).toList(),
+            children: _availableWords.map((String word) {
+              return InkWell(
+                onTap: () {
+                  _selectWord(word);
+                },
+                borderRadius: BorderRadius.circular(10),
+                child: _WordChip(word: word, color: Colors.blue),
+              );
+            }).toList(),
           ),
 
           if (_buildChecked) ...<Widget>[
             const SizedBox(height: 18),
-            _FeedbackBox(
-              correct: _buildIsCorrect,
-            ),
+            _FeedbackBox(correct: _buildIsCorrect),
           ],
 
           const SizedBox(height: 24),
@@ -575,13 +574,10 @@ class _QuestionPracticeScreenState
             label: buttonLabel,
             color: color,
             icon: buttonIcon,
-            onPressed: _selectedWords.length ==
-                _question.words.length
+            onPressed: _selectedWords.length == _question.words.length
                 ? () {
-              unawaited(
-                _checkBuildAnswer(),
-              );
-            }
+                    unawaited(_checkBuildAnswer());
+                  }
                 : null,
           ),
         ],
@@ -597,8 +593,7 @@ class _QuestionPracticeScreenState
       icon: Icons.mic_rounded,
       label: 'SPEAK',
       child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Text(
             'Say this question in English',
@@ -615,9 +610,7 @@ class _QuestionPracticeScreenState
             decoration: BoxDecoration(
               color: color.withAlpha(18),
               borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: color.withAlpha(55),
-              ),
+              border: Border.all(color: color.withAlpha(55)),
             ),
             child: Text(
               _question.bengali,
@@ -634,26 +627,18 @@ class _QuestionPracticeScreenState
             child: InkWell(
               onTap: _isListening
                   ? () {
-                unawaited(
-                  _stopListening(),
-                );
-              }
+                      unawaited(_stopListening());
+                    }
                   : () {
-                unawaited(
-                  _startListening(),
-                );
-              },
+                      unawaited(_startListening());
+                    },
               borderRadius: BorderRadius.circular(70),
               child: AnimatedContainer(
-                duration: const Duration(
-                  milliseconds: 220,
-                ),
+                duration: const Duration(milliseconds: 220),
                 width: 112,
                 height: 112,
                 decoration: BoxDecoration(
-                  color: _isListening
-                      ? Colors.red
-                      : color,
+                  color: _isListening ? Colors.red : color,
                   shape: BoxShape.circle,
                   boxShadow: <BoxShadow>[
                     BoxShadow(
@@ -664,9 +649,7 @@ class _QuestionPracticeScreenState
                   ],
                 ),
                 child: Icon(
-                  _isListening
-                      ? Icons.stop_rounded
-                      : Icons.mic_rounded,
+                  _isListening ? Icons.stop_rounded : Icons.mic_rounded,
                   color: Colors.white,
                   size: 48,
                 ),
@@ -676,9 +659,7 @@ class _QuestionPracticeScreenState
           const SizedBox(height: 15),
           Center(
             child: Text(
-              _isListening
-                  ? 'Listening... Tap to stop'
-                  : 'Tap the microphone',
+              _isListening ? 'Listening... Tap to stop' : 'Tap the microphone',
               style: TextStyle(
                 color: color,
                 fontSize: 13,
@@ -694,9 +675,7 @@ class _QuestionPracticeScreenState
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: color.withAlpha(70),
-                ),
+                border: Border.all(color: color.withAlpha(70)),
               ),
               child: Text(
                 'Recognized:\n$_recognizedText',
@@ -717,20 +696,15 @@ class _QuestionPracticeScreenState
             onPressed: _recognizedText.trim().isEmpty
                 ? null
                 : () {
-              unawaited(
-                _submitSpeaking(),
-              );
-            },
+                    unawaited(_submitSpeaking());
+                  },
           ),
-          if (!_speechAvailable) ...<Widget>[
+          if (_speechInitializationAttempted && !_speechAvailable) ...<Widget>[
             const SizedBox(height: 12),
             const Center(
               child: Text(
                 'Speech service is not available.',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.red, fontSize: 12),
               ),
             ),
           ],
@@ -741,14 +715,11 @@ class _QuestionPracticeScreenState
 
   @override
   Widget build(BuildContext context) {
-    final QuestionMakingActivityType type =
-        _currentActivity.type;
+    final QuestionMakingActivityType type = _currentActivity.type;
 
-    final Widget content =
-    type == QuestionMakingActivityType.learn
+    final Widget content = type == QuestionMakingActivityType.learn
         ? _buildLearnView()
-        : type ==
-        QuestionMakingActivityType.build
+        : type == QuestionMakingActivityType.build
         ? _buildBuildView()
         : _buildSpeakView();
 
@@ -760,19 +731,12 @@ class _QuestionPracticeScreenState
         elevation: 0,
         title: Text(
           widget.topic.title,
-          style: const TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.w900),
         ),
         actions: <Widget>[
           Container(
-            margin: const EdgeInsets.only(
-              right: 18,
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 8,
-            ),
+            margin: const EdgeInsets.only(right: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: widget.topic.color.withAlpha(20),
               borderRadius: BorderRadius.circular(20),
@@ -792,25 +756,17 @@ class _QuestionPracticeScreenState
         child: Column(
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                3,
-                20,
-                0,
-              ),
+              padding: const EdgeInsets.fromLTRB(20, 3, 20, 0),
               child: Row(
                 children: <Widget>[
                   Expanded(
                     child: ClipRRect(
-                      borderRadius:
-                      BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20),
                       child: LinearProgressIndicator(
                         value: _progress,
                         minHeight: 8,
-                        backgroundColor:
-                        Colors.black.withAlpha(18),
-                        valueColor:
-                        AlwaysStoppedAnimation<Color>(
+                        backgroundColor: Colors.black.withAlpha(18),
+                        valueColor: AlwaysStoppedAnimation<Color>(
                           widget.topic.color,
                         ),
                       ),
@@ -831,36 +787,20 @@ class _QuestionPracticeScreenState
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  20,
-                  20,
-                  20,
-                ),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
                 child: content,
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                0,
-                20,
-                14,
-              ),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
               child: TextButton.icon(
                 onPressed: () {
                   unawaited(_skipActivity());
                 },
-                icon: const Icon(
-                  Icons.skip_next_rounded,
-                  size: 19,
-                ),
-                label: const Text(
-                  'Skip this question',
-                ),
+                icon: const Icon(Icons.skip_next_rounded, size: 19),
+                label: const Text('Skip this question'),
                 style: TextButton.styleFrom(
-                  foregroundColor:
-                  AppColors.textSecondary,
+                  foregroundColor: AppColors.textSecondary,
                 ),
               ),
             ),
@@ -874,9 +814,7 @@ class _QuestionPracticeScreenState
   void dispose() {
     unawaited(_speech.stop());
     unawaited(_speech.cancel());
-    unawaited(
-      QuestionMakingAudioService.stop(),
-    );
+    unawaited(QuestionMakingAudioService.stop());
     super.dispose();
   }
 }
@@ -901,9 +839,7 @@ class _ActivityPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: color.withAlpha(55),
-        ),
+        border: Border.all(color: color.withAlpha(55)),
         boxShadow: <BoxShadow>[
           BoxShadow(
             color: color.withAlpha(15),
@@ -913,8 +849,7 @@ class _ActivityPanel extends StatelessWidget {
         ],
       ),
       child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
             children: <Widget>[
@@ -924,11 +859,7 @@ class _ActivityPanel extends StatelessWidget {
                   color: color.withAlpha(24),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 21,
-                ),
+                child: Icon(icon, color: color, size: 21),
               ),
               const SizedBox(width: 10),
               Text(
@@ -966,25 +897,17 @@ class _QuestionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(
-        16,
-        16,
-        8,
-        16,
-      ),
+      padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
       decoration: BoxDecoration(
         color: color.withAlpha(15),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: color.withAlpha(55),
-        ),
+        border: Border.all(color: color.withAlpha(55)),
       ),
       child: Row(
         children: <Widget>[
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
                   question.bengali,
@@ -1012,11 +935,7 @@ class _QuestionCard extends StatelessWidget {
           IconButton(
             tooltip: 'Play sound',
             onPressed: onSound,
-            icon: Icon(
-              Icons.volume_up_rounded,
-              color: color,
-              size: 25,
-            ),
+            icon: Icon(Icons.volume_up_rounded, color: color, size: 25),
           ),
         ],
       ),
@@ -1028,24 +947,16 @@ class _WordChip extends StatelessWidget {
   final String word;
   final Color color;
 
-  const _WordChip({
-    required this.word,
-    required this.color,
-  });
+  const _WordChip({required this.word, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 13,
-        vertical: 10,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
       decoration: BoxDecoration(
         color: color.withAlpha(17),
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(
-          color: color.withAlpha(80),
-        ),
+        border: Border.all(color: color.withAlpha(80)),
       ),
       child: Text(
         word,
@@ -1064,11 +975,7 @@ class _InfoBox extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _InfoBox({
-    required this.color,
-    required this.icon,
-    required this.text,
-  });
+  const _InfoBox({required this.color, required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -1080,14 +987,9 @@ class _InfoBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Icon(
-            icon,
-            color: color,
-            size: 22,
-          ),
+          Icon(icon, color: color, size: 22),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -1108,14 +1010,11 @@ class _InfoBox extends StatelessWidget {
 class _FeedbackBox extends StatelessWidget {
   final bool correct;
 
-  const _FeedbackBox({
-    required this.correct,
-  });
+  const _FeedbackBox({required this.correct});
 
   @override
   Widget build(BuildContext context) {
-    final Color color =
-    correct ? Colors.green : Colors.red;
+    final Color color = correct ? Colors.green : Colors.red;
 
     return Container(
       width: double.infinity,
@@ -1123,16 +1022,12 @@ class _FeedbackBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withAlpha(17),
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: color.withAlpha(75),
-        ),
+        border: Border.all(color: color.withAlpha(75)),
       ),
       child: Row(
         children: <Widget>[
           Icon(
-            correct
-                ? Icons.check_circle_rounded
-                : Icons.refresh_rounded,
+            correct ? Icons.check_circle_rounded : Icons.refresh_rounded,
             color: color,
             size: 25,
           ),
@@ -1177,17 +1072,11 @@ class _ActionButton extends StatelessWidget {
       child: ElevatedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon, size: 20),
-        label: Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        label: Text(label, style: const TextStyle(fontWeight: FontWeight.w900)),
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: Colors.white,
-          disabledBackgroundColor:
-          Colors.grey.withAlpha(80),
+          disabledBackgroundColor: Colors.grey.withAlpha(80),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

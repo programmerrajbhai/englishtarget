@@ -6,6 +6,7 @@ import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/microphone_disclosure.dart';
 import '../../question_making/services/question_making_audio_service.dart';
 import '../data/daily_challenge_data.dart';
 import '../models/daily_challenge_item.dart';
@@ -41,7 +42,7 @@ class _DailyChallengePracticeScreenState
   bool _answered = false;
   bool _isListening = false;
   bool _speechAvailable = false;
-
+  bool _speechInitializing = false;
   String _recognizedText = '';
 
   DailyChallengeItem get _item =>
@@ -70,21 +71,46 @@ class _DailyChallengePracticeScreenState
       QuestionMakingAudioService.initialize(),
     );
 
-    unawaited(_initializeSpeech());
   }
 
-  Future<void> _initializeSpeech() async {
-    final bool available =
-    await _speech.initialize();
-
-    if (!mounted) {
-      return;
+  Future<bool> _initializeSpeech() async {
+    if (_speechInitializing) {
+      return _speechAvailable;
     }
 
     setState(() {
-      _speechAvailable = available;
+      _speechInitializing = true;
     });
+
+    try {
+      final bool available =
+      await _speech.initialize();
+
+      if (!mounted) {
+        return false;
+      }
+
+      setState(() {
+        _speechAvailable = available;
+        _speechInitializing = false;
+      });
+
+      return available;
+    } catch (_) {
+      if (!mounted) {
+        return false;
+      }
+
+      setState(() {
+        _speechAvailable = false;
+        _speechInitializing = false;
+      });
+
+      return false;
+    }
   }
+
+
 
   void _prepareItem() {
     _selectedOption = null;
@@ -259,8 +285,39 @@ class _DailyChallengePracticeScreenState
   }
 
   Future<void> _startListening() async {
-    if (!_speechAvailable || _isListening) {
+    if (_isListening || _speechInitializing) {
       return;
+    }
+
+    final bool accepted =
+    await MicrophoneDisclosure.ensureAccepted(
+      context,
+    );
+
+    if (!accepted || !mounted) {
+      return;
+    }
+
+    if (!_speechAvailable) {
+      final bool available =
+      await _initializeSpeech();
+
+      if (!available || !mounted) {
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(
+              behavior:
+              SnackBarBehavior.floating,
+              content: Text(
+                'Microphone permission denied or '
+                    'speech service is unavailable.',
+              ),
+            ),
+          );
+
+        return;
+      }
     }
 
     setState(() {
@@ -268,27 +325,51 @@ class _DailyChallengePracticeScreenState
       _recognizedText = '';
     });
 
-    await _speech.listen(
-      listenOptions: stt.SpeechListenOptions(
-        listenFor: const Duration(seconds: 10),
-        pauseFor: const Duration(seconds: 3),
-        partialResults: true,
-        cancelOnError: true,
-        localeId: 'en_US',
-      ),
-      onResult: (
-          stt.SpeechRecognitionResult result,
-          ) {
-        if (!mounted) {
-          return;
-        }
+    try {
+      await _speech.listen(
+        listenOptions: stt.SpeechListenOptions(
+          listenFor:
+          const Duration(seconds: 10),
+          pauseFor:
+          const Duration(seconds: 3),
+          partialResults: true,
+          cancelOnError: true,
+          localeId: 'en_US',
+        ),
+        onResult: (
+            stt.SpeechRecognitionResult result,
+            ) {
+          if (!mounted) {
+            return;
+          }
 
-        setState(() {
-          _recognizedText = result.recognizedWords;
-        });
-      },
-    );
+          setState(() {
+            _recognizedText =
+                result.recognizedWords;
+          });
+        },
+      );
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        _isListening = false;
+      });
+
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            behavior: SnackBarBehavior.floating,
+            content: Text(
+              'Speaking practice শুরু করা যায়নি।',
+            ),
+          ),
+        );
+    }
   }
+
+
 
   Future<void> _stopListening() async {
     await _speech.stop();
