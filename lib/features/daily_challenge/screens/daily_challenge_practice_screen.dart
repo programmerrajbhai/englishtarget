@@ -12,11 +12,8 @@ import '../data/daily_challenge_data.dart';
 import '../models/daily_challenge_item.dart';
 import '../services/daily_challenge_progress_service.dart';
 
-class DailyChallengePracticeScreen
-    extends StatefulWidget {
-  const DailyChallengePracticeScreen({
-    super.key,
-  });
+class DailyChallengePracticeScreen extends StatefulWidget {
+  const DailyChallengePracticeScreen({super.key});
 
   @override
   State<DailyChallengePracticeScreen> createState() =>
@@ -26,9 +23,7 @@ class DailyChallengePracticeScreen
 class _DailyChallengePracticeScreenState
     extends State<DailyChallengePracticeScreen> {
   late final List<DailyChallengeItem> _items;
-
-  final stt.SpeechToText _speech =
-  stt.SpeechToText();
+  final stt.SpeechToText _speech = stt.SpeechToText();
 
   int _currentIndex = 0;
   int _correct = 0;
@@ -38,284 +33,128 @@ class _DailyChallengePracticeScreenState
   List<String> _selectedWords = <String>[];
   List<String> _availableWords = <String>[];
 
-  bool _checked = false;
+  bool _isChecked = false;
+  bool _isCorrect = false;
   bool _answered = false;
+
   bool _isListening = false;
   bool _speechAvailable = false;
   bool _speechInitializing = false;
+  bool _speechInitializationAttempted = false;
   String _recognizedText = '';
 
-  DailyChallengeItem get _item =>
-      _items[_currentIndex];
+  DailyChallengeItem get _item => _items[_currentIndex];
 
   double get _progress =>
-      ((_currentIndex + 1) / _items.length)
-          .clamp(0.0, 1.0);
-
-  bool get _buildCorrect {
-    return _normalize(
-      _selectedWords.join(' '),
-    ) ==
-        _normalize(_item.english);
-  }
+      ((_currentIndex + 1) / _items.length).clamp(0.0, 1.0);
 
   @override
   void initState() {
     super.initState();
-
     _items = DailyChallengeData.today();
-
     _prepareItem();
-
-    unawaited(
-      QuestionMakingAudioService.initialize(),
-    );
-
+    unawaited(QuestionMakingAudioService.initialize());
   }
 
   Future<bool> _initializeSpeech() async {
-    if (_speechInitializing) {
-      return _speechAvailable;
-    }
+    if (_speechInitializing) return _speechAvailable;
+    if (!mounted) return false;
 
     setState(() {
       _speechInitializing = true;
+      _speechInitializationAttempted = true;
     });
 
     try {
-      final bool available =
-      await _speech.initialize();
-
-      if (!mounted) {
-        return false;
-      }
+      final bool available = await _speech.initialize();
+      if (!mounted) return false;
 
       setState(() {
         _speechAvailable = available;
         _speechInitializing = false;
       });
-
       return available;
     } catch (_) {
-      if (!mounted) {
-        return false;
-      }
-
+      if (!mounted) return false;
       setState(() {
         _speechAvailable = false;
         _speechInitializing = false;
       });
-
       return false;
     }
   }
-
-
 
   void _prepareItem() {
     _selectedOption = null;
     _selectedWords = <String>[];
     _availableWords = <String>[];
-    _checked = false;
+    _isChecked = false;
+    _isCorrect = false;
     _answered = false;
     _recognizedText = '';
+    _isListening = false;
 
-    if (_item.type ==
-        DailyChallengeItemType.basicSentence ||
-        _item.type ==
-            DailyChallengeItemType.questionMaking) {
-      _availableWords =
-      List<String>.from(_item.words)
-        ..shuffle(Random());
+    if (_item.type == DailyChallengeItemType.basicSentence ||
+        _item.type == DailyChallengeItemType.questionMaking) {
+      _availableWords = List<String>.from(_item.words)..shuffle(Random());
     }
   }
 
   String _normalize(String text) {
     return text
         .toLowerCase()
+        .replaceAll('’', "'")
         .replaceAll(RegExp(r'[.!?,]'), '')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
-  }
-
-  Color _itemColor() {
-    switch (_item.type) {
-      case DailyChallengeItemType.rule:
-        return Colors.green;
-      case DailyChallengeItemType.basicSentence:
-        return Colors.blue;
-      case DailyChallengeItemType.questionMaking:
-        return Colors.orange;
-      case DailyChallengeItemType.speaking:
-        return Colors.deepPurple;
-    }
-  }
-
-  IconData _itemIcon() {
-    switch (_item.type) {
-      case DailyChallengeItemType.rule:
-        return Icons.menu_book_rounded;
-      case DailyChallengeItemType.basicSentence:
-        return Icons.chat_bubble_rounded;
-      case DailyChallengeItemType.questionMaking:
-        return Icons.quiz_rounded;
-      case DailyChallengeItemType.speaking:
-        return Icons.mic_rounded;
-    }
-  }
-
-  String _itemLabel() {
-    switch (_item.type) {
-      case DailyChallengeItemType.rule:
-        return 'RULE QUESTION';
-      case DailyChallengeItemType.basicSentence:
-        return 'BASIC SENTENCE';
-      case DailyChallengeItemType.questionMaking:
-        return 'BUILD QUESTION';
-      case DailyChallengeItemType.speaking:
-        return 'SPEAKING';
-    }
   }
 
   Future<void> _speak(String text) async {
     await QuestionMakingAudioService.speak(text);
   }
 
-  void _selectOption(String option) {
-    if (_answered) {
-      return;
-    }
+  // --- LOGIC METHODS ---
 
+  void _selectOption(String option) {
+    if (_isChecked) return;
     setState(() {
       _selectedOption = option;
-      _checked = false;
     });
   }
 
   void _selectWord(String word) {
-    if (_answered) {
-      return;
-    }
-
+    if (_isChecked) return;
     setState(() {
-      _checked = false;
       _availableWords.remove(word);
       _selectedWords.add(word);
     });
-
     unawaited(_speak(word));
   }
 
-  void _removeWord(String word) {
-    if (_answered) {
-      return;
-    }
-
+  void _removeSelectedWord(String word) {
+    if (_isChecked) return;
     setState(() {
-      _checked = false;
       _selectedWords.remove(word);
       _availableWords.add(word);
     });
   }
 
-  Future<void> _checkAnswer() async {
-    if (_answered) {
-      return;
-    }
-
-    if (_item.type ==
-        DailyChallengeItemType.rule) {
-      if (_selectedOption == null) {
-        return;
-      }
-
-      if (!_checked) {
-        setState(() {
-          _checked = true;
-        });
-
-        await QuestionMakingAudioService.feedback(
-          correct:
-          _selectedOption == _item.correctAnswer,
-        );
-
-        return;
-      }
-
-      if (_selectedOption == _item.correctAnswer) {
-        await _finishItem(isCorrect: true);
-      } else {
-        setState(() {
-          _checked = false;
-          _selectedOption = null;
-        });
-      }
-
-      return;
-    }
-
-    if (_selectedWords.length !=
-        _item.words.length) {
-      return;
-    }
-
-    if (!_checked) {
-      setState(() {
-        _checked = true;
-      });
-
-      await QuestionMakingAudioService.feedback(
-        correct: _buildCorrect,
-      );
-
-      return;
-    }
-
-    if (_buildCorrect) {
-      await _finishItem(isCorrect: true);
-    } else {
-      setState(() {
-        _checked = false;
-        _selectedWords = <String>[];
-        _availableWords =
-        List<String>.from(_item.words)
-          ..shuffle(Random());
-      });
-    }
-  }
-
   Future<void> _startListening() async {
-    if (_isListening || _speechInitializing) {
-      return;
-    }
+    if (_isListening || _speechInitializing || _isChecked) return;
 
     final bool accepted =
-    await MicrophoneDisclosure.ensureAccepted(
-      context,
-    );
-
-    if (!accepted || !mounted) {
-      return;
-    }
+    await MicrophoneDisclosure.ensureAccepted(context);
+    if (!accepted || !mounted) return;
 
     if (!_speechAvailable) {
-      final bool available =
-      await _initializeSpeech();
-
+      final bool available = await _initializeSpeech();
       if (!available || !mounted) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
             const SnackBar(
-              behavior:
-              SnackBarBehavior.floating,
-              content: Text(
-                'Microphone permission denied or '
-                    'speech service is unavailable.',
-              ),
-            ),
+                content: Text('Microphone permission denied or service unavailable.')),
           );
-
         return;
       }
     }
@@ -328,85 +167,86 @@ class _DailyChallengePracticeScreenState
     try {
       await _speech.listen(
         listenOptions: stt.SpeechListenOptions(
-          listenFor:
-          const Duration(seconds: 10),
-          pauseFor:
-          const Duration(seconds: 3),
+          listenFor: const Duration(seconds: 10),
+          pauseFor: const Duration(seconds: 3),
           partialResults: true,
           cancelOnError: true,
           localeId: 'en_US',
         ),
-        onResult: (
-            stt.SpeechRecognitionResult result,
-            ) {
-          if (!mounted) {
-            return;
-          }
-
+        onResult: (stt.SpeechRecognitionResult result) {
+          if (!mounted) return;
           setState(() {
-            _recognizedText =
-                result.recognizedWords;
+            _recognizedText = result.recognizedWords;
           });
         },
       );
     } catch (_) {
       if (!mounted) return;
-
-      setState(() {
-        _isListening = false;
-      });
-
+      setState(() => _isListening = false);
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          const SnackBar(
-            behavior: SnackBarBehavior.floating,
-            content: Text(
-              'Speaking practice শুরু করা যায়নি।',
-            ),
-          ),
+          const SnackBar(content: Text('Speaking practice failed. Please try again.')),
         );
     }
   }
 
-
-
   Future<void> _stopListening() async {
     await _speech.stop();
+    if (!mounted) return;
+    setState(() => _isListening = false);
+  }
 
-    if (!mounted) {
-      return;
+  Future<void> _checkAnswer() async {
+    if (_isListening) await _stopListening();
+
+    bool isCorrect = false;
+
+    if (_item.type == DailyChallengeItemType.rule) {
+      isCorrect = _selectedOption == _item.correctAnswer;
+    } else if (_item.type == DailyChallengeItemType.basicSentence ||
+        _item.type == DailyChallengeItemType.questionMaking) {
+      isCorrect = _normalize(_selectedWords.join(' ')) == _normalize(_item.english);
+    } else if (_item.type == DailyChallengeItemType.speaking) {
+      final actualWords = _normalize(_recognizedText).split(' ').toSet();
+      final expectedWords = _normalize(_item.english).split(' ').toSet();
+      final matched = actualWords.intersection(expectedWords).length;
+      final score = expectedWords.isEmpty ? 0 : ((matched / expectedWords.length) * 100).round();
+      isCorrect = score >= 70; // 70% accuracy is required
     }
 
     setState(() {
-      _isListening = false;
+      _isChecked = true;
+      _isCorrect = isCorrect;
     });
+
+    await QuestionMakingAudioService.feedback(correct: isCorrect);
+    if (isCorrect) {
+      unawaited(_speak(_item.english));
+    }
   }
 
-  Future<void> _submitSpeaking() async {
-    if (_isListening) {
-      await _stopListening();
-    }
+  Future<void> _skipActivity() async {
+    if (_isChecked) return;
+    if (_isListening) await _stopListening();
 
-    final bool correct =
-        _normalize(_recognizedText) ==
-            _normalize(_item.english);
+    setState(() {
+      _skipped++;
+    });
 
-    await QuestionMakingAudioService.feedback(
-      correct: correct,
-    );
-
-    await _finishItem(
-      isCorrect: correct,
-    );
+    await QuestionMakingAudioService.speak('Skipped');
+    await _finishItem(isCorrect: false);
   }
 
-  Future<void> _finishItem({
-    required bool isCorrect,
-  }) async {
-    if (_answered) {
-      return;
+  Future<void> _moveToNext() async {
+    if (_isCorrect) {
+      _correct++;
     }
+    await _finishItem(isCorrect: _isCorrect);
+  }
+
+  Future<void> _finishItem({required bool isCorrect}) async {
+    if (_answered) return;
 
     setState(() {
       _answered = true;
@@ -417,46 +257,28 @@ class _DailyChallengePracticeScreenState
       correct: isCorrect,
     );
 
-    if (isCorrect) {
-      _correct++;
-    }
-
-    await Future<void>.delayed(
-      const Duration(milliseconds: 300),
-    );
-
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     if (_currentIndex >= _items.length - 1) {
       final bool xpAwarded =
-      await DailyChallengeProgressService
-          .completeChallenge();
-
+      await DailyChallengeProgressService.completeChallenge();
       final DailyChallengeState state =
-      await DailyChallengeProgressService
-          .getState();
+      await DailyChallengeProgressService.getState();
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       Navigator.pushReplacement(
         context,
         MaterialPageRoute<void>(
-          builder: (_) {
-            return DailyChallengeResultScreen(
-              total: _items.length,
-              correct: _correct,
-              skipped: _skipped,
-              xpAwarded: xpAwarded,
-              streak: state.streak,
-            );
-          },
+          builder: (_) => DailyChallengeResultScreen(
+            total: _items.length,
+            correct: _correct,
+            skipped: _skipped,
+            xpAwarded: xpAwarded,
+            streak: state.streak,
+          ),
         ),
       );
-
       return;
     }
 
@@ -466,380 +288,316 @@ class _DailyChallengePracticeScreenState
     });
   }
 
-  Future<void> _skip() async {
-    if (_answered) {
-      return;
-    }
-
-    _skipped++;
-
-    await QuestionMakingAudioService.speak(
-      'Skipped',
-    );
-
-    await _finishItem(
-      isCorrect: false,
-    );
+  @override
+  void dispose() {
+    unawaited(_speech.stop());
+    unawaited(_speech.cancel());
+    unawaited(QuestionMakingAudioService.stop());
+    super.dispose();
   }
 
+  // --- UI BUILDERS ---
+
   Widget _buildRuleView() {
-    final Color color = _itemColor();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Fill in the blank',
+          style: TextStyle(color: AppColors.navy, fontSize: 22, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 15),
+        Text(_item.bengali, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+        const SizedBox(height: 25),
+        ..._item.options.map((String option) {
+          final bool isSelected = _selectedOption == option;
+          final bool isRightAnswer = option == _item.correctAnswer;
 
-    return _Panel(
-      color: color,
-      icon: _itemIcon(),
-      label: _itemLabel(),
-      child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            _item.bengali,
-            style: const TextStyle(
-              color: AppColors.navy,
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 20),
-          ..._item.options.map(
-                (String option) {
-              final bool selected =
-                  _selectedOption == option;
+          Color borderColor = const Color(0xFFE5E5E5);
+          Color bgColor = Colors.white;
+          Color textColor = AppColors.navy;
 
-              final bool correct =
-                  _checked &&
-                      option == _item.correctAnswer;
+          if (_isChecked) {
+            if (isRightAnswer) {
+              borderColor = const Color(0xFF58A700);
+              bgColor = const Color(0xFFD7FFB8);
+              textColor = const Color(0xFF58A700);
+            } else if (isSelected && !isRightAnswer) {
+              borderColor = const Color(0xFFEA2B2B);
+              bgColor = const Color(0xFFFFDFE0);
+              textColor = const Color(0xFFEA2B2B);
+            }
+          } else if (isSelected) {
+            borderColor = Colors.blue;
+            bgColor = Colors.blue.withAlpha(20);
+            textColor = Colors.blue;
+          }
 
-              return Padding(
-                padding: const EdgeInsets.only(
-                  bottom: 10,
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: GestureDetector(
+              onTap: _isChecked ? null : () => _selectOption(option),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: borderColor, width: 2),
+                  // 3D Effect
+                  boxShadow: [
+                    if (!isSelected && !_isChecked)
+                      const BoxShadow(color: Color(0xFFE5E5E5), offset: Offset(0, 4))
+                    else if (isSelected && !_isChecked)
+                      BoxShadow(color: Colors.blue.withAlpha(80), offset: const Offset(0, 2)),
+                  ],
                 ),
-                child: InkWell(
-                  onTap: () {
-                    _selectOption(option);
-                  },
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(
-                      color: correct
-                          ? Colors.green.withAlpha(20)
-                          : selected
-                          ? color.withAlpha(20)
-                          : Colors.white,
-                      borderRadius:
-                      BorderRadius.circular(14),
-                      border: Border.all(
-                        color: correct
-                            ? Colors.green
-                            : selected
-                            ? color
-                            : Colors.black.withAlpha(30),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Text(
-                      option,
-                      style: TextStyle(
-                        color: correct
-                            ? Colors.green
-                            : AppColors.navy,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                child: Text(
+                  option,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 18,
+                    fontWeight: isSelected || (_isChecked && isRightAnswer) ? FontWeight.w800 : FontWeight.w600,
                   ),
                 ),
-              );
-            },
-          ),
-          if (_checked) ...<Widget>[
-            const SizedBox(height: 8),
-            _Feedback(
-              correct:
-              _selectedOption == _item.correctAnswer,
+              ),
             ),
-          ],
-          const SizedBox(height: 15),
-          _ActionButton(
-            label: _checked &&
-                _selectedOption ==
-                    _item.correctAnswer
-                ? 'Continue'
-                : _checked
-                ? 'Try Again'
-                : 'Check Answer',
-            color: color,
-            icon: _checked &&
-                _selectedOption ==
-                    _item.correctAnswer
-                ? Icons.arrow_forward_rounded
-                : Icons.check_rounded,
-            onPressed: _selectedOption == null
-                ? null
-                : () {
-              unawaited(_checkAnswer());
-            },
-          ),
-        ],
-      ),
+          );
+        }),
+      ],
     );
   }
 
   Widget _buildWordsView() {
-    final Color color = _itemColor();
-
-    return _Panel(
-      color: color,
-      icon: _itemIcon(),
-      label: _itemLabel(),
-      child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  _item.bengali,
-                  style: const TextStyle(
-                    color: AppColors.navy,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Voice hint',
-                onPressed: () {
-                  _speak(_item.english);
-                },
-                icon: Icon(
-                  Icons.volume_up_rounded,
-                  color: color,
-                  size: 27,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Tap the speaker for a voice hint',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 17),
-          Container(
-            width: double.infinity,
-            constraints: const BoxConstraints(
-              minHeight: 76,
-            ),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: _checked
-                    ? (_buildCorrect
-                    ? Colors.green
-                    : Colors.red)
-                    : color.withAlpha(60),
-              ),
-            ),
-            child: _selectedWords.isEmpty
-                ? const Center(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Translate this sentence',
+          style: TextStyle(color: AppColors.navy, fontSize: 22, fontWeight: FontWeight.w900),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
               child: Text(
-                'Build the sentence here',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                ),
+                _item.bengali,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
               ),
-            )
-                : Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _selectedWords.map(
-                    (String word) {
-                  return InkWell(
-                    onTap: () {
-                      _removeWord(word);
-                    },
-                    borderRadius:
-                    BorderRadius.circular(10),
-                    child: _WordChip(
-                      word: word,
-                      color: _checked
-                          ? (_buildCorrect
-                          ? Colors.green
-                          : Colors.red)
-                          : color,
-                    ),
-                  );
-                },
-              ).toList(),
             ),
-          ),
-          const SizedBox(height: 17),
-          const Text(
-            'Words you can use',
-            style: TextStyle(
-              color: AppColors.navy,
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 9,
-            children: _availableWords.map(
-                  (String word) {
-                return InkWell(
-                  onTap: () {
-                    _selectWord(word);
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: _WordChip(
-                    word: word,
-                    color: Colors.blue,
-                  ),
-                );
-              },
-            ).toList(),
-          ),
-          if (_checked) ...<Widget>[
-            const SizedBox(height: 18),
-            _Feedback(
-              correct: _buildCorrect,
+            IconButton(
+              onPressed: () => _speak(_item.english),
+              icon: const Icon(Icons.volume_up_rounded, color: AppColors.primary, size: 28),
             ),
           ],
-          const SizedBox(height: 23),
-          _ActionButton(
-            label: _checked
-                ? (_buildCorrect
-                ? 'Continue'
-                : 'Try Again')
-                : 'Check Answer',
-            color: color,
-            icon: _checked && _buildCorrect
-                ? Icons.arrow_forward_rounded
-                : _checked
-                ? Icons.refresh_rounded
-                : Icons.check_rounded,
-            onPressed: _selectedWords.length ==
-                _item.words.length
-                ? () {
-              unawaited(_checkAnswer());
-            }
-                : null,
+        ),
+        const SizedBox(height: 20),
+        Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 100),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _isChecked
+                  ? (_isCorrect ? const Color(0xFF58A700) : const Color(0xFFEA2B2B))
+                  : const Color(0xFFE5E5E5),
+              width: 2,
+            ),
           ),
-        ],
-      ),
+          child: _selectedWords.isEmpty
+              ? const Center(
+            child: Text('Tap words to build', style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.bold)),
+          )
+              : Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: _selectedWords.map((word) => GestureDetector(
+              onTap: () => _removeSelectedWord(word),
+              child: _Word3DChip(word: word, color: Colors.blue),
+            )).toList(),
+          ),
+        ),
+        const SizedBox(height: 30),
+        Wrap(
+          spacing: 10,
+          runSpacing: 12,
+          children: _availableWords.map((word) => GestureDetector(
+            onTap: () => _selectWord(word),
+            child: _Word3DChip(word: word, color: AppColors.navy),
+          )).toList(),
+        ),
+      ],
     );
   }
 
   Widget _buildSpeakingView() {
-    final Color color = _itemColor();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Speak in English',
+            style: TextStyle(color: AppColors.navy, fontSize: 22, fontWeight: FontWeight.w900),
+          ),
+        ),
+        const SizedBox(height: 30),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE5E5E5), width: 2),
+          ),
+          child: Column(
+            children: [
+              Text(
+                _item.bengali,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 15),
+              Text(
+                _item.english,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.navy),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 50),
+        GestureDetector(
+          onTap: _isChecked ? null : (_isListening ? _stopListening : _startListening),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: _isListening ? 140 : 120,
+            height: _isListening ? 140 : 120,
+            decoration: BoxDecoration(
+              color: _isListening ? Colors.red : Colors.deepPurple,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: (_isListening ? Colors.red : Colors.deepPurple).withAlpha(60),
+                  blurRadius: _isListening ? 30 : 10,
+                  spreadRadius: _isListening ? 10 : 0,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Icon(_isListening ? Icons.stop_rounded : Icons.mic_rounded, color: Colors.white, size: 55),
+          ),
+        ),
+        const SizedBox(height: 30),
+        Text(
+          _speechInitializing ? 'Preparing mic...' : _isListening ? 'Listening... Tap to stop' : 'Tap the microphone to speak',
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+        if (_recognizedText.isNotEmpty) ...[
+          const SizedBox(height: 25),
+          Container(
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: Text('You said: $_recognizedText', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.navy)),
+          ),
+        ],
+        if (_speechInitializationAttempted && !_speechAvailable) ...[
+          const SizedBox(height: 12),
+          const Center(
+            child: Text(
+              'Speech service is not available.',
+              style: TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 
-    return _Panel(
-      color: color,
-      icon: _itemIcon(),
-      label: _itemLabel(),
+  // --- PREMIUM BOTTOM BAR UI ---
+  Widget _buildBottomBar() {
+    if (!_isChecked) {
+      final bool canCheck = (_item.type == DailyChallengeItemType.rule && _selectedOption != null) ||
+          ((_item.type == DailyChallengeItemType.basicSentence || _item.type == DailyChallengeItemType.questionMaking) && _selectedWords.isNotEmpty) ||
+          (_item.type == DailyChallengeItemType.speaking && _recognizedText.isNotEmpty);
+
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFE5E5E5), width: 2)),
+        ),
+        child: _ChunkyButton(
+          label: 'Check Answer',
+          color: canCheck ? AppColors.primary : const Color(0xFFE5E5E5),
+          shadowColor: canCheck ? const Color(0xFF1B6E96) : const Color(0xFFC0C0C0),
+          textColor: canCheck ? Colors.white : const Color(0xFFAFAFAF),
+          onPressed: canCheck ? _checkAnswer : null,
+        ),
+      );
+    }
+
+    // Checked State (Correct/Wrong) Panel
+    final bgColor = _isCorrect ? const Color(0xFFD7FFB8) : const Color(0xFFFFDFE0);
+    final textColor = _isCorrect ? const Color(0xFF58A700) : const Color(0xFFEA2B2B);
+    final buttonColor = _isCorrect ? const Color(0xFF58A700) : const Color(0xFFEA2B2B);
+    final buttonShadow = _isCorrect ? const Color(0xFF468500) : const Color(0xFFC11818);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      decoration: BoxDecoration(color: bgColor),
       child: Column(
-        children: <Widget>[
-          Text(
-            _item.bengali,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.navy,
-              fontSize: 21,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 28),
-          InkWell(
-            onTap: _isListening
-                ? () {
-              unawaited(_stopListening());
-            }
-                : () {
-              unawaited(_startListening());
-            },
-            borderRadius: BorderRadius.circular(70),
-            child: AnimatedContainer(
-              duration: const Duration(
-                milliseconds: 220,
-              ),
-              width: 112,
-              height: 112,
-              decoration: BoxDecoration(
-                color: _isListening
-                    ? Colors.red
-                    : color,
-                shape: BoxShape.circle,
-                boxShadow: <BoxShadow>[
-                  BoxShadow(
-                    color: color.withAlpha(60),
-                    blurRadius: 20,
-                    spreadRadius: 5,
-                  ),
-                ],
-              ),
-              child: Icon(
-                _isListening
-                    ? Icons.stop_rounded
-                    : Icons.mic_rounded,
-                color: Colors.white,
-                size: 48,
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _isListening
-                ? 'Listening...'
-                : 'Tap the microphone',
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          if (_recognizedText.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: color.withAlpha(70),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: Icon(
+                  _isCorrect ? Icons.check_rounded : Icons.close_rounded,
+                  color: textColor,
+                  size: 24,
+                  weight: 900,
                 ),
               ),
-              child: Text(
-                'Recognized:\n$_recognizedText',
-                style: const TextStyle(
-                  color: AppColors.navy,
-                  fontWeight: FontWeight.w700,
-                ),
+              const SizedBox(width: 12),
+              Text(
+                _isCorrect ? 'Excellent!' : 'Correct solution:',
+                style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.w900),
               ),
+            ],
+          ),
+          if (!_isCorrect) ...[
+            const SizedBox(height: 10),
+            Text(
+              _item.english, // Always show full sentence as correction
+              style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.w700),
             ),
           ],
-          const SizedBox(height: 23),
-          _ActionButton(
-            label: 'Submit Answer',
-            color: color,
-            icon: Icons.send_rounded,
-            onPressed: _recognizedText.trim().isEmpty
-                ? null
-                : () {
-              unawaited(_submitSpeaking());
+          const SizedBox(height: 24),
+          _ChunkyButton(
+            label: _isCorrect ? 'Continue' : 'Got it',
+            color: buttonColor,
+            shadowColor: buttonShadow,
+            onPressed: _isCorrect ? _moveToNext : () {
+              setState(() {
+                _isChecked = false;
+                _selectedOption = null;
+                _selectedWords.clear();
+                if (_item.type == DailyChallengeItemType.basicSentence || _item.type == DailyChallengeItemType.questionMaking) {
+                  _availableWords = List.from(_item.words)..shuffle();
+                }
+                _recognizedText = '';
+              });
             },
           ),
         ],
@@ -849,140 +607,174 @@ class _DailyChallengePracticeScreenState
 
   @override
   Widget build(BuildContext context) {
-    final Widget content;
+    if (_items.isEmpty) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
+    final Widget content;
     switch (_item.type) {
       case DailyChallengeItemType.rule:
         content = _buildRuleView();
+        break;
       case DailyChallengeItemType.basicSentence:
       case DailyChallengeItemType.questionMaking:
         content = _buildWordsView();
+        break;
       case DailyChallengeItemType.speaking:
         content = _buildSpeakingView();
+        break;
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
-        foregroundColor: AppColors.navy,
+        backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Daily Challenge',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 28),
+          onPressed: () => Navigator.pop(context),
         ),
-        actions: <Widget>[
-          Padding(
-            padding: const EdgeInsets.only(
-              right: 18,
-            ),
-            child: Center(
-              child: Text(
-                '${_currentIndex + 1}/${_items.length}',
-                style: const TextStyle(
-                  color: AppColors.navy,
-                  fontWeight: FontWeight.w900,
+        title: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: 14,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFFE5E5E5),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: _progress,
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Container(
+                margin: const EdgeInsets.only(top: 2, left: 6, right: 6, bottom: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(70),
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
             ),
           ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _skipActivity,
+            child: const Text('SKIP', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w900)),
+          )
         ],
       ),
       body: SafeArea(
         child: Column(
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                4,
-                20,
-                0,
-              ),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius:
-                      BorderRadius.circular(20),
-                      child: LinearProgressIndicator(
-                        value: _progress,
-                        minHeight: 8,
-                        backgroundColor:
-                        Colors.black.withAlpha(18),
-                        valueColor:
-                        AlwaysStoppedAnimation<Color>(
-                          _itemColor(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    '${(_progress * 100).round()}%',
-                    style: TextStyle(
-                      color: _itemColor(),
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          children: [
             Expanded(
               child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  22,
-                  20,
-                  20,
-                ),
                 child: content,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                0,
-                20,
-                14,
-              ),
-              child: TextButton.icon(
-                onPressed: () {
-                  unawaited(_skip());
-                },
-                icon: const Icon(
-                  Icons.skip_next_rounded,
-                ),
-                label: const Text(
-                  'Skip this question',
-                ),
-                style: TextButton.styleFrom(
-                  foregroundColor:
-                  AppColors.textSecondary,
-                ),
-              ),
-            ),
+            _buildBottomBar(),
           ],
         ),
       ),
     );
   }
+}
+
+// ---- CUSTOM WIDGETS FOR PREMIUM UI ----
+
+class _Word3DChip extends StatelessWidget {
+  final String word;
+  final Color color;
+
+  const _Word3DChip({required this.word, required this.color});
 
   @override
-  void dispose() {
-    unawaited(_speech.stop());
-    unawaited(_speech.cancel());
-    unawaited(
-      QuestionMakingAudioService.stop(),
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E5E5), width: 2),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0xFFE5E5E5),
+            offset: Offset(0, 4),
+          )
+        ],
+      ),
+      child: Text(
+        word,
+        style: const TextStyle(
+          color: AppColors.navy,
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
-    super.dispose();
   }
 }
 
-class DailyChallengeResultScreen
-    extends StatelessWidget {
+class _ChunkyButton extends StatelessWidget {
+  final String label;
+  final Color color;
+  final Color shadowColor;
+  final Color textColor;
+  final VoidCallback? onPressed;
+
+  const _ChunkyButton({
+    required this.label,
+    required this.color,
+    required this.shadowColor,
+    this.textColor = Colors.white,
+    this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: textColor,
+          elevation: 0,
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide.none,
+          ),
+        ).copyWith(
+          side: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+            if (states.contains(WidgetState.pressed) || onPressed == null) {
+              return const BorderSide(color: Colors.transparent, width: 0);
+            }
+            return BorderSide(color: shadowColor, width: 4); // Bottom shadow
+          }),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 4.0), // Text adjust
+          child: Text(
+            label.toUpperCase(),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.8,
+              color: textColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class DailyChallengeResultScreen extends StatelessWidget {
   final int total;
   final int correct;
   final int skipped;
@@ -1000,9 +792,7 @@ class DailyChallengeResultScreen
 
   @override
   Widget build(BuildContext context) {
-    final int percentage = total == 0
-        ? 0
-        : ((correct / total) * 100).round();
+    final int percentage = total == 0 ? 0 : ((correct / total) * 100).round();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -1012,47 +802,21 @@ class DailyChallengeResultScreen
         foregroundColor: AppColors.navy,
         elevation: 0,
         centerTitle: true,
-        title: const Text(
-          'Challenge Result',
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        title: const Text('Challenge Result', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            28,
-          ),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           child: Column(
             children: <Widget>[
-              const Icon(
-                Icons.celebration_rounded,
-                color: AppColors.amber,
-                size: 72,
-              ),
+              const Icon(Icons.celebration_rounded, color: AppColors.amber, size: 72),
               const SizedBox(height: 15),
               Text(
-                percentage >= 80
-                    ? 'Challenge Complete!'
-                    : 'Good effort!',
-                style: const TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 25,
-                  fontWeight: FontWeight.w900,
-                ),
+                percentage >= 80 ? 'Challenge Complete!' : 'Good effort!',
+                style: const TextStyle(color: AppColors.navy, fontSize: 25, fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 8),
-              Text(
-                '$correct/$total correct',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 16,
-                ),
-              ),
+              Text('$correct/$total correct', style: const TextStyle(color: AppColors.textSecondary, fontSize: 16)),
               const SizedBox(height: 25),
               Container(
                 width: 190,
@@ -1060,308 +824,55 @@ class DailyChallengeResultScreen
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: Colors.white,
-                  border: Border.all(
-                    color: AppColors.primary,
-                    width: 13,
-                  ),
+                  border: Border.all(color: AppColors.primary, width: 13),
                 ),
                 child: Column(
-                  mainAxisAlignment:
-                  MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
                     Text(
                       '$percentage%',
-                      style: const TextStyle(
-                        color: AppColors.navy,
-                        fontSize: 35,
-                        fontWeight: FontWeight.w900,
-                      ),
+                      style: const TextStyle(color: AppColors.navy, fontSize: 35, fontWeight: FontWeight.w900),
                     ),
-                    const Text(
-                      'Your Score',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
+                    const Text('Your Score', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800)),
                   ],
                 ),
               ),
               const SizedBox(height: 25),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  vertical: 20,
-                ),
+                padding: const EdgeInsets.symmetric(vertical: 20),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(19),
-                  border: Border.all(
-                    color: Colors.black.withAlpha(18),
-                  ),
+                  border: Border.all(color: Colors.black.withAlpha(18)),
                 ),
                 child: Row(
                   children: <Widget>[
-                    Expanded(
-                      child: _ResultValue(
-                        icon: Icons.star_rounded,
-                        value: xpAwarded
-                            ? '+50 XP'
-                            : '+0 XP',
-                        label: 'Earned',
-                        color: AppColors.amber,
-                      ),
-                    ),
-                    Expanded(
-                      child: _ResultValue(
-                        icon: Icons.check_circle_rounded,
-                        value: '$correct',
-                        label: 'Correct',
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    Expanded(
-                      child: _ResultValue(
-                        icon: Icons.local_fire_department_rounded,
-                        value: '$streak',
-                        label: 'Day Streak',
-                        color: Colors.orange,
-                      ),
-                    ),
+                    Expanded(child: _ResultValue(icon: Icons.star_rounded, value: xpAwarded ? '+50 XP' : '+0 XP', label: 'Earned', color: AppColors.amber)),
+                    Expanded(child: _ResultValue(icon: Icons.check_circle_rounded, value: '$correct', label: 'Correct', color: AppColors.primary)),
+                    Expanded(child: _ResultValue(icon: Icons.local_fire_department_rounded, value: '$streak', label: 'Day Streak', color: Colors.orange)),
                   ],
                 ),
               ),
               const SizedBox(height: 15),
-              Text(
-                '$skipped question(s) skipped',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
+              Text('$skipped question(s) skipped', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
               const SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.popUntil(
-                      context,
-                          (Route<dynamic> route) {
-                        return route.isFirst;
-                      },
-                    );
+                    Navigator.popUntil(context, (Route<dynamic> route) => route.isFirst);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  child: const Text(
-                    'Back to Home',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+                  child: const Text('Back to Home', style: TextStyle(fontWeight: FontWeight.w900)),
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Panel extends StatelessWidget {
-  final Color color;
-  final IconData icon;
-  final String label;
-  final Widget child;
-
-  const _Panel({
-    required this.color,
-    required this.icon,
-    required this.label,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(17),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: color.withAlpha(60),
-        ),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: color.withAlpha(15),
-            blurRadius: 18,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Container(
-                padding: const EdgeInsets.all(9),
-                decoration: BoxDecoration(
-                  color: color.withAlpha(22),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  icon,
-                  color: color,
-                  size: 21,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          child,
-        ],
-      ),
-    );
-  }
-}
-
-class _WordChip extends StatelessWidget {
-  final String word;
-  final Color color;
-
-  const _WordChip({
-    required this.word,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 13,
-        vertical: 10,
-      ),
-      decoration: BoxDecoration(
-        color: color.withAlpha(17),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: color.withAlpha(80),
-        ),
-      ),
-      child: Text(
-        word,
-        style: TextStyle(
-          color: color,
-          fontSize: 14,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
-class _Feedback extends StatelessWidget {
-  final bool correct;
-
-  const _Feedback({
-    required this.correct,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final Color color =
-    correct ? Colors.green : Colors.red;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withAlpha(17),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: color.withAlpha(70),
-        ),
-      ),
-      child: Row(
-        children: <Widget>[
-          Icon(
-            correct
-                ? Icons.check_circle_rounded
-                : Icons.refresh_rounded,
-            color: color,
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              correct
-                  ? 'Perfect!'
-                  : 'Not quite. Try again.',
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionButton extends StatelessWidget {
-  final String label;
-  final Color color;
-  final IconData icon;
-  final VoidCallback? onPressed;
-
-  const _ActionButton({
-    required this.label,
-    required this.color,
-    required this.icon,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 55,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 20),
-        label: Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor:
-          Colors.grey.withAlpha(80),
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
           ),
         ),
       ),
@@ -1375,39 +886,17 @@ class _ResultValue extends StatelessWidget {
   final String label;
   final Color color;
 
-  const _ResultValue({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-  });
+  const _ResultValue({required this.icon, required this.value, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
-        Icon(
-          icon,
-          color: color,
-          size: 27,
-        ),
+        Icon(icon, color: color, size: 27),
         const SizedBox(height: 7),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.navy,
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        Text(value, style: const TextStyle(color: AppColors.navy, fontSize: 14, fontWeight: FontWeight.w900)),
         const SizedBox(height: 3),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 11,
-          ),
-        ),
+        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
       ],
     );
   }

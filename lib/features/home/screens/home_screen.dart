@@ -163,12 +163,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         padding: EdgeInsets.fromLTRB(
                           horizontalPadding,
-                          MediaQuery.paddingOf(context).top + 16,
+                          MediaQuery.paddingOf(context).top + 12,
                           horizontalPadding,
                           34 + MediaQuery.paddingOf(context).bottom,
                         ),
                         children: <Widget>[
-                          // 1. CLEAN TOP APP BAR
+                          // 1. ONE-LINE COMPACT TOP APP BAR
                           _AnimatedEntry(
                             delay: 0,
                             child: _TopNavBar(
@@ -176,9 +176,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               streak: data.dailyStreak,
                             ),
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
 
-                          // 2. HERO JOURNEY CARD
+                          // 2. SHORT & COMPACT HERO JOURNEY CARD
                           _AnimatedEntry(
                             delay: 1,
                             child: _HeroJourneyCard(
@@ -192,11 +192,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                             ),
                           ),
-                          const SizedBox(height: 36),
+                          const SizedBox(height: 16),
 
-                          // 3. START LEARNING SECTION
+
+                          const SizedBox(height: 26),
+
+                          // 4. START LEARNING SECTION
                           const _AnimatedEntry(
-                            delay: 2,
+                            delay: 3,
                             child: _SectionTitle(
                               eyebrow: 'CHOOSE YOUR PATH',
                               title: 'Start learning',
@@ -207,9 +210,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 16),
 
-                          // 4. PREMIUM CATEGORY CARDS WITH UNIQUE BACKGROUND
+                          // 5. CLEAN CATEGORY CARDS
                           _AnimatedEntry(
-                            delay: 3,
+                            delay: 4,
                             child: GridView.builder(
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
@@ -219,7 +222,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisCount: categoryColumns,
                                 crossAxisSpacing: 14,
                                 mainAxisSpacing: 14,
-                                mainAxisExtent: 196,
+                                mainAxisExtent: 180, // Slightly shorter
                               ),
                               itemBuilder: (BuildContext context, int index) {
                                 final LearningCategory category = categories[index];
@@ -230,11 +233,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                             ),
                           ),
-                          const SizedBox(height: 36),
+                          const SizedBox(height: 28),
 
-                          // 5. CONTINUE LEARNING SECTION
+                          // 6. CONTINUE LEARNING SECTION
                           const _AnimatedEntry(
-                            delay: 4,
+                            delay: 5,
                             child: _SectionTitle(
                               eyebrow: 'KEEP GOING',
                               title: 'Continue learning',
@@ -245,7 +248,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 16),
 
                           _AnimatedEntry(
-                            delay: 5,
+                            delay: 6,
                             child: _ContinueCard(
                               item: data.resumeItem,
                               onTap: () => _openRoute(data.resumeItem.route),
@@ -254,7 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 16),
 
                           _AnimatedEntry(
-                            delay: 6,
+                            delay: 7,
                             child: _DailyChallengeCard(
                               completed: data.dailyCompleted,
                               total: data.dailyTotal,
@@ -278,7 +281,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 // ==========================================
-// PREMIUM UI COMPONENTS
+// UNIFIED & COMPACT UI COMPONENTS
 // ==========================================
 
 class _TopNavBar extends StatelessWidget {
@@ -295,46 +298,35 @@ class _TopNavBar extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withAlpha(20),
-                    blurRadius: 12,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
+        // App Logo
+        Container(
+          width: 44,
+          height: 44,
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withAlpha(20),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/branding/app_icon.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const Icon(
-                    Icons.school_rounded,
-                    color: AppColors.primary,
-                  ),
-                ),
+            ],
+          ),
+          child: ClipOval(
+            child: Image.asset(
+              'assets/branding/app_icon.png',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => const Icon(
+                Icons.school_rounded,
+                color: AppColors.primary,
               ),
             ),
-            const SizedBox(width: 12),
-            const Text(
-              'English Target',
-              style: TextStyle(
-                color: AppColors.navy,
-                fontSize: 19,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.4,
-              ),
-            ),
-          ],
+          ),
         ),
+
+        // XP, Streak, Settings in one row
         Row(
           children: [
             _MiniStat(
@@ -371,7 +363,7 @@ class _TopNavBar extends StatelessWidget {
                     child: Icon(
                       Icons.tune_rounded,
                       color: AppColors.navy,
-                      size: 22,
+                      size: 20,
                     ),
                   ),
                 ),
@@ -394,7 +386,7 @@ class _MiniStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -409,13 +401,13 @@ class _MiniStat extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 6),
+          Icon(icon, color: color, size: 16),
+          const SizedBox(width: 4),
           Text(
             value,
             style: const TextStyle(
               color: AppColors.navy,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w800,
             ),
           ),
@@ -437,6 +429,7 @@ class _HeroJourneyCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
+        // Vibrant Emerald/Teal Gradient
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -445,12 +438,12 @@ class _HeroJourneyCard extends StatelessWidget {
             Color(0xFF10B981), // Teal
           ],
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF10B981).withAlpha(60),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: const Color(0xFF10B981).withAlpha(50),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -458,160 +451,134 @@ class _HeroJourneyCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onStartTap,
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(24),
           highlightColor: Colors.white.withAlpha(20),
           splashColor: Colors.white.withAlpha(30),
           child: Stack(
             children: [
-              const Positioned(right: -30, top: -40, child: _DecorativeCircle(size: 160, opacity: 15)),
-              const Positioned(left: -30, bottom: -40, child: _DecorativeCircle(size: 100, opacity: 10)),
+              const Positioned(right: -20, top: -30, child: _DecorativeCircle(size: 140, opacity: 15)),
+              const Positioned(left: -20, bottom: -30, child: _DecorativeCircle(size: 80, opacity: 10)),
               Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+                child: Row(
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Level & Text
+                          Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withAlpha(40),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: Colors.white.withAlpha(40)),
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.workspace_premium_rounded, color: AppColors.amber, size: 16),
-                                    const SizedBox(width: 6),
+                                    const Icon(Icons.workspace_premium_rounded, color: AppColors.amber, size: 14),
+                                    const SizedBox(width: 4),
                                     Text(
                                       'Level ${data.level}',
-                                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800),
                                     ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 16),
-                              const Text(
-                                'Build confident English',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  height: 1.1,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.4,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                data.completedLessons == 0
-                                    ? 'Your first lesson is waiting for you.'
-                                    : '${data.completedLessons} learning activities completed.',
-                                style: TextStyle(
-                                  color: Colors.white.withAlpha(220),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  data.completedLessons == 0 ? 'Start Learning' : 'Continue Journey',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withAlpha(220),
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        SizedBox(
-                          width: 64,
-                          height: 64,
-                          child: Stack(
-                            alignment: Alignment.center,
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Build confident English',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Compact Progress Bar
+                          Row(
                             children: [
-                              SizedBox(
-                                width: 64,
-                                height: 64,
-                                child: CircularProgressIndicator(
-                                  value: progress,
-                                  strokeWidth: 4.5,
-                                  strokeCap: StrokeCap.round,
-                                  backgroundColor: Colors.white.withAlpha(40),
-                                  valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                              Text(
+                                '${data.xp} XP',
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: LinearProgressIndicator(
+                                    value: progress,
+                                    minHeight: 5,
+                                    backgroundColor: Colors.black.withAlpha(20),
+                                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.amber),
+                                  ),
                                 ),
                               ),
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: Color(0xFF047857),
-                                  size: 30,
-                                ),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${data.xpToNextLevel} Left',
+                                style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 10.5, fontWeight: FontWeight.w700),
                               ),
                             ],
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Text(
-                          '${data.xp} XP',
-                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 6,
-                              backgroundColor: Colors.black.withAlpha(30),
-                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.amber),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          '${data.xpToNextLevel} Left',
-                          style: TextStyle(color: Colors.white.withAlpha(200), fontSize: 11.5, fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+                    const SizedBox(width: 16),
+                    // Big Play Button with Circular Progress
                     SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: onStartTap,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF10B981),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              data.completedLessons == 0 ? 'Start First Lesson' : 'Continue Journey',
-                              style: const TextStyle(
-                                fontSize: 16.5,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.3,
-                              ),
+                      width: 60,
+                      height: 60,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 60,
+                            height: 60,
+                            child: CircularProgressIndicator(
+                              value: progress,
+                              strokeWidth: 4,
+                              strokeCap: StrokeCap.round,
+                              backgroundColor: Colors.white.withAlpha(30),
+                              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                             ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.rocket_launch_rounded, size: 20),
-                          ],
-                        ),
+                          ),
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Color(0xFF047857),
+                              size: 28,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -643,6 +610,119 @@ class _DecorativeCircle extends StatelessWidget {
   }
 }
 
+class _UnifiedQuickStats extends StatelessWidget {
+  final HomeDashboardData data;
+  const _UnifiedQuickStats({required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.navy.withAlpha(8),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: AppColors.border),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: _StatColumn(
+                icon: Icons.check_circle_rounded,
+                value: '${data.completedLessons}',
+                label: 'Lessons',
+                color: AppColors.primary,
+              ),
+            ),
+            VerticalDivider(color: AppColors.border.withAlpha(150), width: 1, indent: 12, endIndent: 12),
+            Expanded(
+              child: _StatColumn(
+                icon: Icons.emoji_events_rounded,
+                value: '${data.completedBadges}',
+                label: 'Badges',
+                color: AppColors.amber,
+              ),
+            ),
+            VerticalDivider(color: AppColors.border.withAlpha(150), width: 1, indent: 12, endIndent: 12),
+            Expanded(
+              child: _StatColumn(
+                icon: Icons.today_rounded,
+                value: '${data.todayPractices}',
+                label: 'Today',
+                color: AppColors.purple,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatColumn extends StatelessWidget {
+  final IconData icon;
+  final String value;
+  final String label;
+  final Color color;
+
+  const _StatColumn({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: color.withAlpha(20),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.navy,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 1),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SectionTitle extends StatelessWidget {
   final String eyebrow;
   final String title;
@@ -657,42 +737,42 @@ class _SectionTitle extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: <Widget>[
         Container(
-          height: 52,
-          width: 52,
+          height: 44,
+          width: 44,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2E8F0), width: 1.5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.primary.withAlpha(30)),
             boxShadow: [
               BoxShadow(
                 color: AppColors.primary.withAlpha(15),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                blurRadius: 15,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Icon(icon, color: AppColors.primary, size: 26),
+          child: Icon(icon, color: AppColors.primary, size: 22),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
                 eyebrow,
-                style: const TextStyle(color: AppColors.primary, fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.2),
+                style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 1.2),
               ),
               const SizedBox(height: 2),
               Text(
                 title,
-                style: const TextStyle(color: AppColors.navy, fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: -0.4),
+                style: const TextStyle(color: AppColors.navy, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.3),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -702,9 +782,6 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-// ==========================================
-// REDESIGNED UNIQUE CATEGORY CARDS
-// ==========================================
 class _LearningCategoryCard extends StatelessWidget {
   final LearningCategory category;
   final VoidCallback onTap;
@@ -719,23 +796,21 @@ class _LearningCategoryCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        // Soft Tinted Gradient Background instead of plain white
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            category.color.withAlpha(12), // Subtle tint
+            category.color.withAlpha(12),
             Colors.white,
           ],
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: category.color.withAlpha(30), width: 1.5),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: category.color.withAlpha(30), width: 1.2),
         boxShadow: [
-          // Ambient Glow based on category color
           BoxShadow(
-            color: category.color.withAlpha(20),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            color: category.color.withAlpha(15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -743,37 +818,16 @@ class _LearningCategoryCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(22),
           child: Stack(
             children: <Widget>[
-              // Ambient Orb 1 (Top Right)
               Positioned(
                 right: -20,
                 top: -20,
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: category.color.withAlpha(15),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              // Ambient Orb 2 (Bottom Left)
-              Positioned(
-                left: -30,
-                bottom: -30,
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: category.color.withAlpha(10),
-                    shape: BoxShape.circle,
-                  ),
-                ),
+                child: Container(width: 90, height: 90, decoration: BoxDecoration(color: category.color.withAlpha(10), shape: BoxShape.circle)),
               ),
               Padding(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
@@ -781,25 +835,25 @@ class _LearningCategoryCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Container(
-                          width: 52,
-                          height: 52,
+                          width: 46,
+                          height: 46,
                           decoration: BoxDecoration(
                             color: category.color.withAlpha(25),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: Colors.white.withAlpha(150)),
                           ),
-                          child: Icon(category.icon, color: category.color, size: 26),
+                          child: Icon(category.icon, color: category.color, size: 24),
                         ),
                         const Spacer(),
                         Container(
-                          width: 34,
-                          height: 34,
+                          width: 30,
+                          height: 30,
                           decoration: BoxDecoration(
                             color: Colors.white.withAlpha(180),
                             shape: BoxShape.circle,
                             border: Border.all(color: category.color.withAlpha(20)),
                           ),
-                          child: Icon(Icons.arrow_forward_rounded, color: category.color, size: 16),
+                          child: Icon(Icons.arrow_forward_rounded, color: category.color, size: 15),
                         ),
                       ],
                     ),
@@ -808,16 +862,16 @@ class _LearningCategoryCard extends StatelessWidget {
                       category.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: AppColors.navy, fontSize: 16, height: 1.15, fontWeight: FontWeight.w900, letterSpacing: -0.2),
+                      style: const TextStyle(color: AppColors.navy, fontSize: 15.5, height: 1.15, fontWeight: FontWeight.w900, letterSpacing: -0.2),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       category.subtitle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w600),
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     Row(
                       children: <Widget>[
                         Expanded(
@@ -825,16 +879,16 @@ class _LearningCategoryCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(20),
                             child: LinearProgressIndicator(
                               value: progress,
-                              minHeight: 6,
+                              minHeight: 5,
                               backgroundColor: category.color.withAlpha(20),
                               valueColor: AlwaysStoppedAnimation<Color>(category.color),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 8),
                         Text(
                           progress > 0 ? '$percentage%' : action,
-                          style: TextStyle(color: category.color, fontSize: 11, fontWeight: FontWeight.w900),
+                          style: TextStyle(color: category.color, fontSize: 10.5, fontWeight: FontWeight.w900),
                         ),
                       ],
                     ),
@@ -867,17 +921,17 @@ class _ContinueCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            item.color.withAlpha(12),
+            item.color.withAlpha(10),
             Colors.white,
           ],
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: item.color.withAlpha(30), width: 1.5),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: item.color.withAlpha(25), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: item.color.withAlpha(20),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            color: item.color.withAlpha(15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -885,103 +939,87 @@ class _ContinueCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
-          child: Stack(
-            children: [
-              Positioned(
-                right: -30,
-                bottom: -20,
-                child: Container(
-                  width: 120,
-                  height: 120,
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
-                    color: item.color.withAlpha(10),
-                    shape: BoxShape.circle,
+                    color: item.color.withAlpha(20),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withAlpha(150)),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: <Widget>[
+                      Icon(item.icon, color: item.color, size: 30),
+                      const Positioned(right: 6, top: 6, child: Icon(Icons.auto_awesome_rounded, color: AppColors.amber, size: 12)),
+                    ],
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: <Widget>[
-                    Container(
-                      width: 68,
-                      height: 68,
-                      decoration: BoxDecoration(
-                        color: item.color.withAlpha(20),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withAlpha(150)),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
                         children: <Widget>[
-                          Icon(item.icon, color: item.color, size: 34),
-                          const Positioned(right: 6, top: 6, child: Icon(Icons.auto_awesome_rounded, color: AppColors.amber, size: 14)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              Expanded(
-                                child: Text(
-                                  label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: item.color, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.8),
-                                ),
-                              ),
-                              Text('$percentage%', style: TextStyle(color: item.color, fontSize: 12.5, fontWeight: FontWeight.w900)),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            item.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: AppColors.navy, fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: -0.2),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            item.subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 14),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(30),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 6,
-                              backgroundColor: item.color.withAlpha(20),
-                              valueColor: AlwaysStoppedAnimation<Color>(item.color),
+                          Expanded(
+                            child: Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: item.color, fontSize: 9.5, fontWeight: FontWeight.w900, letterSpacing: 0.8),
                             ),
                           ),
+                          Text('$percentage%', style: TextStyle(color: item.color, fontSize: 12, fontWeight: FontWeight.w900)),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                          color: item.color,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(color: item.color.withAlpha(60), blurRadius: 8, offset: const Offset(0, 4)),
-                          ]
+                      const SizedBox(height: 4),
+                      Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.navy, fontSize: 16.5, fontWeight: FontWeight.w900, letterSpacing: -0.2),
                       ),
-                      child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Text(
+                        item.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 5,
+                          backgroundColor: item.color.withAlpha(20),
+                          valueColor: AlwaysStoppedAnimation<Color>(item.color),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                      color: item.color,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: item.color.withAlpha(50), blurRadius: 8, offset: const Offset(0, 4)),
+                      ]
+                  ),
+                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1009,17 +1047,17 @@ class _DailyChallengeCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            accent.withAlpha(12),
+            accent.withAlpha(10),
             Colors.white,
           ],
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: accent.withAlpha(30), width: 1.5),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: accent.withAlpha(25), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: accent.withAlpha(20),
-            blurRadius: 24,
-            offset: const Offset(0, 10),
+            color: accent.withAlpha(15),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -1027,99 +1065,83 @@ class _DailyChallengeCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
-          child: Stack(
-            children: [
-              Positioned(
-                left: -20,
-                top: -20,
-                child: Container(
-                  width: 90,
-                  height: 90,
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 60,
+                  height: 60,
                   decoration: BoxDecoration(
-                    color: accent.withAlpha(15),
-                    shape: BoxShape.circle,
+                    color: accent.withAlpha(20),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withAlpha(150)),
                   ),
+                  child: Icon(xpAwarded ? Icons.verified_rounded : Icons.emoji_events_rounded, color: accent, size: 30),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: <Widget>[
-                    Container(
-                      width: 68,
-                      height: 68,
-                      decoration: BoxDecoration(
-                        color: accent.withAlpha(20),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withAlpha(150)),
-                      ),
-                      child: Icon(xpAwarded ? Icons.verified_rounded : Icons.emoji_events_rounded, color: accent, size: 34),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
                         children: <Widget>[
-                          Row(
-                            children: <Widget>[
-                              const Expanded(
-                                child: Text(
-                                  'Daily Challenge',
-                                  style: TextStyle(color: AppColors.navy, fontSize: 17, fontWeight: FontWeight.w900, letterSpacing: -0.2),
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(color: accent.withAlpha(20), borderRadius: BorderRadius.circular(20)),
-                                child: Text(
-                                  xpAwarded ? 'DONE' : '+50 XP',
-                                  style: TextStyle(color: accent, fontSize: 10.5, fontWeight: FontWeight.w900),
-                                ),
-                              ),
-                            ],
+                          const Expanded(
+                            child: Text(
+                              'Daily Challenge',
+                              style: TextStyle(color: AppColors.navy, fontSize: 16.5, fontWeight: FontWeight.w900, letterSpacing: -0.2),
+                            ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            xpAwarded ? 'Completed today • Come back tomorrow' : '$completed/$safeTotal completed • Keep your streak alive',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 16),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(20),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 6,
-                              backgroundColor: accent.withAlpha(20),
-                              valueColor: AlwaysStoppedAnimation<Color>(accent),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: accent.withAlpha(20), borderRadius: BorderRadius.circular(16)),
+                            child: Text(
+                              xpAwarded ? 'DONE' : '+50 XP',
+                              style: TextStyle(color: accent, fontSize: 10, fontWeight: FontWeight.w900),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                    Container(
-                      width: 46,
-                      height: 46,
-                      decoration: BoxDecoration(
-                        color: xpAwarded ? accent : accent.withAlpha(25),
-                        shape: BoxShape.circle,
-                        boxShadow: xpAwarded ? [
-                          BoxShadow(color: accent.withAlpha(60), blurRadius: 8, offset: const Offset(0, 4))
-                        ] : null,
+                      const SizedBox(height: 6),
+                      Text(
+                        xpAwarded ? 'Completed today • Come back tomorrow' : '$completed/$safeTotal completed • Keep your streak alive',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11.5, fontWeight: FontWeight.w500),
                       ),
-                      child: Icon(
-                        xpAwarded ? Icons.check_rounded : Icons.arrow_forward_ios_rounded,
-                        color: xpAwarded ? Colors.white : accent,
-                        size: 24,
+                      const SizedBox(height: 12),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 5,
+                          backgroundColor: accent.withAlpha(20),
+                          valueColor: AlwaysStoppedAnimation<Color>(accent),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: xpAwarded ? accent : accent.withAlpha(20),
+                    shape: BoxShape.circle,
+                    boxShadow: xpAwarded ? [
+                      BoxShadow(color: accent.withAlpha(50), blurRadius: 8, offset: const Offset(0, 4))
+                    ] : null,
+                  ),
+                  child: Icon(
+                    xpAwarded ? Icons.check_rounded : Icons.arrow_forward_ios_rounded,
+                    color: xpAwarded ? Colors.white : accent,
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1141,14 +1163,14 @@ class _AnimatedEntry extends StatelessWidget {
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 500),
       curve: Curves.easeOutCubic,
       builder: (context, value, child) {
         final double delayedValue = ((value - (delay * 0.05)) / (1 - (delay * 0.05))).clamp(0.0, 1.0);
         return Opacity(
           opacity: delayedValue,
           child: Transform.translate(
-            offset: Offset(0, 30 * (1 - delayedValue)),
+            offset: Offset(0, 20 * (1 - delayedValue)),
             child: child,
           ),
         );
@@ -1205,26 +1227,30 @@ class _HomeSkeletonLoaderState extends State<_HomeSkeletonLoader> with SingleTic
       children: [
         Row(
           children: [
-            Expanded(child: _buildShimmerBox(height: 48, width: double.infinity, borderRadius: 24)),
-            const SizedBox(width: 10),
-            Expanded(child: _buildShimmerBox(height: 48, width: double.infinity, borderRadius: 24)),
-            const SizedBox(width: 10),
-            _buildShimmerBox(width: 48, height: 48, borderRadius: 24),
+            _buildShimmerBox(width: 44, height: 44, borderRadius: 22),
+            const Spacer(),
+            _buildShimmerBox(height: 44, width: 80, borderRadius: 22),
+            const SizedBox(width: 8),
+            _buildShimmerBox(height: 44, width: 80, borderRadius: 22),
+            const SizedBox(width: 8),
+            _buildShimmerBox(width: 44, height: 44, borderRadius: 22),
           ],
         ),
-        const SizedBox(height: 20),
-        _buildShimmerBox(height: 230, width: double.infinity, borderRadius: 28),
+        const SizedBox(height: 16),
+        _buildShimmerBox(height: 200, width: double.infinity, borderRadius: 24),
+        const SizedBox(height: 16),
+        _buildShimmerBox(height: 70, width: double.infinity, borderRadius: 20),
         const SizedBox(height: 32),
         Row(
           children: [
-            _buildShimmerBox(height: 48, width: 48, borderRadius: 16),
-            const SizedBox(width: 14),
+            _buildShimmerBox(height: 44, width: 44, borderRadius: 14),
+            const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildShimmerBox(height: 12, width: 100),
-                const SizedBox(height: 8),
-                _buildShimmerBox(height: 20, width: 180),
+                _buildShimmerBox(height: 10, width: 100),
+                const SizedBox(height: 6),
+                _buildShimmerBox(height: 16, width: 160),
               ],
             )
           ],
@@ -1232,9 +1258,9 @@ class _HomeSkeletonLoaderState extends State<_HomeSkeletonLoader> with SingleTic
         const SizedBox(height: 16),
         Row(
           children: [
-            Expanded(child: _buildShimmerBox(height: 196, width: double.infinity, borderRadius: 24)),
+            Expanded(child: _buildShimmerBox(height: 180, width: double.infinity, borderRadius: 22)),
             const SizedBox(width: 14),
-            Expanded(child: _buildShimmerBox(height: 196, width: double.infinity, borderRadius: 24)),
+            Expanded(child: _buildShimmerBox(height: 180, width: double.infinity, borderRadius: 22)),
           ],
         ),
       ],

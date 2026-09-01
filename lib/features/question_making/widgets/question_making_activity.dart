@@ -2,6 +2,7 @@ import 'question_making_item.dart';
 
 enum QuestionMakingActivityType {
   learn,
+  mcq,
   build,
   speak,
 }

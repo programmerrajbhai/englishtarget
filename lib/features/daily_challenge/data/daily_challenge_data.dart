@@ -3,8 +3,7 @@ import 'dart:math';
 import '../models/daily_challenge_item.dart';
 
 abstract final class DailyChallengeData {
-  static const List<DailyChallengeItem> all =
-  <DailyChallengeItem>[
+  static const List<DailyChallengeItem> all = <DailyChallengeItem>[
     // Rules — 6
     DailyChallengeItem(
       id: 'daily_rule_01',
@@ -36,13 +35,9 @@ abstract final class DailyChallengeData {
     DailyChallengeItem(
       id: 'daily_rule_04',
       type: DailyChallengeItemType.rule,
-      bengali: 'She ___ English every day.',
-      english: 'She studies English every day.',
-      options: <String>[
-        'study',
-        'studies',
-        'studying',
-      ],
+      bengali: 'She ___ English.',
+      english: 'She studies English.',
+      options: <String>['study', 'studies', 'studying'],
       correctAnswer: 'studies',
       explanation: 'She-এর সঙ্গে verb-এর শেষে s বা es হয়।',
     ),
@@ -51,11 +46,7 @@ abstract final class DailyChallengeData {
       type: DailyChallengeItemType.rule,
       bengali: 'We ___ football.',
       english: 'We play football.',
-      options: <String>[
-        'play',
-        'plays',
-        'playing',
-      ],
+      options: <String>['play', 'plays', 'playing'],
       correctAnswer: 'play',
       explanation: 'We-এর সঙ্গে verb-এর base form হয়।',
     ),
@@ -64,11 +55,7 @@ abstract final class DailyChallengeData {
       type: DailyChallengeItemType.rule,
       bengali: 'Did you ___ the door?',
       english: 'Did you open the door?',
-      options: <String>[
-        'open',
-        'opened',
-        'opening',
-      ],
+      options: <String>['open', 'opened', 'opening'],
       correctAnswer: 'open',
       explanation: 'Did-এর পরে verb-এর base form হয়।',
     ),
@@ -77,20 +64,20 @@ abstract final class DailyChallengeData {
     DailyChallengeItem(
       id: 'daily_basic_01',
       type: DailyChallengeItemType.basicSentence,
-      bengali: 'আমি সকালে ঘুম থেকে উঠি।',
+      bengali: 'আমি ভোরে উঠি।',
       english: 'I wake up early.',
     ),
     DailyChallengeItem(
       id: 'daily_basic_02',
       type: DailyChallengeItemType.basicSentence,
-      bengali: 'আমি প্রতিদিন সকালে পানি পান করি।',
-      english: 'I drink water every morning.',
+      bengali: 'আমি পানি পান করি।',
+      english: 'I drink water.',
     ),
     DailyChallengeItem(
       id: 'daily_basic_03',
       type: DailyChallengeItemType.basicSentence,
-      bengali: 'সে রাতের খাবার রান্না করছে।',
-      english: 'She is cooking dinner.',
+      bengali: 'সে রান্না করছে।',
+      english: 'She is cooking.',
     ),
     DailyChallengeItem(
       id: 'daily_basic_04',
@@ -101,32 +88,32 @@ abstract final class DailyChallengeData {
     DailyChallengeItem(
       id: 'daily_basic_05',
       type: DailyChallengeItemType.basicSentence,
-      bengali: 'সে একটি অফিসে কাজ করে।',
-      english: 'He works in an office.',
+      bengali: 'সে এখানে কাজ করে।',
+      english: 'He works here.',
     ),
     DailyChallengeItem(
       id: 'daily_basic_06',
       type: DailyChallengeItemType.basicSentence,
-      bengali: 'আমি ইংরেজি বলতে পারি।',
-      english: 'I can speak English.',
+      bengali: 'আমি ইংরেজি বলি।',
+      english: 'I speak English.',
     ),
     DailyChallengeItem(
       id: 'daily_basic_07',
       type: DailyChallengeItemType.basicSentence,
-      bengali: 'তারা গতকাল ফুটবল খেলেছিল।',
-      english: 'They played football yesterday.',
+      bengali: 'তারা ফুটবল খেলেছিল।',
+      english: 'They played football.',
     ),
     DailyChallengeItem(
       id: 'daily_basic_08',
       type: DailyChallengeItemType.basicSentence,
-      bengali: 'আমি পরে তোমাকে ফোন করব।',
-      english: 'I will call you later.',
+      bengali: 'আমি তোমাকে ফোন করব।',
+      english: 'I will call you.',
     ),
     DailyChallengeItem(
       id: 'daily_basic_09',
       type: DailyChallengeItemType.basicSentence,
-      bengali: 'দয়া করে দরজাটি খোলো।',
-      english: 'Please open the door.',
+      bengali: 'দরজাটি খোলো।',
+      english: 'Open the door.',
     ),
 
     // Question Making — 9
@@ -163,8 +150,8 @@ abstract final class DailyChallengeData {
     DailyChallengeItem(
       id: 'daily_question_06',
       type: DailyChallengeItemType.questionMaking,
-      bengali: 'তুমি কীভাবে কাজে যাও?',
-      english: 'How do you go to work?',
+      bengali: 'তুমি কীভাবে যাও?',
+      english: 'How do you go?',
     ),
     DailyChallengeItem(
       id: 'daily_question_07',
@@ -175,14 +162,14 @@ abstract final class DailyChallengeData {
     DailyChallengeItem(
       id: 'daily_question_08',
       type: DailyChallengeItemType.questionMaking,
-      bengali: 'তুমি কি তোমার কাজ শেষ করেছো?',
-      english: 'Did you finish your work?',
+      bengali: 'তুমি কি শেষ করেছো?',
+      english: 'Did you finish?',
     ),
     DailyChallengeItem(
       id: 'daily_question_09',
       type: DailyChallengeItemType.questionMaking,
-      bengali: 'তুমি কি কিছু চা চাও?',
-      english: 'Would you like some tea?',
+      bengali: 'তুমি কি চা খাবে?',
+      english: 'Would you like tea?',
     ),
 
     // Speaking — 6
@@ -207,20 +194,20 @@ abstract final class DailyChallengeData {
     DailyChallengeItem(
       id: 'daily_speaking_04',
       type: DailyChallengeItemType.speaking,
-      bengali: 'আমি একজন ডেভেলপার হিসেবে কাজ করি।',
-      english: 'I work as a developer.',
+      bengali: 'আমি একজন ডেভেলপার।',
+      english: 'I am a developer.',
     ),
     DailyChallengeItem(
       id: 'daily_speaking_05',
       type: DailyChallengeItemType.speaking,
-      bengali: 'আমি প্রতিদিন ইংরেজি অনুশীলন করি।',
-      english: 'I practice English every day.',
+      bengali: 'আমি ইংরেজি অনুশীলন করি।',
+      english: 'I practice English.',
     ),
     DailyChallengeItem(
       id: 'daily_speaking_06',
       type: DailyChallengeItemType.speaking,
-      bengali: 'আমি আত্মবিশ্বাসের সঙ্গে ইংরেজি বলতে চাই।',
-      english: 'I want to speak English confidently.',
+      bengali: 'আমি আত্মবিশ্বাসের সাথে কথা বলি।',
+      english: 'I speak confidently.',
     ),
   ];
 
@@ -228,32 +215,14 @@ abstract final class DailyChallengeData {
     final String date = _dateKey(DateTime.now());
     final Random random = Random(_seed(date));
 
-    final List<DailyChallengeItem> todayItems =
-    <DailyChallengeItem>[
-      ..._takeType(
-        DailyChallengeItemType.rule,
-        2,
-        random,
-      ),
-      ..._takeType(
-        DailyChallengeItemType.basicSentence,
-        3,
-        random,
-      ),
-      ..._takeType(
-        DailyChallengeItemType.questionMaking,
-        3,
-        random,
-      ),
-      ..._takeType(
-        DailyChallengeItemType.speaking,
-        2,
-        random,
-      ),
+    final List<DailyChallengeItem> todayItems = <DailyChallengeItem>[
+      ..._takeType(DailyChallengeItemType.rule, 2, random),
+      ..._takeType(DailyChallengeItemType.basicSentence, 3, random),
+      ..._takeType(DailyChallengeItemType.questionMaking, 3, random),
+      ..._takeType(DailyChallengeItemType.speaking, 2, random),
     ];
 
     todayItems.shuffle(random);
-
     return todayItems;
   }
 
@@ -262,35 +231,23 @@ abstract final class DailyChallengeData {
       int count,
       Random random,
       ) {
-    final List<DailyChallengeItem> items = all
-        .where(
-          (DailyChallengeItem item) =>
-      item.type == type,
-    )
-        .toList();
-
+    final List<DailyChallengeItem> items =
+    all.where((DailyChallengeItem item) => item.type == type).toList();
     items.shuffle(random);
-
     return items.take(count).toList(growable: false);
   }
 
   static String _dateKey(DateTime date) {
-    final String month =
-    date.month.toString().padLeft(2, '0');
-
-    final String day =
-    date.day.toString().padLeft(2, '0');
-
+    final String month = date.month.toString().padLeft(2, '0');
+    final String day = date.day.toString().padLeft(2, '0');
     return '${date.year}-$month-$day';
   }
 
   static int _seed(String value) {
     int result = 0;
-
     for (final int codeUnit in value.codeUnits) {
       result = (result * 31 + codeUnit) & 0x7fffffff;
     }
-
     return result;
   }
 }
