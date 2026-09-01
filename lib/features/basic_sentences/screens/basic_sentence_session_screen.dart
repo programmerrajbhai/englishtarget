@@ -8,6 +8,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/microphone_disclosure.dart';
+import '../models/basic_sentence.dart';
 import '../models/basic_sentence_activity.dart';
 import '../models/basic_sentence_topic.dart';
 import '../services/basic_sentence_funnel.dart';
@@ -36,6 +37,9 @@ class _BasicSentenceSessionScreenState
   late final List<BasicSentenceActivity> _activities;
   late List<String> _shuffledWords;
 
+  List<String> _mcqOptions = <String>[];
+  String _selectedMcqOption = '';
+
   int _currentIndex = 0;
   int _correct = 0;
   int _skipped = 0;
@@ -53,11 +57,9 @@ class _BasicSentenceSessionScreenState
   final Set<int> _usedWords = <int>{};
 
   BasicSentenceActivity? get _currentActivity {
-    if (_activities.isEmpty ||
-        _currentIndex >= _activities.length) {
+    if (_activities.isEmpty || _currentIndex >= _activities.length) {
       return null;
     }
-
     return _activities[_currentIndex];
   }
 
@@ -69,7 +71,7 @@ class _BasicSentenceSessionScreenState
       widget.topic,
     );
 
-    _prepareShuffledWords();
+    _prepareActivityData();
     unawaited(_setupTts());
     unawaited(_recordCurrentActivity());
   }
@@ -82,9 +84,7 @@ class _BasicSentenceSessionScreenState
   }
 
   Future<void> _recordCurrentActivity() async {
-    final BasicSentenceActivity? activity =
-        _currentActivity;
-
+    final BasicSentenceActivity? activity = _currentActivity;
     if (activity == null) return;
 
     await BasicSentenceProgressService.markAttended(
@@ -93,31 +93,49 @@ class _BasicSentenceSessionScreenState
     );
   }
 
-  void _prepareShuffledWords() {
-    final BasicSentenceActivity? activity =
-        _currentActivity;
+  void _prepareActivityData() {
+    final BasicSentenceActivity? activity = _currentActivity;
 
-    if (activity == null ||
-        activity.type != BasicSentenceActivityType.build) {
+    if (activity == null) {
       _shuffledWords = <String>[];
+      _mcqOptions = <String>[];
       return;
     }
 
-    final List<String> originalWords =
-    List<String>.from(activity.sentence.words);
+    if (activity.type == BasicSentenceActivityType.build) {
+      final List<String> originalWords =
+      List<String>.from(activity.sentence.words);
 
-    _shuffledWords = List<String>.from(originalWords);
+      _shuffledWords = List<String>.from(originalWords);
 
-    if (_shuffledWords.length > 1) {
-      int attempts = 0;
+      if (_shuffledWords.length > 1) {
+        int attempts = 0;
+        do {
+          _shuffledWords.shuffle(_random);
+          attempts++;
+        } while (
+        _shuffledWords.join('|') == originalWords.join('|') &&
+            attempts < 10);
+      }
+    } else if (activity.type == BasicSentenceActivityType.mcq) {
+      final String correctEnglish = activity.sentence.english;
+      final Set<String> options = <String>{correctEnglish};
 
-      do {
-        _shuffledWords.shuffle(_random);
-        attempts++;
-      } while (
-      _shuffledWords.join('|') ==
-          originalWords.join('|') &&
-          attempts < 10);
+      // Generate fake options from the same topic for natural feel
+      final List<BasicSentence> allTopicSentences = <BasicSentence>[
+        ...widget.topic.learnSentences,
+        ...widget.topic.buildSentences,
+        ...widget.topic.speakSentences,
+      ]..shuffle(_random);
+
+      for (final BasicSentence s in allTopicSentences) {
+        if (options.length >= 3) break;
+        if (s.english != correctEnglish) {
+          options.add(s.english);
+        }
+      }
+
+      _mcqOptions = options.toList()..shuffle(_random);
     }
   }
 
@@ -149,14 +167,12 @@ class _BasicSentenceSessionScreenState
       final bool ready = await _speech.initialize(
         onStatus: (String status) {
           if (!mounted) return;
-
           setState(() {
             _isListening = status == 'listening';
           });
         },
         onError: (_) {
           if (!mounted) return;
-
           setState(() {
             _isListening = false;
           });
@@ -182,20 +198,15 @@ class _BasicSentenceSessionScreenState
   Future<void> _toggleMicrophone() async {
     if (_isListening) {
       await _speech.stop();
-
       if (!mounted) return;
-
       setState(() {
         _isListening = false;
       });
-
       return;
     }
 
     final bool accepted =
-    await MicrophoneDisclosure.ensureAccepted(
-      context,
-    );
+    await MicrophoneDisclosure.ensureAccepted(context);
 
     if (!accepted || !mounted) {
       return;
@@ -204,14 +215,11 @@ class _BasicSentenceSessionScreenState
     if (!_speechReady) {
       await _initializeSpeech();
 
-      if (!mounted) {
-        return;
-      }
+      if (!mounted) return;
 
       if (!_speechReady) {
         _showMessage(
-          'Microphone permission denied or speech '
-              'service is unavailable.',
+          'Microphone permission denied or speech service is unavailable.',
         );
         return;
       }
@@ -219,9 +227,7 @@ class _BasicSentenceSessionScreenState
 
     await _tts.stop();
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       _recognizedText = '';
@@ -232,22 +238,16 @@ class _BasicSentenceSessionScreenState
     try {
       await _speech.listen(
         listenOptions: SpeechListenOptions(
-          listenFor:
-          const Duration(seconds: 12),
-          pauseFor:
-          const Duration(seconds: 3),
+          listenFor: const Duration(seconds: 12),
+          pauseFor: const Duration(seconds: 3),
           partialResults: true,
           cancelOnError: true,
           localeId: 'en_US',
         ),
-        onResult: (
-            SpeechRecognitionResult result,
-            ) {
+        onResult: (SpeechRecognitionResult result) {
           if (!mounted) return;
-
           setState(() {
-            _recognizedText =
-                result.recognizedWords;
+            _recognizedText = result.recognizedWords;
           });
         },
       );
@@ -259,18 +259,14 @@ class _BasicSentenceSessionScreenState
       });
     } catch (_) {
       if (!mounted) return;
-
       setState(() {
         _isListening = false;
       });
-
       _showMessage(
-        'Speaking practice শুরু করা যায়নি। '
-            'আবার চেষ্টা করুন।',
+        'Speaking practice শুরু করা যায়নি। আবার চেষ্টা করুন।',
       );
     }
   }
-
 
   int _calculateSpeakingScore({
     required String spoken,
@@ -287,21 +283,15 @@ class _BasicSentenceSessionScreenState
       return 100;
     }
 
-    final Set<String> actualWords =
-    actualText.split(' ').toSet();
+    final Set<String> actualWords = actualText.split(' ').toSet();
+    final Set<String> expectedWords = expectedText.split(' ').toSet();
 
-    final Set<String> expectedWords =
-    expectedText.split(' ').toSet();
-
-    final int matched = actualWords
-        .intersection(expectedWords)
-        .length;
+    final int matched =
+        actualWords.intersection(expectedWords).length;
 
     if (expectedWords.isEmpty) return 0;
 
-    return ((matched / expectedWords.length) * 100)
-        .round()
-        .clamp(0, 100);
+    return ((matched / expectedWords.length) * 100).round().clamp(0, 100);
   }
 
   String _normalize(String value) {
@@ -315,7 +305,6 @@ class _BasicSentenceSessionScreenState
 
   Future<void> _skipActivity() async {
     await _stopAudio();
-
     if (!mounted) return;
 
     setState(() {
@@ -342,7 +331,6 @@ class _BasicSentenceSessionScreenState
           ),
         ),
       );
-
       return;
     }
 
@@ -353,9 +341,11 @@ class _BasicSentenceSessionScreenState
       _speechScore = 0;
       _buildAnswer = '';
       _recognizedText = '';
+      _selectedMcqOption = '';
+      _mcqOptions.clear();
       _usedWords.clear();
 
-      _prepareShuffledWords();
+      _prepareActivityData();
     });
 
     unawaited(_recordCurrentActivity());
@@ -374,10 +364,7 @@ class _BasicSentenceSessionScreenState
     });
   }
 
-  void _selectWord(
-      int index,
-      String word,
-      ) {
+  void _selectWord(int index, String word) {
     if (_checked || _usedWords.contains(index)) {
       return;
     }
@@ -391,9 +378,7 @@ class _BasicSentenceSessionScreenState
   }
 
   void _checkBuildAnswer() {
-    final BasicSentenceActivity? activity =
-        _currentActivity;
-
+    final BasicSentenceActivity? activity = _currentActivity;
     if (activity == null) return;
 
     if (_checked) {
@@ -401,11 +386,8 @@ class _BasicSentenceSessionScreenState
       return;
     }
 
-    final String expected =
-    _normalize(activity.sentence.english);
-
-    final bool correct =
-        _normalize(_buildAnswer) == expected;
+    final String expected = _normalize(activity.sentence.english);
+    final bool correct = _normalize(_buildAnswer) == expected;
 
     setState(() {
       _checked = true;
@@ -417,16 +399,37 @@ class _BasicSentenceSessionScreenState
     });
 
     if (correct) {
-      unawaited(
-        _speakText(activity.sentence.english),
-      );
+      unawaited(_speakText(activity.sentence.english));
+    }
+  }
+
+  void _checkMcqAnswer() {
+    final BasicSentenceActivity? activity = _currentActivity;
+    if (activity == null) return;
+
+    if (_checked) {
+      unawaited(_moveNext());
+      return;
+    }
+
+    final bool correct = _selectedMcqOption == activity.sentence.english;
+
+    setState(() {
+      _checked = true;
+      _isCorrect = correct;
+
+      if (correct) {
+        _correct++;
+      }
+    });
+
+    if (correct) {
+      unawaited(_speakText(activity.sentence.english));
     }
   }
 
   void _checkSpeakingAnswer() {
-    final BasicSentenceActivity? activity =
-        _currentActivity;
-
+    final BasicSentenceActivity? activity = _currentActivity;
     if (activity == null) return;
 
     if (_checked) {
@@ -474,8 +477,7 @@ class _BasicSentenceSessionScreenState
 
   @override
   Widget build(BuildContext context) {
-    final BasicSentenceActivity? activity =
-        _currentActivity;
+    final BasicSentenceActivity? activity = _currentActivity;
 
     if (activity == null) {
       return _EmptySessionState(
@@ -498,26 +500,17 @@ class _BasicSentenceSessionScreenState
         child: Column(
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                20,
-                7,
-                20,
-                18,
-              ),
+              padding: const EdgeInsets.fromLTRB(20, 7, 20, 18),
               child: Row(
                 children: <Widget>[
                   Expanded(
                     child: ClipRRect(
-                      borderRadius:
-                      BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(20),
                       child: LinearProgressIndicator(
-                        value: (_currentIndex + 1) /
-                            _activities.length,
+                        value: (_currentIndex + 1) / _activities.length,
                         minHeight: 8,
-                        backgroundColor:
-                        AppColors.border,
-                        valueColor:
-                        AlwaysStoppedAnimation<Color>(
+                        backgroundColor: AppColors.border,
+                        valueColor: AlwaysStoppedAnimation<Color>(
                           widget.topic.color,
                         ),
                       ),
@@ -537,12 +530,7 @@ class _BasicSentenceSessionScreenState
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  4,
-                  20,
-                  24,
-                ),
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                 child: _ActivityContent(
                   activity: activity,
                   checked: _checked,
@@ -553,24 +541,27 @@ class _BasicSentenceSessionScreenState
                   recognizedText: _recognizedText,
                   speechScore: _speechScore,
                   isListening: _isListening,
-                  speechInitializing:
-                  _speechInitializing,
+                  speechInitializing: _speechInitializing,
+                  selectedMcqOption: _selectedMcqOption,
+                  mcqOptions: _mcqOptions,
                   onListen: () {
                     unawaited(
-                      _speakText(
-                        activity.sentence.english,
-                      ),
+                      _speakText(activity.sentence.english),
                     );
                   },
-                  onLearnContinue:
-                  _completeLearnActivity,
+                  onLearnContinue: _completeLearnActivity,
                   onBuildCheck: _checkBuildAnswer,
                   onWordTap: _selectWord,
                   onMicrophone: _toggleMicrophone,
-                  onSpeakCheck:
-                  _checkSpeakingAnswer,
+                  onSpeakCheck: _checkSpeakingAnswer,
                   onSpeakContinue: () {
                     unawaited(_moveNext());
+                  },
+                  onMcqCheck: _checkMcqAnswer,
+                  onMcqOptionTap: (String option) {
+                    setState(() {
+                      _selectedMcqOption = option;
+                    });
                   },
                 ),
               ),
@@ -593,6 +584,8 @@ class _ActivityContent extends StatelessWidget {
   final int speechScore;
   final bool isListening;
   final bool speechInitializing;
+  final String selectedMcqOption;
+  final List<String> mcqOptions;
 
   final VoidCallback onListen;
   final VoidCallback onLearnContinue;
@@ -601,6 +594,8 @@ class _ActivityContent extends StatelessWidget {
   final VoidCallback onMicrophone;
   final VoidCallback onSpeakCheck;
   final VoidCallback onSpeakContinue;
+  final VoidCallback onMcqCheck;
+  final void Function(String option) onMcqOptionTap;
 
   const _ActivityContent({
     required this.activity,
@@ -613,6 +608,8 @@ class _ActivityContent extends StatelessWidget {
     required this.speechScore,
     required this.isListening,
     required this.speechInitializing,
+    required this.selectedMcqOption,
+    required this.mcqOptions,
     required this.onListen,
     required this.onLearnContinue,
     required this.onBuildCheck,
@@ -620,6 +617,8 @@ class _ActivityContent extends StatelessWidget {
     required this.onMicrophone,
     required this.onSpeakCheck,
     required this.onSpeakContinue,
+    required this.onMcqCheck,
+    required this.onMcqOptionTap,
   });
 
   @override
@@ -631,6 +630,18 @@ class _ActivityContent extends StatelessWidget {
           checked: checked,
           onListen: onListen,
           onContinue: onLearnContinue,
+        );
+
+      case BasicSentenceActivityType.mcq:
+        return _McqCard(
+          activity: activity,
+          checked: checked,
+          isCorrect: isCorrect,
+          selectedOption: selectedMcqOption,
+          options: mcqOptions,
+          onListen: onListen,
+          onCheck: onMcqCheck,
+          onOptionTap: onMcqOptionTap,
         );
 
       case BasicSentenceActivityType.build:
@@ -684,8 +695,7 @@ class _LearnCard extends StatelessWidget {
       label: 'LEARN',
       icon: Icons.menu_book_rounded,
       child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Text(
             'Listen and understand this sentence',
@@ -706,8 +716,7 @@ class _LearnCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Row(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Expanded(
                 child: Text(
@@ -754,6 +763,146 @@ class _LearnCard extends StatelessWidget {
   }
 }
 
+class _McqCard extends StatelessWidget {
+  final BasicSentenceActivity activity;
+  final bool checked;
+  final bool isCorrect;
+  final String selectedOption;
+  final List<String> options;
+  final VoidCallback onListen;
+  final VoidCallback onCheck;
+  final void Function(String option) onOptionTap;
+
+  const _McqCard({
+    required this.activity,
+    required this.checked,
+    required this.isCorrect,
+    required this.selectedOption,
+    required this.options,
+    required this.onListen,
+    required this.onCheck,
+    required this.onOptionTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _ActivityCard(
+      color: AppColors.amber,
+      label: 'QUIZ',
+      icon: Icons.quiz_rounded,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Text(
+            'Select the correct translation',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  activity.sentence.bengali,
+                  style: const TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: onListen,
+                icon: const Icon(
+                  Icons.volume_up_rounded,
+                  color: AppColors.amber,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          ...options.map((String option) {
+            final bool isSelected = selectedOption == option;
+            final bool isRightAnswer = option == activity.sentence.english;
+
+            Color borderColor = AppColors.border;
+            Color bgColor = Colors.white;
+            Color textColor = AppColors.navy;
+
+            if (checked) {
+              if (isRightAnswer) {
+                borderColor = AppColors.mint;
+                bgColor = AppColors.mint.withAlpha(30);
+                textColor = AppColors.primary;
+              } else if (isSelected && !isRightAnswer) {
+                borderColor = AppColors.error;
+                bgColor = AppColors.error.withAlpha(30);
+                textColor = AppColors.error;
+              }
+            } else if (isSelected) {
+              borderColor = AppColors.amber;
+              bgColor = AppColors.amber.withAlpha(20);
+            }
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                onTap: checked ? null : () => onOptionTap(option),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: borderColor,
+                      width: isSelected || (checked && isRightAnswer) ? 2 : 1,
+                    ),
+                  ),
+                  child: Text(
+                    option,
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 16,
+                      height: 1.4,
+                      fontWeight: isSelected || (checked && isRightAnswer)
+                          ? FontWeight.w800
+                          : FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+          if (checked) ...<Widget>[
+            const SizedBox(height: 10),
+            _FeedbackBox(
+              isCorrect: isCorrect,
+              correctAnswer: activity.sentence.english,
+            ),
+          ],
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton(
+              onPressed: selectedOption.isEmpty && !checked ? null : onCheck,
+              child: Text(
+                checked ? 'Continue' : 'Check answer',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BuildCard extends StatelessWidget {
   final BasicSentenceActivity activity;
   final bool checked;
@@ -785,8 +934,7 @@ class _BuildCard extends StatelessWidget {
       label: 'BUILD',
       icon: Icons.extension_rounded,
       child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Text(
             'Arrange the words correctly',
@@ -833,9 +981,7 @@ class _BuildCard extends StatelessWidget {
               ),
             ),
             child: Text(
-              answer.isEmpty
-                  ? 'Tap the words below'
-                  : answer,
+              answer.isEmpty ? 'Tap the words below' : answer,
               style: TextStyle(
                 color: answer.isEmpty
                     ? AppColors.textSecondary
@@ -850,13 +996,10 @@ class _BuildCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 10,
             children: <Widget>[
-              for (int index = 0;
-              index < shuffledWords.length;
-              index++)
+              for (int index = 0; index < shuffledWords.length; index++)
                 ActionChip(
                   label: Text(shuffledWords[index]),
-                  onPressed: checked ||
-                      usedWords.contains(index)
+                  onPressed: checked || usedWords.contains(index)
                       ? null
                       : () {
                     onWordTap(
@@ -871,8 +1014,7 @@ class _BuildCard extends StatelessWidget {
             const SizedBox(height: 20),
             _FeedbackBox(
               isCorrect: isCorrect,
-              correctAnswer:
-              activity.sentence.english,
+              correctAnswer: activity.sentence.english,
             ),
           ],
           const SizedBox(height: 24),
@@ -880,9 +1022,7 @@ class _BuildCard extends StatelessWidget {
             width: double.infinity,
             height: 52,
             child: FilledButton(
-              onPressed: answer.isEmpty && !checked
-                  ? null
-                  : onCheck,
+              onPressed: answer.isEmpty && !checked ? null : onCheck,
               child: Text(
                 checked ? 'Continue' : 'Check answer',
               ),
@@ -929,8 +1069,7 @@ class _SpeakCard extends StatelessWidget {
       label: 'SPEAK',
       icon: Icons.mic_rounded,
       child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           const Text(
             'Say this sentence in English',
@@ -989,12 +1128,8 @@ class _SpeakCard extends StatelessWidget {
                   ],
                 ),
                 child: Icon(
-                  isListening
-                      ? Icons.stop_rounded
-                      : Icons.mic_rounded,
-                  color: isListening
-                      ? Colors.white
-                      : AppColors.purple,
+                  isListening ? Icons.stop_rounded : Icons.mic_rounded,
+                  color: isListening ? Colors.white : AppColors.purple,
                   size: 44,
                 ),
               ),
@@ -1135,8 +1270,7 @@ class _FeedbackBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color =
-    isCorrect ? AppColors.primary : AppColors.error;
+    final Color color = isCorrect ? AppColors.primary : AppColors.error;
 
     return Container(
       width: double.infinity,
@@ -1146,9 +1280,7 @@ class _FeedbackBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(15),
       ),
       child: Text(
-        isCorrect
-            ? 'Perfect!'
-            : 'Correct answer: $correctAnswer',
+        isCorrect ? 'Perfect!' : 'Correct answer: $correctAnswer',
         style: TextStyle(
           color: color,
           fontSize: 14,

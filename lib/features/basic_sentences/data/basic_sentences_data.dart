@@ -91,11 +91,11 @@ abstract final class BasicSentencesData {
       speakSentences: _makeList(
         'intro_speak',
         '''
-নিজের নাম বলুন।||My name is Raj.
-নিজের পেশা বলুন।||I am a software developer.
-নিজের দেশ বলুন।||I am from Bangladesh.
-আপনি কী শিখছেন বলুন।||I am learning English.
-বিদায় জানান।||It was nice talking to you.
+আমার নাম রাজ।||My name is Raj.
+আমি একজন সফটওয়্যার ডেভেলপার।||I am a software developer.
+আমি বাংলাদেশ থেকে এসেছি।||I am from Bangladesh.
+আমি ইংরেজি শিখছি।||I am learning English.
+আপনার সাথে কথা বলে ভালো লাগলো।||It was nice talking to you.
 ''',
         Icons.record_voice_over_rounded,
         AppColors.primary,
@@ -145,11 +145,11 @@ abstract final class BasicSentencesData {
       speakSentences: _makeList(
         'routine_speak',
         '''
-আপনার সকাল সম্পর্কে বলুন।||I wake up early in the morning.
-আপনি কখন নাস্তা করেন বলুন।||I eat breakfast at eight.
-আপনার কাজ সম্পর্কে বলুন।||I work during the day.
-সন্ধ্যার কাজ বলুন।||I relax in the evening.
-রাতে কী করেন বলুন।||I read before I go to bed.
+আমি ভোরে ঘুম থেকে উঠি।||I wake up early in the morning.
+আমি আটটায় নাস্তা করি।||I eat breakfast at eight.
+আমি দিনে কাজ করি।||I work during the day.
+আমি সন্ধ্যায় বিশ্রাম নিই।||I relax in the evening.
+ঘুমাতে যাওয়ার আগে আমি বই পড়ি।||I read before I go to bed.
 ''',
         Icons.access_time_rounded,
         AppColors.amber,
@@ -199,11 +199,11 @@ abstract final class BasicSentencesData {
       speakSentences: _makeList(
         'family_speak',
         '''
-আপনার পরিবার সম্পর্কে বলুন।||I have a small family.
-আপনার ভাই সম্পর্কে বলুন।||I have one brother.
-আপনার মায়ের কথা বলুন।||My mother is very kind.
-আপনার বন্ধুর কথা বলুন।||He is my best friend.
-পরিবারের প্রতি ভালোবাসা প্রকাশ করুন।||I love my family very much.
+আমার একটি ছোট পরিবার আছে।||I have a small family.
+আমার একজন ভাই আছে।||I have one brother.
+আমার মা খুব দয়ালু।||My mother is very kind.
+সে আমার সবচেয়ে ভালো বন্ধু।||He is my best friend.
+আমি আমার পরিবারকে খুব ভালোবাসি।||I love my family very much.
 ''',
         Icons.family_restroom_rounded,
         AppColors.blue,
@@ -253,11 +253,11 @@ abstract final class BasicSentencesData {
       speakSentences: _makeList(
         'home_speak',
         '''
-আপনার বাড়ি সম্পর্কে বলুন।||I live in a comfortable house.
-আপনার ঘর সম্পর্কে বলুন।||My room is clean and bright.
-আপনার ডেস্ক সম্পর্কে বলুন।||My desk is beside the window.
-বাড়িতে কী আছে বলুন।||There is a garden in front of my house.
-আপনি কোথায় পড়াশোনা করেন বলুন।||I study in my room.
+আমি একটি আরামদায়ক বাড়িতে থাকি।||I live in a comfortable house.
+আমার ঘরটি পরিষ্কার এবং উজ্জ্বল।||My room is clean and bright.
+আমার ডেস্কটি জানালার পাশে।||My desk is beside the window.
+আমার বাড়ির সামনে একটি বাগান আছে।||There is a garden in front of my house.
+আমি আমার ঘরে পড়াশোনা করি।||I study in my room.
 ''',
         Icons.house_rounded,
         AppColors.purple,
@@ -307,11 +307,11 @@ abstract final class BasicSentencesData {
       speakSentences: _makeList(
         'food_speak',
         '''
-আপনার প্রিয় খাবার বলুন।||My favourite food is rice.
-রেস্টুরেন্টে অর্ডার দিন।||I would like to order chicken.
-একটি পানীয় চাইতে বলুন।||Please give me some water.
-খাবারের স্বাদ বলুন।||The food is very delicious.
-বিল চাইতে বলুন।||Please bring the bill.
+আমার প্রিয় খাবার ভাত।||My favourite food is rice.
+আমি মুরগি অর্ডার করতে চাই।||I would like to order chicken.
+দয়া করে আমাকে কিছু পানি দিন।||Please give me some water.
+খাবারটি খুব সুস্বাদু।||The food is very delicious.
+দয়া করে বিলটি নিয়ে আসুন।||Please bring the bill.
 ''',
         Icons.fastfood_rounded,
         AppColors.error,
@@ -361,11 +361,11 @@ abstract final class BasicSentencesData {
       speakSentences: _makeList(
         'shopping_speak',
         '''
-দাম জিজ্ঞেস করুন।||How much does this cost?
-একটি size চাইতে বলুন।||Do you have a larger size?
-দাম কমাতে বলুন।||Can you give me a discount?
-পণ্যটি পছন্দ হয়েছে বলুন।||I really like this product.
-পেমেন্টের কথা বলুন।||I will pay by card.
+এটির দাম কত?||How much does this cost?
+আপনার কাছে কি বড় সাইজ আছে?||Do you have a larger size?
+আপনি কি আমাকে কিছু ছাড় দিতে পারবেন?||Can you give me a discount?
+আমার এই পণ্যটি খুব পছন্দ হয়েছে।||I really like this product.
+আমি কার্ড দিয়ে পেমেন্ট করব।||I will pay by card.
 ''',
         Icons.sell_rounded,
         AppColors.purple,
@@ -415,11 +415,11 @@ abstract final class BasicSentencesData {
       speakSentences: _makeList(
         'school_speak',
         '''
-আপনার পড়াশোনা সম্পর্কে বলুন।||I study English every day.
-পরীক্ষা সম্পর্কে বলুন।||My exam is tomorrow.
-আপনার শিক্ষক সম্পর্কে বলুন।||My teacher is very helpful.
-সহায়তা চাইতে বলুন।||Can you help me with this question?
-আপনার লক্ষ্য বলুন।||I want to improve my English.
+আমি প্রতিদিন ইংরেজি পড়ি।||I study English every day.
+আমার পরীক্ষা আগামীকাল।||My exam is tomorrow.
+আমার শিক্ষক খুব সাহায্যকারী।||My teacher is very helpful.
+আপনি কি এই প্রশ্নে আমাকে সাহায্য করতে পারেন?||Can you help me with this question?
+আমি আমার ইংরেজির উন্নতি করতে চাই।||I want to improve my English.
 ''',
         Icons.edit_note_rounded,
         AppColors.blue,
@@ -469,11 +469,11 @@ abstract final class BasicSentencesData {
       speakSentences: _makeList(
         'work_speak',
         '''
-আপনার পেশা বলুন।||I am a software developer.
-আপনার কাজ সম্পর্কে বলুন।||I work on mobile applications.
-Meeting শুরু করতে বলুন।||Let us start the meeting.
-সহকর্মীর কাছে সাহায্য চান।||Can you help me with this task?
-কাজ শেষ হয়েছে বলুন।||I have finished my work.
+আমি একজন সফটওয়্যার ডেভেলপার।||I am a software developer.
+আমি মোবাইল অ্যাপ্লিকেশন নিয়ে কাজ করি।||I work on mobile applications.
+চলুন মিটিং শুরু করি।||Let us start the meeting.
+আপনি কি এই কাজে আমাকে সাহায্য করতে পারেন?||Can you help me with this task?
+আমি আমার কাজ শেষ করেছি।||I have finished my work.
 ''',
         Icons.co_present_rounded,
         AppColors.primary,
@@ -523,11 +523,11 @@ Meeting শুরু করতে বলুন।||Let us start the meeting.
       speakSentences: _makeList(
         'travel_speak',
         '''
-গন্তব্য বলুন।||I am going to Cox’s Bazar.
-টিকিট চাইতে বলুন।||I would like one ticket.
-রাস্তা জিজ্ঞেস করুন।||How can I get to the station?
-সময় জিজ্ঞেস করুন।||How long will the journey take?
-Taxi চাইতে বলুন।||Please call a taxi.
+আমি কক্সবাজার যাচ্ছি।||I am going to Cox’s Bazar.
+আমি একটি টিকিট চাই।||I would like one ticket.
+আমি কিভাবে স্টেশনে যেতে পারি?||How can I get to the station?
+ভ্রমণ করতে কতক্ষণ সময় লাগবে?||How long will the journey take?
+দয়া করে একটি ট্যাক্সি ডাকুন।||Please call a taxi.
 ''',
         Icons.luggage_rounded,
         AppColors.amber,
@@ -577,11 +577,11 @@ Taxi চাইতে বলুন।||Please call a taxi.
       speakSentences: _makeList(
         'health_speak',
         '''
-আপনার শরীরের অবস্থা বলুন।||I do not feel well.
-ব্যথার কথা বলুন।||I have a headache.
-ডাক্তারের কাছে সাহায্য চান।||I need to see a doctor.
-আপনার অনুভূতি বলুন।||I feel very happy today.
-বিশ্রামের কথা বলুন।||I need some rest.
+আমার ভালো লাগছে না।||I do not feel well.
+আমার মাথা ব্যথা করছে।||I have a headache.
+আমার ডাক্তার দেখানো দরকার।||I need to see a doctor.
+আমি আজ খুব খুশি বোধ করছি।||I feel very happy today.
+আমার একটু বিশ্রাম দরকার।||I need some rest.
 ''',
         Icons.healing_rounded,
         AppColors.error,
@@ -631,11 +631,11 @@ Taxi চাইতে বলুন।||Please call a taxi.
       speakSentences: _makeList(
         'weather_speak',
         '''
-সময় জিজ্ঞেস করুন।||What time is it now?
-আজকের আবহাওয়া বলুন।||The weather is nice today.
-বৃষ্টির কথা বলুন।||It is raining outside.
-আগামীকালের পরিকল্পনা বলুন।||I will come tomorrow morning.
-Meeting-এর সময় বলুন।||The meeting will be at five.
+এখন কয়টা বাজে?||What time is it now?
+আজকের আবহাওয়া সুন্দর।||The weather is nice today.
+বাইরে বৃষ্টি হচ্ছে।||It is raining outside.
+আমি আগামীকাল সকালে আসব।||I will come tomorrow morning.
+মিটিং পাঁচটায় হবে।||The meeting will be at five.
 ''',
         Icons.access_time_filled_rounded,
         AppColors.blue,
@@ -685,11 +685,11 @@ Meeting-এর সময় বলুন।||The meeting will be at five.
       speakSentences: _makeList(
         'phone_speak',
         '''
-ফোনে greeting দিন।||Hello, how are you?
-কারও সঙ্গে কথা বলতে চান বলুন।||I want to speak to you.
-শুনতে না পাওয়ার কথা বলুন।||I cannot hear you clearly.
-পরে ফোন করার কথা বলুন।||I will call you later.
-ফোন শেষ করুন।||Thank you for calling.
+হ্যালো, কেমন আছেন?||Hello, how are you?
+আমি আপনার সাথে কথা বলতে চাই।||I want to speak to you.
+আমি আপনার কথা পরিষ্কার শুনতে পাচ্ছি না।||I cannot hear you clearly.
+আমি আপনাকে পরে ফোন করব।||I will call you later.
+ফোন করার জন্য ধন্যবাদ।||Thank you for calling.
 ''',
         Icons.phone_in_talk_rounded,
         AppColors.purple,

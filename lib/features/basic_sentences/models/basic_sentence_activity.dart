@@ -2,6 +2,7 @@ import 'basic_sentence.dart';
 
 enum BasicSentenceActivityType {
   learn,
+  mcq, // MCQ type added here
   build,
   speak,
 }
