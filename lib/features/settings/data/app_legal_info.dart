@@ -3,11 +3,11 @@ abstract final class AppLegalInfo {
 
   static const String organizationName = 'NOVATECH SOFT';
 
-  static const String supportEmail = 'technovasoft6866@gmail.com';
+  static const String supportEmail = 'technovasoft668@outlook.com';
 
-  static const String versionName = '1.0.0';
+  static const String versionName = '2.0.0';
 
-  static const String buildNumber = '1';
+  static const String buildNumber = '2';
 
   static const String effectiveDate = '28 August 2026';
 

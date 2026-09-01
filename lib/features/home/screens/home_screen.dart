@@ -176,7 +176,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               streak: data.dailyStreak,
                             ),
                           ),
-                          const SizedBox(height: 16),
+
+
+                          const SizedBox(height: 15),
 
                           // 2. SHORT & COMPACT HERO JOURNEY CARD
                           _AnimatedEntry(
@@ -195,7 +197,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 16),
 
 
-                          const SizedBox(height: 26),
 
                           // 4. START LEARNING SECTION
                           const _AnimatedEntry(
@@ -208,7 +209,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               icon: Icons.explore_rounded,
                             ),
                           ),
-                          const SizedBox(height: 16),
 
                           // 5. CLEAN CATEGORY CARDS
                           _AnimatedEntry(
