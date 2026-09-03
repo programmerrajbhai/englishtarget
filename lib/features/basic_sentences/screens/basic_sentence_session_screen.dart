@@ -35,7 +35,9 @@ class _BasicSentenceSessionScreenState
   final Random _random = Random();
 
   late final List<BasicSentenceActivity> _activities;
-  late List<String> _shuffledWords;
+
+  // 100% FIXED: Removed 'late' and initialized with an empty list to prevent LateInitializationError
+  List<String> _shuffledWords = <String>[];
 
   List<String> _mcqOptions = <String>[];
   String _selectedMcqOption = '';
@@ -96,9 +98,11 @@ class _BasicSentenceSessionScreenState
   void _prepareActivityData() {
     final BasicSentenceActivity? activity = _currentActivity;
 
+    // FIXED: Always reset lists before preparing new data to avoid state leaks and errors
+    _shuffledWords = <String>[];
+    _mcqOptions = <String>[];
+
     if (activity == null) {
-      _shuffledWords = <String>[];
-      _mcqOptions = <String>[];
       return;
     }
 
