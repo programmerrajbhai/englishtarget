@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
+import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../controllers/rule_learning_controller.dart';
 import '../models/rule_content.dart';
@@ -537,7 +538,6 @@ class _RuleDetailsScreenState
       rule: widget.rule,
     );
 
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -550,6 +550,12 @@ class _RuleDetailsScreenState
               },
             ),
             const _LessonSteps(),
+
+            // --- STICKY BANNER AD START ---
+            // Lesson Steps এবং মেইন কন্টেন্টের মাঝে ফিক্সড থাকবে
+            const BannerAdWidget(),
+            // --- STICKY BANNER AD END ---
+
             Expanded(
               child: _controller.isLoading
                   ? const Center(
@@ -649,6 +655,8 @@ class _RuleDetailsScreenState
         ),
       ),
     );
+
+
   }
 }
 

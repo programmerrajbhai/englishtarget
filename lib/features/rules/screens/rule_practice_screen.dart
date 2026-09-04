@@ -3,6 +3,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/microphone_disclosure.dart';
 import '../models/rule_content.dart';
@@ -573,6 +574,10 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
         top: false,
         child: Column(
           children: [
+            // --- STICKY BANNER AD START ---
+            const BannerAdWidget(),
+            // --- STICKY BANNER AD END ---
+
             // Progress Bar Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
@@ -599,7 +604,7 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
               ),
             ),
 
-            // MAIN CARD CONTENT AREA
+            // MAIN CARD CONTENT AREA (SCROLLABLE)
             Expanded(
               child: Center(
                 child: ConstrainedBox(
@@ -686,11 +691,11 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                             borderRadius: BorderRadius.circular(18),
                             border: Border.all(color: const Color(0xFFCFE1F6)),
                           ),
-                          child: Row(
+                          child: const Row(
                             children: [
-                              const Icon(Icons.lightbulb_rounded, color: AppColors.amber, size: 22),
-                              const SizedBox(width: 12),
-                              const Expanded(
+                              Icon(Icons.lightbulb_rounded, color: AppColors.amber, size: 22),
+                              SizedBox(width: 12),
+                              Expanded(
                                 child: Text(
                                   'Hint: স্পষ্ট উচ্চারণে স্বাভাবিক গতিতে বলুন।',
                                   style: TextStyle(color: AppColors.navy, fontSize: 13.5, fontWeight: FontWeight.w700),

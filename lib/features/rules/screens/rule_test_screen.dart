@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
+import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/rule_content.dart';
 import '../services/rules_progress_service.dart';
@@ -335,6 +336,12 @@ class _RuleTestScreenState
         child: Column(
           children: [
             const _TestHeader(),
+
+            // --- STICKY BANNER AD START ---
+            // Header এবং Progress Bar-এর মাঝখানে ফিক্সড থাকবে
+            const BannerAdWidget(),
+            // --- STICKY BANNER AD END ---
+
             _ProgressHeader(
               current: _currentIndex + 1,
               total: widget.rule.tests.length,

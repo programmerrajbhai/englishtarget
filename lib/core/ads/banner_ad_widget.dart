@@ -1,6 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'ad_helper.dart';
 
 class BannerAdWidget extends StatefulWidget {
   const BannerAdWidget({super.key});
@@ -11,28 +11,38 @@ class BannerAdWidget extends StatefulWidget {
 
 class _BannerAdWidgetState extends State<BannerAdWidget> {
   BannerAd? _bannerAd;
-  bool _isAdLoaded = false;
+  bool _isLoaded = false;
+
+  final String _adUnitId = Platform.isAndroid
+      ? 'ca-app-pub-3940256099942544/6300978111' // Android Test Banner ID
+      : 'ca-app-pub-3940256099942544/2934735716'; // iOS Test Banner ID
 
   @override
-  void initState() {
-    super.initState();
-    _loadBannerAd();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadAd();
   }
 
-  void _loadBannerAd() {
+  Future<void> _loadAd() async {
+    // স্ক্রিনের সাইজ অনুযায়ী অ্যাডাপ্টিভ ব্যানারের সাইজ নেওয়া
+    final AnchoredAdaptiveBannerAdSize? size =
+    await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+        MediaQuery.sizeOf(context).width.truncate());
+
+    if (size == null) return;
+
     _bannerAd = BannerAd(
-      adUnitId: AdHelper.bannerAdUnitId,
-      size: AdSize.banner,
+      adUnitId: _adUnitId,
+      size: size,
       request: const AdRequest(),
       listener: BannerAdListener(
-        onAdLoaded: (_) {
-          if (!mounted) return;
+        onAdLoaded: (Ad ad) {
           setState(() {
-            _isAdLoaded = true;
+            _isLoaded = true;
           });
         },
-        onAdFailedToLoad: (ad, error) {
-          debugPrint('Banner Ad failed to load: $error');
+        onAdFailedToLoad: (Ad ad, LoadAdError error) {
+          debugPrint('BannerAd failed to load: $error');
           ad.dispose();
         },
       ),
@@ -47,15 +57,15 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isAdLoaded && _bannerAd != null) {
-      return Container(
-        alignment: Alignment.center,
-        width: _bannerAd!.size.width.toDouble(),
-        height: _bannerAd!.size.height.toDouble(),
-        child: AdWidget(ad: _bannerAd!),
+    if (_bannerAd != null && _isLoaded) {
+      return SafeArea(
+        child: SizedBox(
+          width: _bannerAd!.size.width.toDouble(),
+          height: _bannerAd!.size.height.toDouble(),
+          child: AdWidget(ad: _bannerAd!),
+        ),
       );
     }
-    // অ্যাড লোড না হওয়া পর্যন্ত ফাঁকা জায়গা না নিয়ে জিরো সাইজ থাকবে
-    return const SizedBox.shrink();
+    return const SizedBox.shrink(); // অ্যাড লোড না হলে জায়গা নেবে না
   }
 }

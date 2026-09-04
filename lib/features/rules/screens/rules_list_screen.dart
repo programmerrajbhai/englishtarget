@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../data/batches/rule_config.dart';
 import '../models/rule_item.dart';
@@ -243,105 +244,124 @@ class _RulesListScreenState extends State<RulesListScreen> {
       backgroundColor: const Color(0xFFF4F7FA), // Premium off-white background
       body: SafeArea(
         bottom: false,
-        child: RefreshIndicator(
-          color: AppColors.primary,
-          onRefresh: _loadProgress,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            slivers: [
-              // 1. TOP HEADER & FILTERS
-              SliverPadding(
-                padding: EdgeInsets.fromLTRB(horizontalPadding, 16, horizontalPadding, 0),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    _Header(
-                      showBackButton: widget.showBackButton,
-                      completedRules: _completedRulesCount,
-                      totalRules: RulesData.rules.length,
+        child: Column(
+          children: [
+            // --- STICKY BANNER AD START ---
+            // এটি স্ক্রিনের ওপরে ফিক্সড থাকবে, স্ক্রল করলে চলে যাবে না।
+            // const ব্যবহারের ফলে পারফরম্যান্স ড্রপ বা ল্যাগ হবে না।
+            const BannerAdWidget(),
+            // --- STICKY BANNER AD END ---
+
+            // --- SCROLLABLE CONTENT ---
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: _loadProgress,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  slivers: [
+                    // 1. TOP HEADER & FILTERS
+                    SliverPadding(
+                      padding: EdgeInsets.fromLTRB(
+                          horizontalPadding, 16, horizontalPadding, 0),
+                      sliver: SliverList(
+                        delegate: SliverChildListDelegate([
+                          _Header(
+                            showBackButton: widget.showBackButton,
+                            completedRules: _completedRulesCount,
+                            totalRules: RulesData.rules.length,
+                          ),
+                          const SizedBox(height: 24),
+                          _ProgressSummary(
+                            completed: _completedRulesCount,
+                            total: RulesData.rules.length,
+                          ),
+                          const SizedBox(height: 24),
+                          _LevelSelector(
+                            rules: RulesData.rules,
+                            progressMap: _progressMap,
+                            selectedLevel: _selectedLevel,
+                            onSelected: (String value) {
+                              setState(() {
+                                _selectedLevel = value;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          _SearchBox(
+                            controller: _searchController,
+                            query: _searchQuery,
+                            onChanged: (String value) {
+                              setState(() {
+                                _searchQuery = value;
+                              });
+                            },
+                            onClear: () {
+                              _searchController.clear();
+                              setState(() {
+                                _searchQuery = '';
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                        ]),
+                      ),
                     ),
-                    const SizedBox(height: 24),
-                    _ProgressSummary(
-                      completed: _completedRulesCount,
-                      total: RulesData.rules.length,
+
+                    // 2. HORIZONTAL CATEGORY CHIPS
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: 42,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: horizontalPadding),
+                          itemCount: RulesData.categories.length,
+                          separatorBuilder: (_, _) => const SizedBox(width: 10),
+                          itemBuilder: (BuildContext context, int index) {
+                            final String category = RulesData.categories[index];
+                            return _CategoryChip(
+                              label: category,
+                              selected: category == _selectedCategory,
+                              onTap: () {
+                                setState(() {
+                                  _selectedCategory = category;
+                                });
+                              },
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 24),
-                    _LevelSelector(
-                      rules: RulesData.rules,
-                      progressMap: _progressMap,
-                      selectedLevel: _selectedLevel,
-                      onSelected: (String value) {
-                        setState(() {
-                          _selectedLevel = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    _SearchBox(
-                      controller: _searchController,
-                      query: _searchQuery,
-                      onChanged: (String value) {
-                        setState(() {
-                          _searchQuery = value;
-                        });
-                      },
-                      onClear: () {
-                        _searchController.clear();
-                        setState(() {
-                          _searchQuery = '';
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ]),
+
+                    // 3. FLAT FULL-SCREEN RULE LIST
+                    if (_isLoading)
+                      const SliverFillRemaining(
+                        child: Center(
+                          child: CircularProgressIndicator(
+                              color: AppColors.primary),
+                        ),
+                      )
+                    else if (_filteredRules.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _EmptyState(),
+                      )
+                    else
+                      SliverPadding(
+                        padding: EdgeInsets.fromLTRB(
+                            horizontalPadding, 12, horizontalPadding, 40),
+                        sliver: SliverList(
+                          delegate: SliverChildListDelegate(_buildRuleListItems()),
+                        ),
+                      ),
+                  ],
                 ),
               ),
-
-              // 2. HORIZONTAL CATEGORY CHIPS
-              SliverToBoxAdapter(
-                child: SizedBox(
-                  height: 42,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                    itemCount: RulesData.categories.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 10),
-                    itemBuilder: (BuildContext context, int index) {
-                      final String category = RulesData.categories[index];
-                      return _CategoryChip(
-                        label: category,
-                        selected: category == _selectedCategory,
-                        onTap: () {
-                          setState(() {
-                            _selectedCategory = category;
-                          });
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ),
-
-              // 3. FLAT FULL-SCREEN RULE LIST
-              if (_isLoading)
-                const SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
-                )
-              else if (_filteredRules.isEmpty)
-                const SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: _EmptyState(),
-                )
-              else
-                SliverPadding(
-                  padding: EdgeInsets.fromLTRB(horizontalPadding, 12, horizontalPadding, 40),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate(_buildRuleListItems()),
-                  ),
-                ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

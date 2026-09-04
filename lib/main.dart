@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'app.dart';
-import 'core/ads/ad_manager.dart'; // যুক্ত করা হয়েছে
+import 'core/ads/ad_manager.dart';
 
-void main() async {
-  // Widgets binding নিশ্চিত করা এবং AdMob চালু করা
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await AdManager.instance.initialize();
+
+  // Non-blocking initialization - অ্যাপ স্টার্টআপ স্লো হবে না
+  AdManager.instance.initialize();
 
   runApp(const EnglishTargetApp());
 }

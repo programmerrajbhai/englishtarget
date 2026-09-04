@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/microphone_disclosure.dart';
 import '../../question_making/services/question_making_audio_service.dart';
@@ -668,6 +669,9 @@ class _DailyChallengePracticeScreenState
       body: SafeArea(
         child: Column(
           children: [
+            // --- STICKY BANNER AD START ---
+            const BannerAdWidget(),
+            // --- STICKY BANNER AD END ---
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
@@ -805,75 +809,84 @@ class DailyChallengeResultScreen extends StatelessWidget {
         title: const Text('Challenge Result', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: Column(
-            children: <Widget>[
-              const Icon(Icons.celebration_rounded, color: AppColors.amber, size: 72),
-              const SizedBox(height: 15),
-              Text(
-                percentage >= 80 ? 'Challenge Complete!' : 'Good effort!',
-                style: const TextStyle(color: AppColors.navy, fontSize: 25, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 8),
-              Text('$correct/$total correct', style: const TextStyle(color: AppColors.textSecondary, fontSize: 16)),
-              const SizedBox(height: 25),
-              Container(
-                width: 190,
-                height: 190,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  border: Border.all(color: AppColors.primary, width: 13),
-                ),
+        child: Column(
+          children: [
+            // --- STICKY BANNER AD START ---
+            const BannerAdWidget(),
+            // --- STICKY BANNER AD END ---
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
+                    const Icon(Icons.celebration_rounded, color: AppColors.amber, size: 72),
+                    const SizedBox(height: 15),
                     Text(
-                      '$percentage%',
-                      style: const TextStyle(color: AppColors.navy, fontSize: 35, fontWeight: FontWeight.w900),
+                      percentage >= 80 ? 'Challenge Complete!' : 'Good effort!',
+                      style: const TextStyle(color: AppColors.navy, fontSize: 25, fontWeight: FontWeight.w900),
                     ),
-                    const Text('Your Score', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    Text('$correct/$total correct', style: const TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+                    const SizedBox(height: 25),
+                    Container(
+                      width: 190,
+                      height: 190,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        border: Border.all(color: AppColors.primary, width: 13),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          Text(
+                            '$percentage%',
+                            style: const TextStyle(color: AppColors.navy, fontSize: 35, fontWeight: FontWeight.w900),
+                          ),
+                          const Text('Your Score', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 25),
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(19),
+                        border: Border.all(color: Colors.black.withAlpha(18)),
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(child: _ResultValue(icon: Icons.star_rounded, value: xpAwarded ? '+50 XP' : '+0 XP', label: 'Earned', color: AppColors.amber)),
+                          Expanded(child: _ResultValue(icon: Icons.check_circle_rounded, value: '$correct', label: 'Correct', color: AppColors.primary)),
+                          Expanded(child: _ResultValue(icon: Icons.local_fire_department_rounded, value: '$streak', label: 'Day Streak', color: Colors.orange)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    Text('$skipped question(s) skipped', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    const SizedBox(height: 28),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.popUntil(context, (Route<dynamic> route) => route.isFirst);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: const Text('Back to Home', style: TextStyle(fontWeight: FontWeight.w900)),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 25),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(19),
-                  border: Border.all(color: Colors.black.withAlpha(18)),
-                ),
-                child: Row(
-                  children: <Widget>[
-                    Expanded(child: _ResultValue(icon: Icons.star_rounded, value: xpAwarded ? '+50 XP' : '+0 XP', label: 'Earned', color: AppColors.amber)),
-                    Expanded(child: _ResultValue(icon: Icons.check_circle_rounded, value: '$correct', label: 'Correct', color: AppColors.primary)),
-                    Expanded(child: _ResultValue(icon: Icons.local_fire_department_rounded, value: '$streak', label: 'Day Streak', color: Colors.orange)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 15),
-              Text('$skipped question(s) skipped', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-              const SizedBox(height: 28),
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.popUntil(context, (Route<dynamic> route) => route.isFirst);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: const Text('Back to Home', style: TextStyle(fontWeight: FontWeight.w900)),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

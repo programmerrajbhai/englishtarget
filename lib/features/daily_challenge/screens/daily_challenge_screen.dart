@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../question_making/services/question_making_audio_service.dart';
 import '../data/daily_challenge_data.dart';
@@ -170,160 +171,172 @@ class _DailyChallengeScreenState
         ),
       )
           : SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-            20,
-            8,
-            20,
-            28,
-          ),
-          child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  const Icon(
-                    Icons.calendar_today_rounded,
-                    color: AppColors.navy,
-                    size: 18,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _todayText(),
-                    style: const TextStyle(
-                      color: AppColors.navy,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 15),
-              _ChallengeHero(
-                completed: state.completedCount,
-                progress: progress,
-                streak: state.streak,
-              ),
-              const SizedBox(height: 15),
-              _XpBanner(
-                completed: state.completedCount,
-                xpAwarded: state.xpAwarded,
-              ),
-              const SizedBox(height: 23),
-              const Text(
-                "Today's Challenge",
-                style: TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
+        child: Column(
+          children: [
+            // --- STICKY BANNER AD START ---
+            // AppBar-এর ঠিক নিচে ফিক্সড থাকবে, স্ক্রল করলে চলে যাবে না।
+            const BannerAdWidget(),
+            // --- STICKY BANNER AD END ---
+
+            // --- SCROLLABLE CONTENT ---
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(
+                  20,
+                  8,
+                  20,
+                  28,
                 ),
-              ),
-              const SizedBox(height: 11),
-              _ChallengeBreakdown(
-                ruleCount:
-                _count(DailyChallengeItemType.rule),
-                basicCount: _count(
-                  DailyChallengeItemType.basicSentence,
-                ),
-                questionCount: _count(
-                  DailyChallengeItemType.questionMaking,
-                ),
-                speakingCount: _count(
-                  DailyChallengeItemType.speaking,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 15,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.primary.withAlpha(55),
-                  ),
-                ),
-                child: const Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Icon(
-                      Icons.schedule_rounded,
-                      color: AppColors.primary,
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Estimated time',
-                        style: TextStyle(
+                    Row(
+                      children: <Widget>[
+                        const Icon(
+                          Icons.calendar_today_rounded,
                           color: AppColors.navy,
-                          fontWeight: FontWeight.w800,
+                          size: 18,
                         ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _todayText(),
+                          style: const TextStyle(
+                            color: AppColors.navy,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    _ChallengeHero(
+                      completed: state.completedCount,
+                      progress: progress,
+                      streak: state.streak,
+                    ),
+                    const SizedBox(height: 15),
+                    _XpBanner(
+                      completed: state.completedCount,
+                      xpAwarded: state.xpAwarded,
+                    ),
+                    const SizedBox(height: 23),
+                    const Text(
+                      "Today's Challenge",
+                      style: TextStyle(
+                        color: AppColors.navy,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
-                    Text(
-                      '5 minutes',
+                    const SizedBox(height: 11),
+                    _ChallengeBreakdown(
+                      ruleCount: _count(DailyChallengeItemType.rule),
+                      basicCount: _count(
+                        DailyChallengeItemType.basicSentence,
+                      ),
+                      questionCount: _count(
+                        DailyChallengeItemType.questionMaking,
+                      ),
+                      speakingCount: _count(
+                        DailyChallengeItemType.speaking,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 15,
+                        vertical: 14,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppColors.primary.withAlpha(55),
+                        ),
+                      ),
+                      child: const Row(
+                        children: <Widget>[
+                          Icon(
+                            Icons.schedule_rounded,
+                            color: AppColors.primary,
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Estimated time',
+                              style: TextStyle(
+                                color: AppColors.navy,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '5 minutes',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    const Text(
+                      'Weekly Streak',
                       style: TextStyle(
-                        color: AppColors.primary,
+                        color: AppColors.navy,
+                        fontSize: 18,
                         fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _StreakRow(
+                      streak: state.streak,
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton.icon(
+                        onPressed: _startChallenge,
+                        icon: Icon(
+                          state.isComplete
+                              ? Icons.replay_rounded
+                              : Icons.arrow_forward_rounded,
+                        ),
+                        label: Text(
+                          state.isComplete
+                              ? 'Review Challenge'
+                              : 'Start Challenge',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(17),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 22),
-              const Text(
-                'Weekly Streak',
-                style: TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 12),
-              _StreakRow(
-                streak: state.streak,
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: _startChallenge,
-                  icon: Icon(
-                    state.isComplete
-                        ? Icons.replay_rounded
-                        : Icons.arrow_forward_rounded,
-                  ),
-                  label: Text(
-                    state.isComplete
-                        ? 'Review Challenge'
-                        : 'Start Challenge',
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(17),
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
-}
+
+  }
+
 
 class _ChallengeHero extends StatelessWidget {
   final int completed;

@@ -1,157 +1,245 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'ad_helper.dart';
 
 class AdManager {
-  // Singleton instance (যাতে পুরো অ্যাপে একটাই ম্যানেজার থাকে)
-  static final AdManager instance = AdManager._internal();
-  AdManager._internal();
+  // Singleton instance
+  static final AdManager instance = AdManager._init();
+  AdManager._init();
 
-  // Ads variables
+  // --- Cooldown Tracking ---
+  DateTime? _lastAppOpenAdTime;
+  DateTime? _lastInterstitialAdTime;
+  bool _isShowingAd = false; // কোনো অ্যাড চলাকালীন অন্য অ্যাড ব্লক করার জন্য
+
+  // --- Ad Instances ---
+  AppOpenAd? _appOpenAd;
   InterstitialAd? _interstitialAd;
   RewardedAd? _rewardedAd;
-  AppOpenAd? _appOpenAd;
 
-  // Cool-down Timer Logic for Interstitial Ads
-  DateTime? _lastInterstitialTime;
-  final int _interstitialCooldownSeconds = 45; // ৪৫ সেকেন্ডের আগে অ্যাড আসবে না
+  bool _isInterstitialLoading = false;
+  bool _isRewardedLoading = false;
 
-  bool _isAppOpenAdShowing = false;
-
-  /// ১. AdMob Initialize করুন (main.dart এ কল করতে হবে)
-  Future<void> initialize() async {
-    await MobileAds.instance.initialize();
-    loadInterstitialAd();
-    loadRewardedAd();
-    loadAppOpenAd();
+  // --- Ad Unit IDs (এখানে টেস্টিং আইডি দেওয়া আছে, প্রোডাকশনে আসল আইডি বসাবেন) ---
+  String get appOpenAdUnitId {
+    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/9257395921';
+    if (Platform.isIOS) return 'ca-app-pub-3940256099942544/5532087541';
+    return '';
   }
 
-  /// ================= INTERSTITIAL AD LOGIC ================= ///
+  String get interstitialAdUnitId {
+    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/1033173712';
+    if (Platform.isIOS) return 'ca-app-pub-3940256099942544/4411468910';
+    return '';
+  }
+
+  String get rewardedAdUnitId {
+    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/5224354917';
+    if (Platform.isIOS) return 'ca-app-pub-3940256099942544/1712485313';
+    return '';
+  }
+
+  // --- Initialization ---
+  Future<void> initialize() async {
+    await MobileAds.instance.initialize();
+
+    // স্টার্টআপেই সব অ্যাড প্রি-লোড করে রাখা হচ্ছে (High Fill Rate এর জন্য)
+    loadAppOpenAd();
+    loadInterstitialAd();
+    loadRewardedAd();
+  }
+
+  // ==========================================
+  // APP OPEN AD LOGIC
+// ==========================================
+  // APP OPEN AD LOGIC
+  // ==========================================
+  void loadAppOpenAd() {
+    AppOpenAd.load(
+      adUnitId: appOpenAdUnitId,
+      request: const AdRequest(),
+      adLoadCallback: AppOpenAdLoadCallback(
+        onAdLoaded: (ad) {
+          _appOpenAd = ad;
+        },
+        onAdFailedToLoad: (error) {
+          debugPrint('AppOpenAd failed to load: $error');
+        },
+      ),
+      // orientation: AppOpenAd.orientationPortrait, <-- এই লাইনটি রিমুভ করা হয়েছে
+    );
+  }
+
+
+
+  void showAppOpenAdIfAvailable() {
+    if (_isShowingAd) return;
+    if (_appOpenAd == null) {
+      loadAppOpenAd();
+      return;
+    }
+
+    // ৩ মিনিটের কুলডাউন লজিক
+    if (_lastAppOpenAdTime != null) {
+      final difference = DateTime.now().difference(_lastAppOpenAdTime!);
+      if (difference.inMinutes < 3) {
+        debugPrint('AppOpenAd in cooldown. Skipping.');
+        return;
+      }
+    }
+
+    _appOpenAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (ad) {
+        _isShowingAd = true;
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        _isShowingAd = false;
+        ad.dispose();
+        _appOpenAd = null;
+        loadAppOpenAd(); // ফেইল হলে আবার লোড করবে
+      },
+      onAdDismissedFullScreenContent: (ad) {
+        _isShowingAd = false;
+        _lastAppOpenAdTime = DateTime.now(); // কুলডাউন টাইমার রিসেট
+        ad.dispose();
+        _appOpenAd = null;
+        loadAppOpenAd(); // পরবর্তী বারের জন্য প্রি-লোড
+      },
+    );
+
+    _appOpenAd!.show();
+  }
+
+  // ==========================================
+  // INTERSTITIAL AD LOGIC
+  // ==========================================
   void loadInterstitialAd() {
+    if (_interstitialAd != null || _isInterstitialLoading) return;
+    _isInterstitialLoading = true;
+
     InterstitialAd.load(
-      adUnitId: AdHelper.interstitialAdUnitId,
+      adUnitId: interstitialAdUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
-        onAdLoaded: (ad) => _interstitialAd = ad,
+        onAdLoaded: (ad) {
+          _interstitialAd = ad;
+          _isInterstitialLoading = false;
+        },
         onAdFailedToLoad: (error) {
-          debugPrint('Interstitial failed to load: $error');
-          _interstitialAd = null;
+          _isInterstitialLoading = false;
+          debugPrint('InterstitialAd failed to load: $error');
         },
       ),
     );
   }
 
-  void showInterstitialAd({required VoidCallback onActionCompleted}) {
-    // যদি অ্যাড লোড না থাকে অথবা ৪৫ সেকেন্ডের কুল-ডাউন পার না হয়
-    final now = DateTime.now();
-    if (_interstitialAd == null ||
-        (_lastInterstitialTime != null &&
-            now.difference(_lastInterstitialTime!).inSeconds < _interstitialCooldownSeconds)) {
-      onActionCompleted(); // অ্যাড ছাড়াই ইউজারকে পরের স্ক্রিনে পাঠিয়ে দিন
+  void showInterstitialAd({required VoidCallback onAdDismissed}) {
+    if (_isShowingAd) {
+      onAdDismissed();
+      return;
+    }
+
+    // ৬০ সেকেন্ডের কুলডাউন লজিক
+    if (_lastInterstitialAdTime != null) {
+      final difference = DateTime.now().difference(_lastInterstitialAdTime!);
+      if (difference.inSeconds < 60) {
+        debugPrint('InterstitialAd in cooldown. Skipping.');
+        onAdDismissed(); // অ্যাড না দেখালেও ইউজারকে পরের স্ক্রিনে পাঠিয়ে দেবে
+        return;
+      }
+    }
+
+    if (_interstitialAd == null) {
+      debugPrint('InterstitialAd not ready yet.');
+      loadInterstitialAd();
+      onAdDismissed();
       return;
     }
 
     _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (ad) {
-        ad.dispose();
-        _interstitialAd = null;
-        _lastInterstitialTime = DateTime.now(); // অ্যাড দেখার পর টাইম সেভ করা হলো
-        loadInterstitialAd(); // পরের বারের জন্য নতুন অ্যাড লোড
-        onActionCompleted(); // ইউজারকে পরের স্ক্রিনে পাঠানো
+      onAdShowedFullScreenContent: (ad) {
+        _isShowingAd = true;
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
+        _isShowingAd = false;
         ad.dispose();
         _interstitialAd = null;
-        onActionCompleted();
+        loadInterstitialAd();
+        onAdDismissed();
+      },
+      onAdDismissedFullScreenContent: (ad) {
+        _isShowingAd = false;
+        _lastInterstitialAdTime = DateTime.now(); // কুলডাউন টাইমার রিসেট
+        ad.dispose();
+        _interstitialAd = null;
+        loadInterstitialAd(); // পরবর্তী লেসনের জন্য সাথে সাথে প্রি-লোড
+        onAdDismissed(); // অ্যাড শেষ হলে নেক্সট একশন কল হবে
       },
     );
 
     _interstitialAd!.show();
   }
 
-  /// ================= REWARDED AD LOGIC ================= ///
+  // ==========================================
+  // REWARDED AD LOGIC
+  // ==========================================
   void loadRewardedAd() {
+    if (_rewardedAd != null || _isRewardedLoading) return;
+    _isRewardedLoading = true;
+
     RewardedAd.load(
-      adUnitId: AdHelper.rewardedAdUnitId,
+      adUnitId: rewardedAdUnitId,
       request: const AdRequest(),
       rewardedAdLoadCallback: RewardedAdLoadCallback(
-        onAdLoaded: (ad) => _rewardedAd = ad,
+        onAdLoaded: (ad) {
+          _rewardedAd = ad;
+          _isRewardedLoading = false;
+        },
         onAdFailedToLoad: (error) {
-          debugPrint('Rewarded failed to load: $error');
-          _rewardedAd = null;
+          _isRewardedLoading = false;
+          debugPrint('RewardedAd failed to load: $error');
         },
       ),
     );
   }
 
   void showRewardedAd({
-    required VoidCallback onEarnedReward,
-    required VoidCallback onClosed,
+    required Function(int amount) onUserEarnedReward,
+    required VoidCallback onAdDismissed,
   }) {
+    if (_isShowingAd) return;
+
     if (_rewardedAd == null) {
-      onClosed();
+      debugPrint('RewardedAd not ready yet.');
+      loadRewardedAd();
+      onAdDismissed();
       return;
     }
 
     _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (ad) {
+      onAdShowedFullScreenContent: (ad) {
+        _isShowingAd = true;
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        _isShowingAd = false;
         ad.dispose();
         _rewardedAd = null;
         loadRewardedAd();
-        onClosed();
+        onAdDismissed();
       },
-      onAdFailedToShowFullScreenContent: (ad, error) {
+      onAdDismissedFullScreenContent: (ad) {
+        _isShowingAd = false;
         ad.dispose();
         _rewardedAd = null;
-        onClosed();
+        loadRewardedAd(); // পরবর্তী বারের জন্য প্রি-লোড
+        onAdDismissed();
       },
     );
 
-    _rewardedAd!.show(onUserEarnedReward: (ad, reward) {
-      onEarnedReward(); // ইউজার পুরো অ্যাড দেখলে এই ফাংশন ফায়ার হবে
-    });
-  }
-
-  /// ================= APP OPEN AD LOGIC ================= ///
-  /// ================= APP OPEN AD LOGIC ================= ///
-  void loadAppOpenAd() {
-    AppOpenAd.load(
-      adUnitId: AdHelper.appOpenAdUnitId,
-      request: const AdRequest(),
-      adLoadCallback: AppOpenAdLoadCallback(
-        onAdLoaded: (ad) => _appOpenAd = ad,
-        onAdFailedToLoad: (error) {
-          debugPrint('AppOpen Ad failed to load: $error');
-          _appOpenAd = null;
-        },
-      ),
-    );
-  }
-
-
-
-
-  void showAppOpenAdIfAvailable() {
-    if (_appOpenAd == null || _isAppOpenAdShowing) {
-      loadAppOpenAd();
-      return;
-    }
-
-    _appOpenAd!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdShowedFullScreenContent: (ad) => _isAppOpenAdShowing = true,
-      onAdDismissedFullScreenContent: (ad) {
-        _isAppOpenAdShowing = false;
-        ad.dispose();
-        _appOpenAd = null;
-        loadAppOpenAd();
-      },
-      onAdFailedToShowFullScreenContent: (ad, error) {
-        _isAppOpenAdShowing = false;
-        ad.dispose();
-        _appOpenAd = null;
+    _rewardedAd!.show(
+      onUserEarnedReward: (AdWithoutView ad, RewardItem reward) {
+        onUserEarnedReward(reward.amount.toInt());
       },
     );
-
-    _appOpenAd!.show();
   }
 }
