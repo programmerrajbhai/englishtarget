@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'ad_config_service.dart'; // সার্ভার কনফিগ সার্ভিস ইমপোর্ট করা হলো
 
 class AdManager {
   // Singleton instance
@@ -20,21 +21,21 @@ class AdManager {
   bool _isInterstitialLoading = false;
   bool _isRewardedLoading = false;
 
-  // --- Ad Unit IDs (এখানে টেস্টিং আইডি দেওয়া আছে, প্রোডাকশনে আসল আইডি বসাবেন) ---
+  // --- Ad Unit IDs (এখানে টেস্টিং আইডি দেওয়া আছে, প্রোডাকশনে আসল আইডি বসাবেন) ---
   String get appOpenAdUnitId {
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/9257395921';
+    if (Platform.isAndroid) return 'ca-app-pub-6432705880022694/6859699573';
     if (Platform.isIOS) return 'ca-app-pub-3940256099942544/5532087541';
     return '';
   }
 
   String get interstitialAdUnitId {
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/1033173712';
+    if (Platform.isAndroid) return 'ca-app-pub-6432705880022694/3371151759';
     if (Platform.isIOS) return 'ca-app-pub-3940256099942544/4411468910';
     return '';
   }
 
   String get rewardedAdUnitId {
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/5224354917';
+    if (Platform.isAndroid) return 'ca-app-pub-6432705880022694/5344427607';
     if (Platform.isIOS) return 'ca-app-pub-3940256099942544/1712485313';
     return '';
   }
@@ -51,10 +52,10 @@ class AdManager {
 
   // ==========================================
   // APP OPEN AD LOGIC
-// ==========================================
-  // APP OPEN AD LOGIC
   // ==========================================
   void loadAppOpenAd() {
+    if (!AdConfigService.instance.showAds) return; // সার্ভার থেকে অফ থাকলে লোড হবে না
+
     AppOpenAd.load(
       adUnitId: appOpenAdUnitId,
       request: const AdRequest(),
@@ -66,13 +67,11 @@ class AdManager {
           debugPrint('AppOpenAd failed to load: $error');
         },
       ),
-      // orientation: AppOpenAd.orientationPortrait, <-- এই লাইনটি রিমুভ করা হয়েছে
     );
   }
 
-
-
   void showAppOpenAdIfAvailable() {
+    if (!AdConfigService.instance.showAds) return; // সার্ভার থেকে অফ থাকলে শো করবে না
     if (_isShowingAd) return;
     if (_appOpenAd == null) {
       loadAppOpenAd();
@@ -114,6 +113,7 @@ class AdManager {
   // INTERSTITIAL AD LOGIC
   // ==========================================
   void loadInterstitialAd() {
+    if (!AdConfigService.instance.showAds) return; // সার্ভার থেকে অফ থাকলে লোড হবে না
     if (_interstitialAd != null || _isInterstitialLoading) return;
     _isInterstitialLoading = true;
 
@@ -134,6 +134,12 @@ class AdManager {
   }
 
   void showInterstitialAd({required VoidCallback onAdDismissed}) {
+    // সার্ভার থেকে অ্যাড বন্ধ থাকলে ইউজারকে সাথে সাথে নেক্সট স্ক্রিনে পাঠিয়ে দেবে
+    if (!AdConfigService.instance.showAds) {
+      onAdDismissed();
+      return;
+    }
+
     if (_isShowingAd) {
       onAdDismissed();
       return;
@@ -144,7 +150,7 @@ class AdManager {
       final difference = DateTime.now().difference(_lastInterstitialAdTime!);
       if (difference.inSeconds < 60) {
         debugPrint('InterstitialAd in cooldown. Skipping.');
-        onAdDismissed(); // অ্যাড না দেখালেও ইউজারকে পরের স্ক্রিনে পাঠিয়ে দেবে
+        onAdDismissed(); // অ্যাড না দেখালেও ইউজারকে পরের স্ক্রিনে পাঠিয়ে দেবে
         return;
       }
     }
@@ -184,6 +190,7 @@ class AdManager {
   // REWARDED AD LOGIC
   // ==========================================
   void loadRewardedAd() {
+    if (!AdConfigService.instance.showAds) return; // সার্ভার থেকে অফ থাকলে লোড হবে না
     if (_rewardedAd != null || _isRewardedLoading) return;
     _isRewardedLoading = true;
 
@@ -207,6 +214,12 @@ class AdManager {
     required Function(int amount) onUserEarnedReward,
     required VoidCallback onAdDismissed,
   }) {
+    // সার্ভার থেকে অ্যাড বন্ধ থাকলে সাথে সাথে অন-ডিসমিস কলব্যাক ট্রিগার হবে
+    if (!AdConfigService.instance.showAds) {
+      onAdDismissed();
+      return;
+    }
+
     if (_isShowingAd) return;
 
     if (_rewardedAd == null) {
