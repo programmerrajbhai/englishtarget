@@ -6,6 +6,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../../core/ads/banner_ad_widget.dart'; // <--- BANNER AD IMPORT
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/microphone_disclosure.dart';
 import '../models/basic_sentence.dart';
@@ -267,7 +268,7 @@ class _BasicSentenceSessionScreenState
         _isListening = false;
       });
       _showMessage(
-        'Speaking practice শুরু করা যায়নি। আবার চেষ্টা করুন।',
+        'Speaking practice শুরু করা যায়নি। আবার চেষ্টা করুন।',
       );
     }
   }
@@ -503,6 +504,9 @@ class _BasicSentenceSessionScreenState
       body: SafeArea(
         child: Column(
           children: <Widget>[
+            // --- STICKY BANNER AD START ---
+            const BannerAdWidget(),
+            // --- STICKY BANNER AD END ---
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 7, 20, 18),
               child: Row(

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+import '../../../core/ads/banner_ad_widget.dart'; // <--- BANNER AD IMPORT
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/microphone_disclosure.dart';
 import '../services/question_making_audio_service.dart';
@@ -770,6 +771,9 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            // --- STICKY BANNER AD START ---
+            const BannerAdWidget(),
+            // --- STICKY BANNER AD END ---
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),

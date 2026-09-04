@@ -3,6 +3,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+import '../../../core/ads/ad_manager.dart';
 import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/microphone_disclosure.dart';
@@ -465,16 +466,33 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                 const SizedBox(height: 28),
                 OutlinedButton.icon(
                   onPressed: () {
-                    Navigator.pop(sheetContext);
-                    setState(() {
-                      _currentIndex = 0;
-                      _transcripts.clear();
-                      _matchScores.clear();
-                      _attendedIndexes.clear();
-                      _correctIndexes.clear();
-                      _skippedIndexes.clear();
-                      _resultShowing = false;
-                    });
+                    AdManager.instance.showInterstitialAd(
+                      onAdDismissed: () {
+                        Navigator.pop(sheetContext);
+                        setState(() {
+                          _currentIndex = 0;
+                          _transcripts.clear();
+                          _matchScores.clear();
+                          _attendedIndexes.clear();
+                          _correctIndexes.clear();
+                          _skippedIndexes.clear();
+                          _resultShowing = false;
+                        });
+                      },
+                    );
+
+
+                    //
+                    // Navigator.pop(sheetContext);
+                    // setState(() {
+                    //   _currentIndex = 0;
+                    //   _transcripts.clear();
+                    //   _matchScores.clear();
+                    //   _attendedIndexes.clear();
+                    //   _correctIndexes.clear();
+                    //   _skippedIndexes.clear();
+                    //   _resultShowing = false;
+                    // });
                   },
                   icon: const Icon(Icons.replay_rounded),
                   label: const Text('Practice Again'),
@@ -487,19 +505,25 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
+
                 FilledButton.icon(
                   onPressed: passed
                       ? () {
-                    Navigator.pop(sheetContext);
-                    if (nextRule == null) {
-                      Navigator.pop(context, true);
-                      return;
-                    }
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => RuleDetailsScreen(rule: nextRule),
-                      ),
+                    // --- INTERSTITIAL AD TRIGGER (Next Level / Back to Rules) ---
+                    AdManager.instance.showInterstitialAd(
+                      onAdDismissed: () {
+                        Navigator.pop(sheetContext);
+                        if (nextRule == null) {
+                          Navigator.pop(context, true);
+                          return;
+                        }
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RuleDetailsScreen(rule: nextRule),
+                          ),
+                        );
+                      },
                     );
                   }
                       : null,
@@ -510,9 +534,12 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                     disabledBackgroundColor: const Color(0xFFD9E2DD),
                     minimumSize: const Size.fromHeight(54),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18)),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                   ),
                 ),
+
+
               ],
             ),
           ),

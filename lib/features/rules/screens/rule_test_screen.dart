@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
+import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
 import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/rule_content.dart';
@@ -259,7 +260,7 @@ class _RuleTestScreenState
               const SizedBox(height: 9),
               Text(
                 passed
-                    ? 'Test pass হয়েছে। এখন speaking practice করুন।'
+                    ? 'Test pass হয়েছে। এখন speaking practice করুন।'
                     : 'এই result সত্ত্বেও আপনি speaking practice করতে পারবেন।',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
@@ -274,16 +275,22 @@ class _RuleTestScreenState
                 height: 49,
                 child: FilledButton(
                   onPressed: () {
-                    Navigator.pop(dialogContext);
+                    // --- INTERSTITIAL AD TRIGGER ---
+                    // অ্যাড থাকলে শো করবে, তারপর (বা না থাকলে) Practice Screen-এ চলে যাবে
+                    AdManager.instance.showInterstitialAd(
+                      onAdDismissed: () {
+                        Navigator.pop(dialogContext);
 
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute<void>(
-                        builder: (_) {
-                          return RulePracticeScreen(
-                            rule: widget.rule,
-                          );
-                        },
-                      ),
+                        Navigator.of(context).pushReplacement(
+                          MaterialPageRoute<void>(
+                            builder: (_) {
+                              return RulePracticeScreen(
+                                rule: widget.rule,
+                              );
+                            },
+                          ),
+                        );
+                      },
                     );
                   },
                   child: const Text(

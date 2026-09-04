@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
+import '../../../core/ads/banner_ad_widget.dart'; // <--- BANNER AD IMPORT
 import '../../../core/constants/app_colors.dart';
 import '../../splash/widgets/splash_mascot.dart';
 import '../data/basic_sentences_data.dart';
@@ -53,19 +55,25 @@ class _BasicSentencesScreenState
     });
   }
 
-  Future<void> _openTopic(
-      BasicSentenceTopic topic,
-      ) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => BasicSentenceSessionScreen(
-          topic: topic,
-        ),
-      ),
+  Future<void> _openTopic(BasicSentenceTopic topic) async {
+    // --- INTERSTITIAL AD TRIGGER ---
+    // ইউজার যেকোনো টপিকে ক্লিক করলেই অ্যাড কল হবে
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () {
+        // অ্যাড দেখা শেষ হলে (বা কুলডাউনে থাকলে) নেক্সট স্ক্রিনে (Practice Session) যাবে
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => BasicSentenceSessionScreen(
+              topic: topic,
+            ),
+          ),
+        ).then((_) {
+          // সেশন শেষ করে ব্যাক করার পর প্রগ্রেস আপডেট হবে
+          _loadProgress();
+        });
+      },
     );
-
-    await _loadProgress();
   }
 
   int _attended(BasicSentenceTopic topic) {
@@ -99,87 +107,98 @@ class _BasicSentencesScreenState
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: _loading
-            ? const Center(
-          child: CircularProgressIndicator(
-            color: AppColors.primary,
-          ),
-        )
-            : CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: <Widget>[
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                18,
-                10,
-                18,
-                0,
-              ),
-              sliver: SliverToBoxAdapter(
-                child: _Header(
-                  onBack: () =>
-                      Navigator.maybePop(context),
-                ),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                18,
-                17,
-                18,
-                0,
-              ),
-              sliver: SliverToBoxAdapter(
-                child: _HeroCard(
-                  progress: _overallProgress,
-                  completedTopics: _completedTopics,
-                  totalTopics: _topics.length,
-                ),
-              ),
-            ),
-            const SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                18,
-                14,
-                18,
-                0,
-              ),
-              sliver: SliverToBoxAdapter(
-                child: _SummaryCard(),
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(
-                18,
-                24,
-                18,
-                35,
-              ),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                      (
-                      BuildContext context,
-                      int index,
-                      ) {
-                    final BasicSentenceTopic topic =
-                    _topics[index];
+        bottom: false,
+        child: Column(
+          children: [
+            // --- STICKY BANNER AD START ---
+            const BannerAdWidget(),
+            // --- STICKY BANNER AD END ---
 
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        bottom: index ==
-                            _topics.length - 1
-                            ? 0
-                            : 14,
-                      ),
-                      child: _TopicCard(
-                        topic: topic,
-                        attended: _attended(topic),
-                        onTap: () => _openTopic(topic),
-                      ),
-                    );
-                  },
-                  childCount: _topics.length,
+            Expanded(
+              child: _loading
+                  ? const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
                 ),
+              )
+                  : CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: <Widget>[
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(
+                      18,
+                      10,
+                      18,
+                      0,
+                    ),
+                    sliver: SliverToBoxAdapter(
+                      child: _Header(
+                        onBack: () =>
+                            Navigator.maybePop(context),
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(
+                      18,
+                      17,
+                      18,
+                      0,
+                    ),
+                    sliver: SliverToBoxAdapter(
+                      child: _HeroCard(
+                        progress: _overallProgress,
+                        completedTopics: _completedTopics,
+                        totalTopics: _topics.length,
+                      ),
+                    ),
+                  ),
+                  const SliverPadding(
+                    padding: EdgeInsets.fromLTRB(
+                      18,
+                      14,
+                      18,
+                      0,
+                    ),
+                    sliver: SliverToBoxAdapter(
+                      child: _SummaryCard(),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(
+                      18,
+                      24,
+                      18,
+                      35,
+                    ),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                            (
+                            BuildContext context,
+                            int index,
+                            ) {
+                          final BasicSentenceTopic topic =
+                          _topics[index];
+
+                          return Padding(
+                            padding: EdgeInsets.only(
+                              bottom: index ==
+                                  _topics.length - 1
+                                  ? 0
+                                  : 14,
+                            ),
+                            child: _TopicCard(
+                              topic: topic,
+                              attended: _attended(topic),
+                              onTap: () => _openTopic(topic),
+                            ),
+                          );
+                        },
+                        childCount: _topics.length,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

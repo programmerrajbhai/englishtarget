@@ -1,13 +1,13 @@
-import 'package:englishtarget/features/question_making/screens/question_topic_learning_screen.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
+import '../../../core/ads/banner_ad_widget.dart'; // <--- BANNER AD IMPORT
 import '../../../core/constants/app_colors.dart';
 import '../../home/widgets/xp_balance_pill.dart';
 import '../data/question_making_data.dart';
-
 import '../services/question_making_progress_service.dart';
 import '../widgets/question_making_topic.dart';
-
+import 'question_topic_learning_screen.dart';
 
 class QuestionMakingScreen extends StatefulWidget {
   const QuestionMakingScreen({
@@ -19,15 +19,12 @@ class QuestionMakingScreen extends StatefulWidget {
       _QuestionMakingScreenState();
 }
 
-class _QuestionMakingScreenState
-    extends State<QuestionMakingScreen> {
-  final Map<String, int> _progress =
-  <String, int>{};
+class _QuestionMakingScreenState extends State<QuestionMakingScreen> {
+  final Map<String, int> _progress = <String, int>{};
 
   bool _loading = true;
 
-  List<QuestionMakingTopic> get _topics =>
-      QuestionMakingData.topics;
+  List<QuestionMakingTopic> get _topics => QuestionMakingData.topics;
 
   @override
   void initState() {
@@ -39,8 +36,7 @@ class _QuestionMakingScreenState
     final List<int> counts = await Future.wait<int>(
       _topics.map(
             (QuestionMakingTopic topic) {
-          return QuestionMakingProgressService
-              .getCount(topic.id);
+          return QuestionMakingProgressService.getCount(topic.id);
         },
       ),
     );
@@ -50,32 +46,34 @@ class _QuestionMakingScreenState
     }
 
     setState(() {
-      for (int index = 0;
-      index < _topics.length;
-      index++) {
-        _progress[_topics[index].id] =
-        counts[index];
+      for (int index = 0; index < _topics.length; index++) {
+        _progress[_topics[index].id] = counts[index];
       }
 
       _loading = false;
     });
   }
 
-  Future<void> _openTopic(
-      QuestionMakingTopic topic,
-      ) async {
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) {
-          return QuestionTopicLearningScreen(
-            topic: topic,
-          );
-        },
-      ),
+  Future<void> _openTopic(QuestionMakingTopic topic) async {
+    // --- INTERSTITIAL AD TRIGGER ---
+    // টপিক ওপেন করার আগে অ্যাড শো করবে
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () {
+        Navigator.push<void>(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) {
+              return QuestionTopicLearningScreen(
+                topic: topic,
+              );
+            },
+          ),
+        ).then((_) {
+          // ব্যাক করার পর প্রগ্রেস আপডেট হবে
+          _loadProgress();
+        });
+      },
     );
-
-    await _loadProgress();
   }
 
   int _completedTopics() {
@@ -91,129 +89,137 @@ class _QuestionMakingScreenState
       return 0;
     }
 
-    final int completedPractices =
-    _progress.values.fold<int>(
+    final int completedPractices = _progress.values.fold<int>(
       0,
           (int total, int value) {
         return total + value.clamp(0, 25);
       },
     );
 
-    return completedPractices /
-        (_topics.length * 25);
+    return completedPractices / (_topics.length * 25);
   }
 
   @override
   Widget build(BuildContext context) {
-    final double overallProgress =
-    _overallProgress();
+    final double overallProgress = _overallProgress();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: <Widget>[
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  16,
-                  20,
-                  0,
-                ),
-                child: Row(
-                  children: <Widget>[
-                    IconButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(
-                        Icons.arrow_back_rounded,
+        bottom: false,
+        child: Column(
+          children: [
+            // --- STICKY BANNER AD START ---
+            const BannerAdWidget(),
+            // --- STICKY BANNER AD END ---
+
+            Expanded(
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: <Widget>[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        20,
+                        16,
+                        20,
+                        0,
                       ),
-                      color: AppColors.navy,
+                      child: Row(
+                        children: <Widget>[
+                          IconButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                            },
+                            icon: const Icon(
+                              Icons.arrow_back_rounded,
+                            ),
+                            color: AppColors.navy,
+                          ),
+                          const Expanded(
+                            child: Text(
+                              'Question Making',
+                              style: TextStyle(
+                                color: AppColors.navy,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const XpBalancePill(),
+                        ],
+                      ),
                     ),
-                    const Expanded(
-                      child: Text(
-                        'Question Making',
-                        style: TextStyle(
-                          color: AppColors.navy,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        20,
+                        18,
+                        20,
+                        0,
+                      ),
+                      child: _HeroCard(
+                        progress: overallProgress,
+                        completedTopics: _completedTopics(),
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        20,
+                        16,
+                        20,
+                        18,
+                      ),
+                      child: _SummaryCard(
+                        topicCount: _topics.length,
+                      ),
+                    ),
+                  ),
+                  if (_loading)
+                    const SliverFillRemaining(
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
                         ),
                       ),
-                    ),
-                    const XpBalancePill(),
-                  ],
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  18,
-                  20,
-                  0,
-                ),
-                child: _HeroCard(
-                  progress: overallProgress,
-                  completedTopics: _completedTopics(),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  16,
-                  20,
-                  18,
-                ),
-                child: _SummaryCard(
-                  topicCount: _topics.length,
-                ),
-              ),
-            ),
-            if (_loading)
-              const SliverFillRemaining(
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(
-                  20,
-                  0,
-                  20,
-                  30,
-                ),
-                sliver: SliverList.builder(
-                  itemCount: _topics.length,
-                  itemBuilder: (
-                      BuildContext context,
-                      int index,
-                      ) {
-                    final QuestionMakingTopic topic =
-                    _topics[index];
-
-                    return Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: 13,
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(
+                        20,
+                        0,
+                        20,
+                        30,
                       ),
-                      child: _TopicCard(
-                        topic: topic,
-                        completed:
-                        _progress[topic.id] ?? 0,
-                        onTap: () {
-                          _openTopic(topic);
+                      sliver: SliverList.builder(
+                        itemCount: _topics.length,
+                        itemBuilder: (
+                            BuildContext context,
+                            int index,
+                            ) {
+                          final QuestionMakingTopic topic = _topics[index];
+
+                          return Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: 13,
+                            ),
+                            child: _TopicCard(
+                              topic: topic,
+                              completed: _progress[topic.id] ?? 0,
+                              onTap: () {
+                                _openTopic(topic);
+                              },
+                            ),
+                          );
                         },
                       ),
-                    );
-                  },
-                ),
+                    ),
+                ],
               ),
+            ),
           ],
         ),
       ),
@@ -232,8 +238,8 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int percentage =
-    (progress * 100).round();
+    // Variable intentionally kept if needed later, though not currently displayed
+    // final int percentage = (progress * 100).round();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -257,8 +263,7 @@ class _HeroCard extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 const Text(
                   'Build your questions',
@@ -278,15 +283,12 @@ class _HeroCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 18),
                 ClipRRect(
-                  borderRadius:
-                  BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(20),
                   child: LinearProgressIndicator(
                     value: progress,
                     minHeight: 7,
-                    backgroundColor:
-                    Colors.white.withAlpha(55),
-                    valueColor:
-                    const AlwaysStoppedAnimation<Color>(
+                    backgroundColor: Colors.white.withAlpha(55),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
                       Colors.white,
                     ),
                   ),
@@ -393,8 +395,7 @@ class _TopicCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double progress =
-    (completed / 25).clamp(0.0, 1.0);
+    final double progress = (completed / 25).clamp(0.0, 1.0);
 
     final bool isCompleted = completed >= 25;
 
@@ -431,9 +432,7 @@ class _TopicCard extends StatelessWidget {
                 ),
               ),
               child: Icon(
-                isCompleted
-                    ? Icons.check_rounded
-                    : topic.icon,
+                isCompleted ? Icons.check_rounded : topic.icon,
                 color: topic.color,
                 size: 28,
               ),
@@ -441,8 +440,7 @@ class _TopicCard extends StatelessWidget {
             const SizedBox(width: 13),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
                     topic.title,
@@ -462,15 +460,12 @@ class _TopicCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 11),
                   ClipRRect(
-                    borderRadius:
-                    BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10),
                     child: LinearProgressIndicator(
                       value: progress,
                       minHeight: 5,
-                      backgroundColor:
-                      topic.color.withAlpha(28),
-                      valueColor:
-                      AlwaysStoppedAnimation<Color>(
+                      backgroundColor: topic.color.withAlpha(28),
+                      valueColor: AlwaysStoppedAnimation<Color>(
                         topic.color,
                       ),
                     ),
@@ -480,8 +475,7 @@ class _TopicCard extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: <Widget>[
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -490,8 +484,7 @@ class _TopicCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: topic.color.withAlpha(24),
-                    borderRadius:
-                    BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     isCompleted ? 'Review' : 'Start',

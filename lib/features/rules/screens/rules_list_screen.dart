@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
 import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../data/batches/rule_config.dart';
@@ -166,19 +167,27 @@ class _RulesListScreenState extends State<RulesListScreen> {
 
     if (content == null) {
       _showMessage(
-        'এই Rule-এর lesson content এখনো যোগ করা হয়নি।',
+        'এই Rule-এর lesson content এখনো যোগ করা হয়নি।',
         isError: true,
       );
       return;
     }
 
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => RuleDetailsScreen(rule: content),
-      ),
+    // --- INTERSTITIAL AD TRIGGER ---
+    // ইউজার যেকোনো Rule-এ ক্লিক করলেই অ্যাড কল হবে
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () {
+        // অ্যাড দেখা শেষ হলে (বা কুলডাউনে থাকলে) নেক্সট স্ক্রিনে যাবে
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => RuleDetailsScreen(rule: content),
+          ),
+        ).then((_) {
+          // Rule Details থেকে ব্যাক করার পর প্রগ্রেস আপডেট হবে
+          _loadProgress();
+        });
+      },
     );
-
-    await _loadProgress();
   }
 
   void _showMessage(String message, {bool isError = false}) {
@@ -1130,7 +1139,7 @@ class _EmptyState extends StatelessWidget {
         ),
         SizedBox(height: 16),
         Text(
-          'কোনো Rule পাওয়া যায়নি',
+          'কোনো Rule পাওয়া যায়নি',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: AppColors.navy,

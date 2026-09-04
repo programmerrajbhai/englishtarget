@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+import '../../../core/ads/ad_manager.dart';
 import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/microphone_disclosure.dart';
@@ -871,7 +872,13 @@ class DailyChallengeResultScreen extends StatelessWidget {
                       height: 55,
                       child: ElevatedButton(
                         onPressed: () {
-                          Navigator.popUntil(context, (Route<dynamic> route) => route.isFirst);
+                          AdManager.instance.showInterstitialAd(
+                            onAdDismissed: () {
+                              // অ্যাড দেখা শেষ হলে বা কুলডাউনে থাকলে এই নেভিগেশন কাজ করবে
+                              Navigator.popUntil(context, (Route<dynamic> route) => route.isFirst);
+                            },
+                          );
+
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,

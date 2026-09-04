@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
 import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../question_making/services/question_making_audio_service.dart';
@@ -14,17 +15,14 @@ class DailyChallengeScreen extends StatefulWidget {
   });
 
   @override
-  State<DailyChallengeScreen> createState() =>
-      _DailyChallengeScreenState();
+  State<DailyChallengeScreen> createState() => _DailyChallengeScreenState();
 }
 
-class _DailyChallengeScreenState
-    extends State<DailyChallengeScreen> {
+class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
   DailyChallengeState? _state;
   bool _loading = true;
 
-  List<DailyChallengeItem> get _items =>
-      DailyChallengeData.today();
+  List<DailyChallengeItem> get _items => DailyChallengeData.today();
 
   @override
   void initState() {
@@ -34,8 +32,7 @@ class _DailyChallengeScreenState
 
   Future<void> _loadState() async {
     final DailyChallengeState state =
-    await DailyChallengeProgressService
-        .getState();
+    await DailyChallengeProgressService.getState();
 
     if (!mounted) {
       return;
@@ -48,16 +45,23 @@ class _DailyChallengeScreenState
   }
 
   Future<void> _startChallenge() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) {
-          return const DailyChallengePracticeScreen();
-        },
-      ),
+    // --- INTERSTITIAL AD TRIGGER ---
+    // চ্যালেঞ্জ শুরু করার আগে অ্যাড শো করবে
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) {
+              return const DailyChallengePracticeScreen();
+            },
+          ),
+        ).then((_) {
+          // প্র্যাকটিস শেষ করে ব্যাক করার পর স্টেট আপডেট হবে
+          _loadState();
+        });
+      },
     );
-
-    await _loadState();
   }
 
   String _todayText() {
@@ -95,25 +99,22 @@ class _DailyChallengeScreenState
   int _count(DailyChallengeItemType type) {
     return _items
         .where(
-          (DailyChallengeItem item) =>
-      item.type == type,
+          (DailyChallengeItem item) => item.type == type,
     )
         .length;
   }
 
   @override
   Widget build(BuildContext context) {
-    final DailyChallengeState state =
-        _state ??
-            const DailyChallengeState(
-              completedIds: <String>{},
-              correctIds: <String>{},
-              xpAwarded: false,
-              streak: 0,
-            );
+    final DailyChallengeState state = _state ??
+        const DailyChallengeState(
+          completedIds: <String>{},
+          correctIds: <String>{},
+          xpAwarded: false,
+          streak: 0,
+        );
 
-    final double progress =
-    (state.completedCount / 10).clamp(0.0, 1.0);
+    final double progress = (state.completedCount / 10).clamp(0.0, 1.0);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -174,7 +175,6 @@ class _DailyChallengeScreenState
         child: Column(
           children: [
             // --- STICKY BANNER AD START ---
-            // AppBar-এর ঠিক নিচে ফিক্সড থাকবে, স্ক্রল করলে চলে যাবে না।
             const BannerAdWidget(),
             // --- STICKY BANNER AD END ---
 
@@ -334,9 +334,7 @@ class _DailyChallengeScreenState
       ),
     );
   }
-
-  }
-
+}
 
 class _ChallengeHero extends StatelessWidget {
   final int completed;
@@ -370,8 +368,7 @@ class _ChallengeHero extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 const Text(
                   'Ready for today\'s challenge?',
@@ -396,15 +393,12 @@ class _ChallengeHero extends StatelessWidget {
                     const SizedBox(width: 11),
                     Expanded(
                       child: ClipRRect(
-                        borderRadius:
-                        BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(10),
                         child: LinearProgressIndicator(
                           value: progress,
                           minHeight: 7,
-                          backgroundColor:
-                          AppColors.primary.withAlpha(35),
-                          valueColor:
-                          const AlwaysStoppedAnimation<Color>(
+                          backgroundColor: AppColors.primary.withAlpha(35),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
                             AppColors.primary,
                           ),
                         ),
@@ -648,12 +642,10 @@ class _StreakRow extends StatelessWidget {
         ),
       ),
       child: Row(
-        mainAxisAlignment:
-        MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: days.asMap().entries.map(
               (MapEntry<int, String> entry) {
-            final bool active =
-                entry.key < streak.clamp(0, 7);
+            final bool active = entry.key < streak.clamp(0, 7);
 
             return Column(
               children: <Widget>[
@@ -670,9 +662,7 @@ class _StreakRow extends StatelessWidget {
                   width: 29,
                   height: 29,
                   decoration: BoxDecoration(
-                    color: active
-                        ? AppColors.primary
-                        : Colors.white,
+                    color: active ? AppColors.primary : Colors.white,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: active
@@ -681,9 +671,7 @@ class _StreakRow extends StatelessWidget {
                     ),
                   ),
                   child: Icon(
-                    active
-                        ? Icons.check_rounded
-                        : Icons.circle_outlined,
+                    active ? Icons.check_rounded : Icons.circle_outlined,
                     color: active
                         ? Colors.white
                         : AppColors.primary.withAlpha(130),
