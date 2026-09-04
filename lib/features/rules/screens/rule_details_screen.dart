@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
+import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
 import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../controllers/rule_learning_controller.dart';
 import '../models/rule_content.dart';
-import 'rule_test_screen.dart';
+import 'rule_test_screen.dart'; // <--- ENSURE THIS FILE EXISTS IN THE SAME FOLDER
 
 class RuleDetailsScreen extends StatefulWidget {
   final RuleContent rule;
@@ -16,12 +17,10 @@ class RuleDetailsScreen extends StatefulWidget {
   });
 
   @override
-  State<RuleDetailsScreen> createState() =>
-      _RuleDetailsScreenState();
+  State<RuleDetailsScreen> createState() => _RuleDetailsScreenState();
 }
 
-class _RuleDetailsScreenState
-    extends State<RuleDetailsScreen> {
+class _RuleDetailsScreenState extends State<RuleDetailsScreen> {
   late final RuleLearningController _controller;
   late final FlutterTts _tts;
 
@@ -37,15 +36,13 @@ class _RuleDetailsScreenState
   }
 
   bool get _isLast {
-    return _currentIndex ==
-        widget.rule.examples.length - 1;
+    return _currentIndex == widget.rule.examples.length - 1;
   }
 
   double get _exampleProgress {
     if (widget.rule.examples.isEmpty) return 0;
 
-    return (_currentIndex + 1) /
-        widget.rule.examples.length;
+    return (_currentIndex + 1) / widget.rule.examples.length;
   }
 
   @override
@@ -122,14 +119,13 @@ class _RuleDetailsScreenState
     }
 
     if (!_controller.progress.learnCompleted) {
-      final completed =
-      await _controller.completeLearning();
+      final completed = await _controller.completeLearning();
 
       if (!mounted) return;
 
       if (completed) {
         _showMessage(
-          'Learning complete হয়েছে। এখন Rule Test দিন।',
+          'Learning complete হয়েছে। এখন Rule Test দিন।',
           color: AppColors.primary,
         );
       }
@@ -142,357 +138,25 @@ class _RuleDetailsScreenState
   }
 
   void _openTest() {
-    Navigator.of(context)
-        .push(
-      MaterialPageRoute<void>(
-        builder: (_) {
-          return RuleTestScreen(
-            rule: widget.rule,
-          );
-        },
-      ),
-    )
-        .then((_) {
-      _controller.refreshProgress();
-    });
-  }
-
-  String _resolveVisualKey(RuleExample example) {
-    if (example.visualKey.isNotEmpty &&
-        example.visualKey != 'default') {
-      return example.visualKey;
-    }
-
-    final text = '${example.bengali} '
-        '${example.english}'
-        .toLowerCase();
-
-    if (text.contains('student') ||
-        text.contains('ছাত্র') ||
-        text.contains('ছাত্রী')) {
-      return 'student';
-    }
-
-    if (text.contains('learn') ||
-        text.contains('english') ||
-        text.contains('শিখি')) {
-      return 'learning';
-    }
-
-    if (text.contains('friend') ||
-        text.contains('বন্ধু')) {
-      return 'friends';
-    }
-
-    if (text.contains('speak') ||
-        text.contains('বলো')) {
-      return 'speaking';
-    }
-
-    if (text.contains('boy') ||
-        text.contains('ছেলে')) {
-      return 'boy';
-    }
-
-    if (text.contains('girl') ||
-        text.contains('মেয়ে')) {
-      return 'girl';
-    }
-
-    if (text.contains('work') ||
-        text.contains('কাজ')) {
-      return 'work';
-    }
-
-    if (text.contains('sing') ||
-        text.contains('গান')) {
-      return 'singing';
-    }
-
-    if (text.contains('phone') ||
-        text.contains('ফোন')) {
-      return 'phone';
-    }
-
-    if (text.contains('live') ||
-        text.contains('বাংলাদেশে')) {
-      return 'home';
-    }
-
-    if (text.contains('together') ||
-        text.contains('একসঙ্গে')) {
-      return 'learning_together';
-    }
-
-    if (text.contains('football') ||
-        text.contains('মাঠে')) {
-      return 'football';
-    }
-
-    if (text.contains('ready') ||
-        text.contains('প্রস্তুত')) {
-      return 'ready';
-    }
-
-
-    return 'example_$_currentIndex';
-  }
-  static _VisualInfo _v(
-      IconData icon,
-      int color,
-      String label,
-      ) {
-    return _VisualInfo(
-      icon: icon,
-      color: Color(color),
-      label: label,
+    // --- INTERSTITIAL AD TRIGGER ---
+    // Test-এ যাওয়ার ঠিক আগে অ্যাড শো করবে
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () {
+        Navigator.of(context)
+            .push(
+          MaterialPageRoute<void>(
+            builder: (_) {
+              return RuleTestScreen(
+                rule: widget.rule,
+              );
+            },
+          ),
+        )
+            .then((_) {
+          _controller.refreshProgress();
+        });
+      },
     );
-  }
-
-  static final Map<String, _VisualInfo> _visualCatalog =
-  <String, _VisualInfo>{
-    'student': _v(Icons.school_rounded, 0xFF16A36A, 'Student'),
-    'students': _v(Icons.groups_rounded, 0xFF16A36A, 'Students'),
-    'school': _v(Icons.school_rounded, 0xFF4285F4, 'School'),
-    'teacher': _v(Icons.co_present_rounded, 0xFF7756D8, 'Teacher'),
-    'friend': _v(Icons.person_add_rounded, 0xFF7756D8, 'Friend'),
-    'friends': _v(Icons.groups_rounded, 0xFF7756D8, 'Friends'),
-    'boy': _v(Icons.person_rounded, 0xFF16A36A, 'Boy'),
-    'girl': _v(Icons.face_rounded, 0xFF7756D8, 'Girl'),
-    'mother': _v(Icons.woman_rounded, 0xFFE94B4B, 'Mother'),
-    'sister': _v(Icons.face_3_rounded, 0xFF7756D8, 'Sister'),
-
-    'learning': _v(Icons.menu_book_rounded, 0xFF4285F4, 'Learning'),
-    'learn': _v(Icons.auto_stories_rounded, 0xFF4285F4, 'Learn'),
-    'book': _v(Icons.menu_book_rounded, 0xFF4285F4, 'Book'),
-    'books': _v(Icons.library_books_rounded, 0xFF4285F4, 'Books'),
-    'read': _v(Icons.chrome_reader_mode_rounded, 0xFF4285F4, 'Reading'),
-    'write': _v(Icons.edit_note_rounded, 0xFF7756D8, 'Writing'),
-    'speaking': _v(Icons.record_voice_over_rounded, 0xFF4285F4, 'Speaking'),
-    'listen': _v(Icons.hearing_rounded, 0xFF0D9E70, 'Listening'),
-
-    'home': _v(Icons.home_rounded, 0xFF4285F4, 'Home'),
-    'dhaka': _v(Icons.location_city_rounded, 0xFF4285F4, 'Dhaka'),
-    'school_place': _v(Icons.school_rounded, 0xFF4285F4, 'School'),
-    'market': _v(Icons.storefront_rounded, 0xFFFFA51F, 'Market'),
-    'office': _v(Icons.business_rounded, 0xFF7756D8, 'Office'),
-    'company': _v(Icons.business_center_rounded, 0xFF7756D8, 'Company'),
-
-    'bus': _v(Icons.directions_bus_rounded, 0xFF0D9E70, 'Bus'),
-    'travel': _v(Icons.travel_explore_rounded, 0xFF4285F4, 'Travel'),
-    'go': _v(Icons.directions_walk_rounded, 0xFF0D9E70, 'Going'),
-    'come': _v(Icons.login_rounded, 0xFF16A36A, 'Coming'),
-    'arrive': _v(Icons.place_rounded, 0xFF4285F4, 'Arrival'),
-
-    'work': _v(Icons.work_rounded, 0xFFFFA51F, 'Work'),
-    'machine': _v(Icons.settings_rounded, 0xFF7756D8, 'Machine'),
-    'make': _v(Icons.build_rounded, 0xFFFFA51F, 'Making'),
-    'cook': _v(Icons.soup_kitchen_rounded, 0xFFE94B4B, 'Cooking'),
-    'run': _v(Icons.directions_run_rounded, 0xFF16A36A, 'Running'),
-    'walk': _v(Icons.directions_walk_rounded, 0xFF16A36A, 'Walking'),
-    'start': _v(Icons.play_circle_rounded, 0xFF16A36A, 'Starting'),
-    'help': _v(Icons.volunteer_activism_rounded, 0xFF16A36A, 'Helping'),
-    'wait': _v(Icons.hourglass_top_rounded, 0xFFFFA51F, 'Waiting'),
-    'waiting': _v(Icons.hourglass_top_rounded, 0xFFFFA51F, 'Waiting'),
-
-    'phone': _v(Icons.phone_android_rounded, 0xFF0D9E70, 'Phone'),
-    'device': _v(Icons.devices_rounded, 0xFF4285F4, 'Device'),
-    'letter': _v(Icons.mail_rounded, 0xFF4285F4, 'Letter'),
-    'gift': _v(Icons.card_giftcard_rounded, 0xFFE94B4B, 'Gift'),
-    'hand': _v(Icons.back_hand_rounded, 0xFFFFA51F, 'Hand'),
-    'knife': _v(Icons.restaurant_rounded, 0xFFE94B4B, 'Knife'),
-
-    'tea': _v(Icons.local_cafe_rounded, 0xFFFFA51F, 'Tea'),
-    'food': _v(Icons.restaurant_rounded, 0xFFE94B4B, 'Food'),
-    'water': _v(Icons.water_drop_rounded, 0xFF4285F4, 'Water'),
-    'milk': _v(Icons.local_drink_rounded, 0xFFFFFFFF, 'Milk'),
-    'sugar': _v(Icons.grain_rounded, 0xFFFFA51F, 'Sugar'),
-    'apples': _v(Icons.apple_rounded, 0xFFE94B4B, 'Apples'),
-    'apple': _v(Icons.apple_rounded, 0xFFE94B4B, 'Apple'),
-
-    'rain': _v(Icons.umbrella_rounded, 0xFF4285F4, 'Rain'),
-    'football': _v(Icons.sports_soccer_rounded, 0xFF16A36A, 'Football'),
-    'singing': _v(Icons.music_note_rounded, 0xFFE94B4B, 'Singing'),
-    'happy': _v(Icons.sentiment_satisfied_alt_rounded, 0xFFFFA51F, 'Happy'),
-    'crying': _v(Icons.sentiment_dissatisfied_rounded, 0xFF4285F4, 'Crying'),
-    'sick': _v(Icons.sick_rounded, 0xFFE94B4B, 'Sick'),
-    'busy': _v(Icons.timer_rounded, 0xFFE94B4B, 'Busy'),
-    'late': _v(Icons.schedule_rounded, 0xFFE94B4B, 'Late'),
-    'ready': _v(Icons.check_circle_rounded, 0xFF16A36A, 'Ready'),
-
-    'time': _v(Icons.access_time_rounded, 0xFF4285F4, 'Time'),
-    'day': _v(Icons.today_rounded, 0xFF4285F4, 'Day'),
-    'price': _v(Icons.sell_rounded, 0xFFFFA51F, 'Price'),
-    'money': _v(Icons.payments_rounded, 0xFF16A36A, 'Money'),
-    'cars': _v(Icons.directions_car_rounded, 0xFF4285F4, 'Cars'),
-    'shoes': _v(Icons.shopping_bag_rounded, 0xFF7756D8, 'Shoes'),
-    'pens': _v(Icons.edit_rounded, 0xFF4285F4, 'Pens'),
-    'chairs': _v(Icons.chair_rounded, 0xFFFFA51F, 'Chairs'),
-
-    'question': _v(Icons.help_outline_rounded, 0xFF0D9E9A, 'Question'),
-    'negative': _v(Icons.block_rounded, 0xFFE94B4B, 'Negative sentence'),
-    'positive': _v(Icons.check_circle_rounded, 0xFF16A36A, 'Positive sentence'),
-    'conversation': _v(Icons.forum_rounded, 0xFF7756D8, 'Conversation'),
-    'simple': _v(Icons.chat_bubble_outline_rounded, 0xFF4285F4, 'Sentence'),
-    'idea': _v(Icons.auto_awesome_rounded, 0xFFFFA51F, 'Example'),
-  };
-
-  _VisualInfo _visualForExample(RuleExample example) {
-    final explicitKey = example.visualKey.trim().toLowerCase();
-
-    final explicitVisual = _visualCatalog[explicitKey];
-    if (explicitVisual != null) {
-      return explicitVisual;
-    }
-
-    final text = '${example.bengali} ${example.english}'
-        .toLowerCase();
-
-    final detectedKey = _detectVisualKey(
-      text,
-      example.type,
-    );
-
-    final detectedVisual = _visualCatalog[detectedKey];
-    if (detectedVisual != null) {
-      return detectedVisual;
-    }
-
-    return _visualCatalog['idea']!;
-  }
-
-  String _detectVisualKey(
-      String text,
-      RuleExampleType type,
-      ) {
-    bool has(List<String> words) {
-      return words.any(text.contains);
-    }
-
-    if (has(['student', 'ছাত্র', 'ছাত্রী'])) {
-      return 'student';
-    }
-    if (has(['teacher', 'শিক্ষক', 'শিক্ষিকা'])) {
-      return 'teacher';
-    }
-    if (has(['friend', 'বন্ধু'])) {
-      return 'friends';
-    }
-    if (has(['school', 'স্কুল'])) {
-      return 'school';
-    }
-    if (has(['book', 'বই'])) {
-      return 'books';
-    }
-    if (has(['phone', 'ফোন'])) {
-      return 'phone';
-    }
-    if (has(['home', 'বাড়ি', 'বাড়ি', 'বাসায়', 'বাসায়'])) {
-      return 'home';
-    }
-    if (has(['office', 'অফিস'])) {
-      return 'office';
-    }
-    if (has(['market', 'বাজার'])) {
-      return 'market';
-    }
-    if (has(['bus', 'বাস'])) {
-      return 'bus';
-    }
-    if (has(['rain', 'বৃষ্টি'])) {
-      return 'rain';
-    }
-    if (has(['water', 'পানি', 'জল'])) {
-      return 'water';
-    }
-    if (has(['food', 'খাবার'])) {
-      return 'food';
-    }
-    if (has(['tea', 'চা'])) {
-      return 'tea';
-    }
-    if (has(['football', 'ফুটবল', 'মাঠে'])) {
-      return 'football';
-    }
-    if (has(['sing', 'গান'])) {
-      return 'singing';
-    }
-    if (has(['happy', 'খুশি', 'সুখী'])) {
-      return 'happy';
-    }
-    if (has(['cry', 'কাঁদ'])) {
-      return 'crying';
-    }
-    if (has(['sick', 'অসুস্থ'])) {
-      return 'sick';
-    }
-    if (has(['late', 'দেরি'])) {
-      return 'late';
-    }
-    if (has(['busy', 'ব্যস্ত'])) {
-      return 'busy';
-    }
-    if (has(['work', 'কাজ'])) {
-      return 'work';
-    }
-    if (has(['cook', 'রান্না'])) {
-      return 'cook';
-    }
-    if (has(['run', 'দৌড়', 'দৌড়'])) {
-      return 'run';
-    }
-    if (has(['walk', 'হাঁটি', 'হাঁটা'])) {
-      return 'walk';
-    }
-    if (has(['learn', 'শিখি', 'শেখো', 'শেখে'])) {
-      return 'learning';
-    }
-    if (has(['speak', 'বল', 'কথা'])) {
-      return 'speaking';
-    }
-    if (has(['travel', 'ভ্রমণ'])) {
-      return 'travel';
-    }
-    if (has(['time', 'সময়', 'সময়'])) {
-      return 'time';
-    }
-    if (has(['money', 'টাকা'])) {
-      return 'money';
-    }
-    if (has(['price', 'দাম'])) {
-      return 'price';
-    }
-    if (has(['apple', 'আপেল'])) {
-      return 'apples';
-    }
-    if (has(['car', 'গাড়ি', 'গাড়ি'])) {
-      return 'cars';
-    }
-    if (has(['shoe', 'জুতা'])) {
-      return 'shoes';
-    }
-    if (has(['letter', 'চিঠি'])) {
-      return 'letter';
-    }
-    if (has(['gift', 'উপহার'])) {
-      return 'gift';
-    }
-    if (has(['question', '?', 'কেন', 'কীভাবে', 'কখন'])) {
-      return 'question';
-    }
-
-    switch (type) {
-      case RuleExampleType.question:
-        return 'question';
-      case RuleExampleType.negative:
-        return 'negative';
-      case RuleExampleType.positive:
-        return 'positive';
-      case RuleExampleType.conversation:
-        return 'conversation';
-      case RuleExampleType.simple:
-        return 'simple';
-    }
   }
 
   void _showMessage(
@@ -552,7 +216,6 @@ class _RuleDetailsScreenState
             const _LessonSteps(),
 
             // --- STICKY BANNER AD START ---
-            // Lesson Steps এবং মেইন কন্টেন্টের মাঝে ফিক্সড থাকবে
             const BannerAdWidget(),
             // --- STICKY BANNER AD END ---
 
@@ -565,15 +228,13 @@ class _RuleDetailsScreenState
               )
                   : LayoutBuilder(
                 builder: (context, constraints) {
-                  final padding =
-                  (constraints.maxWidth * 0.055)
+                  final padding = (constraints.maxWidth * 0.055)
                       .clamp(18.0, 34.0)
                       .toDouble();
 
                   return Center(
                     child: ConstrainedBox(
-                      constraints:
-                      const BoxConstraints(
+                      constraints: const BoxConstraints(
                         maxWidth: 760,
                       ),
                       child: ListView(
@@ -589,15 +250,12 @@ class _RuleDetailsScreenState
                           ),
                           const SizedBox(height: 14),
                           _FormulaCard(
-                            formula:
-                            widget.rule.formula,
+                            formula: widget.rule.formula,
                           ),
                           const SizedBox(height: 20),
                           _ExampleProgress(
-                            current:
-                            _currentIndex + 1,
-                            total: widget
-                                .rule.examples.length,
+                            current: _currentIndex + 1,
+                            total: widget.rule.examples.length,
                             value: _exampleProgress,
                           ),
                           const SizedBox(height: 13),
@@ -621,19 +279,15 @@ class _RuleDetailsScreenState
                               key: ValueKey(
                                 'sentence_$_currentIndex',
                               ),
-                              example:
-                              _currentExample,
+                              example: _currentExample,
                               color: visual.color,
-                              isSpeaking:
-                              _isSpeaking,
-                              onSpeak:
-                              _speakSentence,
+                              isSpeaking: _isSpeaking,
+                              onSpeak: _speakSentence,
                             ),
                           ),
                           const SizedBox(height: 14),
                           _TipCard(
-                            example:
-                            _currentExample,
+                            example: _currentExample,
                           ),
                         ],
                       ),
@@ -645,8 +299,7 @@ class _RuleDetailsScreenState
             _BottomControls(
               isFirst: _isFirst,
               isLast: _isLast,
-              isCompleted:
-              progress.learnCompleted,
+              isCompleted: progress.learnCompleted,
               isLoading: _controller.isLoading,
               onPrevious: _previousSentence,
               onNext: _nextSentence,
@@ -655,8 +308,6 @@ class _RuleDetailsScreenState
         ),
       ),
     );
-
-
   }
 }
 
@@ -747,19 +398,19 @@ class _LessonSteps extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _StepItem(
+          const _StepItem(
             title: 'Learn',
             icon: Icons.menu_book_rounded,
             active: true,
           ),
           const _StepLine(),
-          _StepItem(
+          const _StepItem(
             title: 'Test',
             icon: Icons.quiz_rounded,
             active: false,
           ),
           const _StepLine(),
-          _StepItem(
+          const _StepItem(
             title: 'Speak',
             icon: Icons.mic_rounded,
             active: false,
@@ -783,9 +434,7 @@ class _StepItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active
-        ? AppColors.primary
-        : AppColors.textSecondary;
+    final color = active ? AppColors.primary : AppColors.textSecondary;
 
     return Column(
       children: [
@@ -793,9 +442,7 @@ class _StepItem extends StatelessWidget {
           width: 31,
           height: 31,
           decoration: BoxDecoration(
-            color: active
-                ? AppColors.mint
-                : const Color(0xFFF1F3F2),
+            color: active ? AppColors.mint : const Color(0xFFF1F3F2),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -834,8 +481,7 @@ class _StepLine extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: AppColors.border,
-          borderRadius:
-          BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20),
         ),
       ),
     );
@@ -855,8 +501,7 @@ class _RuleInfoCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: rule.color.withAlpha(17),
-        borderRadius:
-        BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: rule.color.withAlpha(48),
         ),
@@ -868,8 +513,7 @@ class _RuleInfoCard extends StatelessWidget {
             height: 49,
             decoration: BoxDecoration(
               color: rule.color,
-              borderRadius:
-              BorderRadius.circular(15),
+              borderRadius: BorderRadius.circular(15),
             ),
             child: Icon(
               rule.icon,
@@ -880,8 +524,7 @@ class _RuleInfoCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   rule.shortMeaning,
@@ -924,8 +567,7 @@ class _FormulaCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.navy,
-        borderRadius:
-        BorderRadius.circular(19),
+        borderRadius: BorderRadius.circular(19),
       ),
       child: Row(
         children: [
@@ -934,8 +576,7 @@ class _FormulaCard extends StatelessWidget {
             height: 42,
             decoration: BoxDecoration(
               color: Colors.white.withAlpha(20),
-              borderRadius:
-              BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(
               Icons.account_tree_rounded,
@@ -946,8 +587,7 @@ class _FormulaCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Sentence Structure',
@@ -1014,16 +654,12 @@ class _ExampleProgress extends StatelessWidget {
         ),
         const SizedBox(height: 9),
         ClipRRect(
-          borderRadius:
-          BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(20),
           child: LinearProgressIndicator(
             value: value,
             minHeight: 6,
-            backgroundColor:
-            const Color(0xFFE1EAE5),
-            valueColor:
-            const AlwaysStoppedAnimation<
-                Color>(
+            backgroundColor: const Color(0xFFE1EAE5),
+            valueColor: const AlwaysStoppedAnimation<Color>(
               AppColors.primary,
             ),
           ),
@@ -1054,8 +690,7 @@ class _VisualCard extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius:
-        BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: visual.color.withAlpha(60),
         ),
@@ -1121,15 +756,13 @@ class _VisualCard extends StatelessWidget {
           Positioned(
             bottom: 17,
             child: Container(
-              padding:
-              const EdgeInsets.symmetric(
+              padding: const EdgeInsets.symmetric(
                 horizontal: 14,
                 vertical: 7,
               ),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius:
-                BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(22),
               ),
               child: Text(
                 visual.label,
@@ -1189,20 +822,17 @@ class _SentenceCard extends StatelessWidget {
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius:
-        BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.border,
         ),
       ),
       child: Row(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
                   'বাংলা অর্থ',
@@ -1265,22 +895,19 @@ class _TipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final firstWord =
-        example.english.split(' ').first;
+    final firstWord = example.english.split(' ').first;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFFF0F7FF),
-        borderRadius:
-        BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: const Color(0xFFC8DFF7),
         ),
       ),
       child: Row(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
             Icons.lightbulb_rounded,
@@ -1290,7 +917,7 @@ class _TipCard extends StatelessWidget {
           const SizedBox(width: 9),
           Expanded(
             child: Text(
-              '"$firstWord" sentence-এর গুরুত্বপূর্ণ word হিসেবে ব্যবহার হয়েছে।',
+              '"$firstWord" sentence-এর গুরুত্বপূর্ণ word হিসেবে ব্যবহার হয়েছে।',
               style: const TextStyle(
                 color: AppColors.navy,
                 fontSize: 12.5,
@@ -1360,9 +987,7 @@ class _BottomControls extends StatelessWidget {
               width: 112,
               height: 50,
               child: OutlinedButton.icon(
-                onPressed: isFirst || isLoading
-                    ? null
-                    : onPrevious,
+                onPressed: isFirst || isLoading ? null : onPrevious,
                 icon: const Icon(
                   Icons.arrow_back_rounded,
                   size: 18,
@@ -1375,8 +1000,7 @@ class _BottomControls extends StatelessWidget {
               child: SizedBox(
                 height: 50,
                 child: FilledButton.icon(
-                  onPressed:
-                  isLoading ? null : onNext,
+                  onPressed: isLoading ? null : onNext,
                   icon: Icon(
                     isCompleted
                         ? Icons.quiz_rounded
@@ -1397,11 +1021,6 @@ class _BottomControls extends StatelessWidget {
 }
 
 /// Resolves every example key to a semantic icon.
-///
-/// The batch files use descriptive keys such as `book_near`,
-/// `car_question`, `rain_future`, and `write_letter`. This resolver reads
-/// those keys (and the sentence text when a key is missing), so visuals are
-/// deterministic and meaning-based rather than random.
 abstract final class _SentenceVisualResolver {
   static _VisualInfo resolve({
     required RuleExample example,
@@ -1422,11 +1041,7 @@ abstract final class _SentenceVisualResolver {
   }
 
   static String _normalize(String value) {
-    return ' ${value
-        .replaceAll('_', ' ')
-        .replaceAll(RegExp(r'[^a-z0-9\u0980-\u09ff]+'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim()} ';
+    return ' ${value.replaceAll('_', ' ').replaceAll(RegExp(r'[^a-z0-9\u0980-\u09ff]+'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim()} ';
   }
 
   static bool _containsAny(String text, List<String> words) {
@@ -1440,7 +1055,8 @@ abstract final class _SentenceVisualResolver {
   }
 
   static _VisualInfo _applyModifier(_VisualInfo base, String text) {
-    if (_containsAny(text, <String>['question', 'কি', 'কেন', 'কখন', 'কীভাবে'])) {
+    if (_containsAny(
+        text, <String>['question', 'কি', 'কেন', 'কখন', 'কীভাবে'])) {
       return _VisualInfo(
         icon: base.icon,
         color: const Color(0xFF0D9E9A),
@@ -1448,7 +1064,7 @@ abstract final class _SentenceVisualResolver {
       );
     }
 
-    if (_containsAny(text, <String>['negative', 'not', 'নয়', 'নেই', 'না'])) {
+    if (_containsAny(text, <String>['negative', 'not', 'নয়', 'নেই', 'না'])) {
       return _VisualInfo(
         icon: base.icon,
         color: const Color(0xFFE94B4B),
@@ -1535,163 +1151,265 @@ abstract final class _SentenceVisualResolver {
   }
 
   static final List<_VisualRule> _rules = <_VisualRule>[
-    _r(<String>['blue car'], Icons.directions_car_rounded, 0xFF4285F4, 'Blue car'),
-    _r(<String>['fast food'], Icons.restaurant_rounded, 0xFFE94B4B, 'Fast food'),
-    _r(<String>['read book'], Icons.menu_book_rounded, 0xFF4285F4, 'Reading a book'),
-    _r(<String>['write letter'], Icons.mail_rounded, 0xFF4285F4, 'Writing a letter'),
-    _r(<String>['play football'], Icons.sports_soccer_rounded, 0xFF16A36A, 'Playing football'),
-    _r(<String>['watch movie'], Icons.movie_rounded, 0xFF7756D8, 'Watching a movie'),
+    _r(<String>['blue car'], Icons.directions_car_rounded, 0xFF4285F4,
+        'Blue car'),
+    _r(<String>['fast food'], Icons.restaurant_rounded, 0xFFE94B4B,
+        'Fast food'),
+    _r(<String>['read book'], Icons.menu_book_rounded, 0xFF4285F4,
+        'Reading a book'),
+    _r(<String>['write letter'], Icons.mail_rounded, 0xFF4285F4,
+        'Writing a letter'),
+    _r(<String>['play football'], Icons.sports_soccer_rounded, 0xFF16A36A,
+        'Playing football'),
+    _r(<String>['watch movie'], Icons.movie_rounded, 0xFF7756D8,
+        'Watching a movie'),
     _r(<String>['school', 'স্কুল'], Icons.school_rounded, 0xFF4285F4, 'School'),
-    _r(<String>['teacher', 'শিক্ষক'], Icons.school_rounded, 0xFF7756D8, 'Teacher'),
-    _r(<String>['doctor', 'ডাক্তার'], Icons.medical_services_rounded, 0xFFE94B4B, 'Doctor'),
-    _r(<String>['student', 'ছাত্র', 'ছাত্রী'], Icons.school_rounded, 0xFF16A36A, 'Student'),
-    _r(<String>['friend', 'বন্ধু'], Icons.groups_rounded, 0xFF7756D8, 'Friends'),
+    _r(<String>['teacher', 'শিক্ষক'], Icons.school_rounded, 0xFF7756D8,
+        'Teacher'),
+    _r(<String>['doctor', 'ডাক্তার'], Icons.medical_services_rounded,
+        0xFFE94B4B, 'Doctor'),
+    _r(<String>['student', 'ছাত্র', 'ছাত্রী'], Icons.school_rounded, 0xFF16A36A,
+        'Student'),
+    _r(<String>['friend', 'বন্ধু'], Icons.groups_rounded, 0xFF7756D8,
+        'Friends'),
     _r(<String>['mother', 'মা'], Icons.person_rounded, 0xFFE94B4B, 'Mother'),
     _r(<String>['brother', 'ভাই'], Icons.person_rounded, 0xFF16A36A, 'Brother'),
     _r(<String>['sister', 'বোন'], Icons.face_rounded, 0xFF7756D8, 'Sister'),
-    _r(<String>['children', 'child', 'শিশু'], Icons.child_care_rounded, 0xFFFFA51F, 'Children'),
+    _r(<String>['children', 'child', 'শিশু'], Icons.child_care_rounded,
+        0xFFFFA51F, 'Children'),
     _r(<String>['book', 'বই'], Icons.menu_book_rounded, 0xFF4285F4, 'Book'),
     _r(<String>['pen', 'কলম'], Icons.edit_rounded, 0xFF4285F4, 'Pen'),
-    _r(<String>['phone', 'ফোন'], Icons.phone_android_rounded, 0xFF0D9E70, 'Phone'),
-    _r(<String>['computer', 'কম্পিউটার'], Icons.computer_rounded, 0xFF4285F4, 'Computer'),
-    _r(<String>['chair', 'চেয়ার', 'চেয়ার'], Icons.chair_rounded, 0xFFFFA51F, 'Chair'),
-    _r(<String>['car', 'গাড়ি', 'গাড়ি'], Icons.directions_car_rounded, 0xFF4285F4, 'Car'),
-    _r(<String>['house', 'home', 'বাড়ি', 'বাড়ি'], Icons.home_rounded, 0xFF16A36A, 'Home'),
-    _r(<String>['hospital', 'হাসপাতাল'], Icons.local_hospital_rounded, 0xFFE94B4B, 'Hospital'),
+    _r(<String>['phone', 'ফোন'], Icons.phone_android_rounded, 0xFF0D9E70,
+        'Phone'),
+    _r(<String>['computer', 'কম্পিউটার'], Icons.computer_rounded, 0xFF4285F4,
+        'Computer'),
+    _r(<String>['chair', 'চেয়ার', 'চেয়ার'], Icons.chair_rounded, 0xFFFFA51F,
+        'Chair'),
+    _r(<String>['car', 'গাড়ি', 'গাড়ি'], Icons.directions_car_rounded,
+        0xFF4285F4, 'Car'),
+    _r(<String>['house', 'home', 'বাড়ি', 'বাড়ি'], Icons.home_rounded,
+        0xFF16A36A, 'Home'),
+    _r(<String>['hospital', 'হাসপাতাল'], Icons.local_hospital_rounded,
+        0xFFE94B4B, 'Hospital'),
     _r(<String>['tree', 'গাছ'], Icons.park_rounded, 0xFF16A36A, 'Tree'),
-    _r(<String>['flower', 'ফুল'], Icons.local_florist_rounded, 0xFFE94B4B, 'Flower'),
-    _r(<String>['ball', 'বল'], Icons.sports_baseball_rounded, 0xFFFFA51F, 'Ball'),
+    _r(<String>['flower', 'ফুল'], Icons.local_florist_rounded, 0xFFE94B4B,
+        'Flower'),
+    _r(<String>['ball', 'বল'], Icons.sports_baseball_rounded, 0xFFFFA51F,
+        'Ball'),
     _r(<String>['bus', 'বাস'], Icons.directions_bus_rounded, 0xFF0D9E70, 'Bus'),
-    _r(<String>['bicycle', 'bike', 'সাইকেল'], Icons.directions_bike_rounded, 0xFF16A36A, 'Bicycle'),
+    _r(<String>['bicycle', 'bike', 'সাইকেল'], Icons.directions_bike_rounded,
+        0xFF16A36A, 'Bicycle'),
     _r(<String>['bag', 'ব্যাগ'], Icons.backpack_rounded, 0xFF7756D8, 'Bag'),
     _r(<String>['key', 'keys', 'চাবি'], Icons.key_rounded, 0xFFFFA51F, 'Key'),
-    _r(<String>['shoe', 'shoes', 'জুতা'], Icons.shopping_bag_rounded, 0xFF7756D8, 'Shoes'),
-    _r(<String>['cup', 'cups', 'কাপ'], Icons.local_cafe_rounded, 0xFFFFA51F, 'Cup'),
-    _r(<String>['table', 'টেবিল'], Icons.table_restaurant_rounded, 0xFFFFA51F, 'Table'),
+    _r(<String>['shoe', 'shoes', 'জুতা'], Icons.shopping_bag_rounded,
+        0xFF7756D8, 'Shoes'),
+    _r(<String>['cup', 'cups', 'কাপ'], Icons.local_cafe_rounded, 0xFFFFA51F,
+        'Cup'),
+    _r(<String>['table', 'টেবিল'], Icons.table_restaurant_rounded, 0xFFFFA51F,
+        'Table'),
     _r(<String>['tea', 'চা'], Icons.local_cafe_rounded, 0xFFFFA51F, 'Tea'),
     _r(<String>['coffee', 'কফি'], Icons.coffee_rounded, 0xFF795548, 'Coffee'),
-    _r(<String>['food', 'খাবার', 'restaurant'], Icons.restaurant_rounded, 0xFFE94B4B, 'Food'),
-    _r(<String>['water', 'পানি', 'জল'], Icons.water_drop_rounded, 0xFF4285F4, 'Water'),
-    _r(<String>['apple', 'আপেল'], Icons.shopping_basket_rounded, 0xFFE94B4B, 'Apple'),
-    _r(<String>['rain', 'raining', 'বৃষ্টি'], Icons.umbrella_rounded, 0xFF4285F4, 'Rain'),
-    _r(<String>['sunrise', 'sun', 'সূর্য'], Icons.wb_sunny_rounded, 0xFFFFA51F, 'Sun'),
+    _r(<String>['food', 'খাবার', 'restaurant'], Icons.restaurant_rounded,
+        0xFFE94B4B, 'Food'),
+    _r(<String>['water', 'পানি', 'জল'], Icons.water_drop_rounded, 0xFF4285F4,
+        'Water'),
+    _r(<String>['apple', 'আপেল'], Icons.shopping_basket_rounded, 0xFFE94B4B,
+        'Apple'),
+    _r(<String>['rain', 'raining', 'বৃষ্টি'], Icons.umbrella_rounded,
+        0xFF4285F4, 'Rain'),
+    _r(<String>['sunrise', 'sun', 'সূর্য'], Icons.wb_sunny_rounded, 0xFFFFA51F,
+        'Sun'),
     _r(<String>['moon', 'চাঁদ'], Icons.nightlight_round, 0xFF7756D8, 'Moon'),
     _r(<String>['sky', 'আকাশ'], Icons.cloud_rounded, 0xFF4285F4, 'Sky'),
     _r(<String>['river', 'নদী'], Icons.water_rounded, 0xFF4285F4, 'River'),
     _r(<String>['park', 'পার্ক'], Icons.park_rounded, 0xFF16A36A, 'Park'),
-    _r(<String>['office', 'অফিস'], Icons.business_rounded, 0xFF7756D8, 'Office'),
+    _r(<String>['office', 'অফিস'], Icons.business_rounded, 0xFF7756D8,
+        'Office'),
     _r(<String>['class', 'ক্লাস'], Icons.class_rounded, 0xFF4285F4, 'Class'),
-    _r(<String>['exam', 'পরীক্ষা'], Icons.assignment_rounded, 0xFFE94B4B, 'Exam'),
-    _r(<String>['traffic', 'ট্রাফিক'], Icons.traffic_rounded, 0xFFE94B4B, 'Traffic'),
-    _r(<String>['work', 'works', 'working', 'কাজ'], Icons.work_rounded, 0xFFFFA51F, 'Work'),
-    _r(<String>['cook', 'cooking', 'রান্না'], Icons.soup_kitchen_rounded, 0xFFE94B4B, 'Cooking'),
-    _r(<String>['eat', 'eating', 'খাই', 'খাওয়া'], Icons.restaurant_rounded, 0xFFE94B4B, 'Eating'),
-    _r(<String>['drink', 'drank', 'পান'], Icons.local_drink_rounded, 0xFF4285F4, 'Drinking'),
-    _r(<String>['read', 'reading', 'পড়ি', 'পড়া'], Icons.chrome_reader_mode_rounded, 0xFF4285F4, 'Reading'),
-    _r(<String>['write', 'writing', 'wrote', 'লিখি', 'লেখা'], Icons.edit_note_rounded, 0xFF7756D8, 'Writing'),
-    _r(<String>['speak', 'speaking', 'বল', 'কথা'], Icons.record_voice_over_rounded, 0xFF4285F4, 'Speaking'),
-    _r(<String>['listen', 'listening', 'শুনি'], Icons.hearing_rounded, 0xFF0D9E70, 'Listening'),
+    _r(<String>['exam', 'পরীক্ষা'], Icons.assignment_rounded, 0xFFE94B4B,
+        'Exam'),
+    _r(<String>['traffic', 'ট্রাফিক'], Icons.traffic_rounded, 0xFFE94B4B,
+        'Traffic'),
+    _r(<String>['work', 'works', 'working', 'কাজ'], Icons.work_rounded,
+        0xFFFFA51F, 'Work'),
+    _r(<String>['cook', 'cooking', 'রান্না'], Icons.soup_kitchen_rounded,
+        0xFFE94B4B, 'Cooking'),
+    _r(<String>['eat', 'eating', 'খাই', 'খাওয়া'], Icons.restaurant_rounded,
+        0xFFE94B4B, 'Eating'),
+    _r(<String>['drink', 'drank', 'পান'], Icons.local_drink_rounded, 0xFF4285F4,
+        'Drinking'),
+    _r(<String>['read', 'reading', 'পড়ি', 'পড়া'],
+        Icons.chrome_reader_mode_rounded, 0xFF4285F4, 'Reading'),
+    _r(<String>['write', 'writing', 'wrote', 'লিখি', 'লেখা'],
+        Icons.edit_note_rounded, 0xFF7756D8, 'Writing'),
+    _r(<String>['speak', 'speaking', 'বল', 'কথা'],
+        Icons.record_voice_over_rounded, 0xFF4285F4, 'Speaking'),
+    _r(<String>['listen', 'listening', 'শুনি'], Icons.hearing_rounded,
+        0xFF0D9E70, 'Listening'),
     _r(<String>['talk', 'talking'], Icons.forum_rounded, 0xFF7756D8, 'Talking'),
     _r(<String>['call', 'কল'], Icons.call_rounded, 0xFF0D9E70, 'Calling'),
-    _r(<String>['help', 'helped', 'সাহায্য'], Icons.volunteer_activism_rounded, 0xFF16A36A, 'Helping'),
-    _r(<String>['teach', 'teaches', 'শেখাই'], Icons.school_rounded, 0xFF7756D8, 'Teaching'),
-    _r(<String>['study', 'studying', 'পড়াশোনা'], Icons.school_rounded, 0xFF4285F4, 'Studying'),
-    _r(<String>['run', 'running', 'দৌড়'], Icons.directions_run_rounded, 0xFF16A36A, 'Running'),
-    _r(<String>['walk', 'walking', 'হাঁটা'], Icons.directions_walk_rounded, 0xFF16A36A, 'Walking'),
-    _r(<String>['drive', 'driving'], Icons.drive_eta_rounded, 0xFF4285F4, 'Driving'),
+    _r(<String>['help', 'helped', 'সাহায্য'], Icons.volunteer_activism_rounded,
+        0xFF16A36A, 'Helping'),
+    _r(<String>['teach', 'teaches', 'শেখাই'], Icons.school_rounded, 0xFF7756D8,
+        'Teaching'),
+    _r(<String>['study', 'studying', 'পড়াশোনা'], Icons.school_rounded,
+        0xFF4285F4, 'Studying'),
+    _r(<String>['run', 'running', 'দৌড়'], Icons.directions_run_rounded,
+        0xFF16A36A, 'Running'),
+    _r(<String>['walk', 'walking', 'হাঁটা'], Icons.directions_walk_rounded,
+        0xFF16A36A, 'Walking'),
+    _r(<String>['drive', 'driving'], Icons.drive_eta_rounded, 0xFF4285F4,
+        'Driving'),
     _r(<String>['swim', 'সাঁতার'], Icons.pool_rounded, 0xFF4285F4, 'Swimming'),
-    _r(<String>['sleep', 'sleeping', 'ঘুম'], Icons.bedtime_rounded, 0xFF7756D8, 'Sleeping'),
-    _r(<String>['open', 'opened', 'খোলা'], Icons.lock_open_rounded, 0xFF16A36A, 'Opening'),
-    _r(<String>['close', 'closed', 'বন্ধ'], Icons.lock_rounded, 0xFFE94B4B, 'Closing'),
-    _r(<String>['play', 'playing', 'খেলে'], Icons.sports_rounded, 0xFF16A36A, 'Playing'),
-    _r(<String>['watch', 'watching', 'দেখি'], Icons.visibility_rounded, 0xFF4285F4, 'Watching'),
-    _r(<String>['sing', 'sang', 'গান'], Icons.music_note_rounded, 0xFFE94B4B, 'Singing'),
-    _r(<String>['dance', 'danced', 'নাচ'], Icons.music_video_rounded, 0xFFE94B4B, 'Dancing'),
-    _r(<String>['travel', 'ভ্রমণ'], Icons.travel_explore_rounded, 0xFF4285F4, 'Travel'),
-    _r(<String>['go', 'going', 'went', 'যাই', 'যাওয়া'], Icons.directions_walk_rounded, 0xFF0D9E70, 'Going'),
-    _r(<String>['come', 'coming', 'came', 'আসি', 'আসা'], Icons.login_rounded, 0xFF16A36A, 'Coming'),
-    _r(<String>['leave', 'left', 'চলে'], Icons.logout_rounded, 0xFFE94B4B, 'Leaving'),
-    _r(<String>['wait', 'waiting', 'অপেক্ষা'], Icons.hourglass_top_rounded, 0xFFFFA51F, 'Waiting'),
-    _r(<String>['happy', 'খুশি', 'সুখী'], Icons.sentiment_satisfied_alt_rounded, 0xFFFFA51F, 'Happy'),
-    _r(<String>['sad', 'দুঃখিত'], Icons.sentiment_dissatisfied_rounded, 0xFF4285F4, 'Sad'),
-    _r(<String>['cry', 'crying', 'কাঁদ'], Icons.sentiment_very_dissatisfied_rounded, 0xFF4285F4, 'Crying'),
-    _r(<String>['sick', 'fever', 'অসুস্থ', 'জ্বর'], Icons.sick_rounded, 0xFFE94B4B, 'Sick'),
+    _r(<String>['sleep', 'sleeping', 'ঘুম'], Icons.bedtime_rounded, 0xFF7756D8,
+        'Sleeping'),
+    _r(<String>['open', 'opened', 'খোলা'], Icons.lock_open_rounded, 0xFF16A36A,
+        'Opening'),
+    _r(<String>['close', 'closed', 'বন্ধ'], Icons.lock_rounded, 0xFFE94B4B,
+        'Closing'),
+    _r(<String>['play', 'playing', 'খেলে'], Icons.sports_rounded, 0xFF16A36A,
+        'Playing'),
+    _r(<String>['watch', 'watching', 'দেখি'], Icons.visibility_rounded,
+        0xFF4285F4, 'Watching'),
+    _r(<String>['sing', 'sang', 'গান'], Icons.music_note_rounded, 0xFFE94B4B,
+        'Singing'),
+    _r(<String>['dance', 'danced', 'নাচ'], Icons.music_video_rounded,
+        0xFFE94B4B, 'Dancing'),
+    _r(<String>['travel', 'ভ্রমণ'], Icons.travel_explore_rounded, 0xFF4285F4,
+        'Travel'),
+    _r(<String>['go', 'going', 'went', 'যাই', 'যাওয়া'],
+        Icons.directions_walk_rounded, 0xFF0D9E70, 'Going'),
+    _r(<String>['come', 'coming', 'came', 'আসি', 'আসা'], Icons.login_rounded,
+        0xFF16A36A, 'Coming'),
+    _r(<String>['leave', 'left', 'চলে'], Icons.logout_rounded, 0xFFE94B4B,
+        'Leaving'),
+    _r(<String>['wait', 'waiting', 'অপেক্ষা'], Icons.hourglass_top_rounded,
+        0xFFFFA51F, 'Waiting'),
+    _r(<String>['happy', 'খুশি', 'সুখী'], Icons.sentiment_satisfied_alt_rounded,
+        0xFFFFA51F, 'Happy'),
+    _r(<String>['sad', 'দুঃখিত'], Icons.sentiment_dissatisfied_rounded,
+        0xFF4285F4, 'Sad'),
+    _r(<String>['cry', 'crying', 'কাঁদ'],
+        Icons.sentiment_very_dissatisfied_rounded, 0xFF4285F4, 'Crying'),
+    _r(<String>['sick', 'fever', 'অসুস্থ', 'জ্বর'], Icons.sick_rounded,
+        0xFFE94B4B, 'Sick'),
     _r(<String>['busy', 'ব্যস্ত'], Icons.timer_rounded, 0xFFE94B4B, 'Busy'),
     _r(<String>['late', 'দেরি'], Icons.schedule_rounded, 0xFFE94B4B, 'Late'),
-    _r(<String>['ready', 'প্রস্তুত'], Icons.check_circle_rounded, 0xFF16A36A, 'Ready'),
-    _r(<String>['problem', 'সমস্যা'], Icons.report_problem_rounded, 0xFFE94B4B, 'Problem'),
-    _r(<String>['idea', 'আইডিয়া'], Icons.lightbulb_rounded, 0xFFFFA51F, 'Idea'),
-    _r(<String>['success', 'সফল'], Icons.emoji_events_rounded, 0xFFFFA51F, 'Success'),
-    _r(<String>['truth', 'true', 'সত্য'], Icons.verified_rounded, 0xFF16A36A, 'Truth'),
-    _r(<String>['fear', 'ভয়'], Icons.warning_rounded, 0xFFE94B4B, 'Fear'),
-    _r(<String>['careful', 'সাবধান'], Icons.health_and_safety_rounded, 0xFFFFA51F, 'Careful'),
-    _r(<String>['time', 'সময়'], Icons.access_time_rounded, 0xFF4285F4, 'Time'),
-    _r(<String>['morning', 'সকাল'], Icons.wb_sunny_rounded, 0xFFFFA51F, 'Morning'),
+    _r(<String>['ready', 'প্রস্তুত'], Icons.check_circle_rounded, 0xFF16A36A,
+        'Ready'),
+    _r(<String>['problem', 'সমস্যা'], Icons.report_problem_rounded, 0xFFE94B4B,
+        'Problem'),
+    _r(<String>['idea', 'আইডিয়া'], Icons.lightbulb_rounded, 0xFFFFA51F,
+        'Idea'),
+    _r(<String>['success', 'সফল'], Icons.emoji_events_rounded, 0xFFFFA51F,
+        'Success'),
+    _r(<String>['truth', 'true', 'সত্য'], Icons.verified_rounded, 0xFF16A36A,
+        'Truth'),
+    _r(<String>['fear', 'ভয়'], Icons.warning_rounded, 0xFFE94B4B, 'Fear'),
+    _r(<String>['careful', 'সাবধান'], Icons.health_and_safety_rounded,
+        0xFFFFA51F, 'Careful'),
+    _r(<String>['time', 'সময়'], Icons.access_time_rounded, 0xFF4285F4, 'Time'),
+    _r(<String>['morning', 'সকাল'], Icons.wb_sunny_rounded, 0xFFFFA51F,
+        'Morning'),
     _r(<String>['night', 'রাত'], Icons.nightlight_round, 0xFF7756D8, 'Night'),
-    _r(<String>['country', 'বাংলাদেশ'], Icons.public_rounded, 0xFF16A36A, 'Country'),
-    _r(<String>['answer', 'answered'], Icons.question_answer_rounded, 0xFF4285F4, 'Answer'),
-    _r(<String>['argue', 'arguing'], Icons.forum_rounded, 0xFFE94B4B, 'Discussion'),
+    _r(<String>['country', 'বাংলাদেশ'], Icons.public_rounded, 0xFF16A36A,
+        'Country'),
+    _r(<String>['answer', 'answered'], Icons.question_answer_rounded,
+        0xFF4285F4, 'Answer'),
+    _r(<String>['argue', 'arguing'], Icons.forum_rounded, 0xFFE94B4B,
+        'Discussion'),
     _r(<String>['arrive'], Icons.place_rounded, 0xFF4285F4, 'Arrival'),
-    _r(<String>['ate rice', 'eat rice', 'dinner', 'lunch'], Icons.restaurant_rounded, 0xFFE94B4B, 'Meal'),
-    _r(<String>['begin question', 'begin'], Icons.play_circle_rounded, 0xFF16A36A, 'Beginning'),
+    _r(<String>['ate rice', 'eat rice', 'dinner', 'lunch'],
+        Icons.restaurant_rounded, 0xFFE94B4B, 'Meal'),
+    _r(<String>['begin question', 'begin'], Icons.play_circle_rounded,
+        0xFF16A36A, 'Beginning'),
     _r(<String>['bird', 'birds'], Icons.pets_rounded, 0xFF16A36A, 'Bird'),
-    _r(<String>['birth', 'birthday'], Icons.cake_rounded, 0xFFE94B4B, 'Birthday'),
-    _r(<String>['break', 'broke'], Icons.broken_image_rounded, 0xFFE94B4B, 'Broken'),
+    _r(<String>['birth', 'birthday'], Icons.cake_rounded, 0xFFE94B4B,
+        'Birthday'),
+    _r(<String>['break', 'broke'], Icons.broken_image_rounded, 0xFFE94B4B,
+        'Broken'),
     _r(<String>['door'], Icons.door_back_door, 0xFFFFA51F, 'Door'),
-    _r(<String>['buy', 'bought', 'shop', 'shopping'], Icons.shopping_cart_rounded, 0xFF16A36A, 'Shopping'),
-    _r(<String>['can do', 'doing', 'do work'], Icons.task_alt_rounded, 0xFF16A36A, 'Doing'),
-    _r(<String>['cat', 'dog', 'doll', 'pet'], Icons.pets_rounded, 0xFFFFA51F, 'Pet'),
-    _r(<String>['clean', 'cleaned'], Icons.cleaning_services_rounded, 0xFF16A36A, 'Cleaning'),
+    _r(<String>['buy', 'bought', 'shop', 'shopping'],
+        Icons.shopping_cart_rounded, 0xFF16A36A, 'Shopping'),
+    _r(<String>['can do', 'doing', 'do work'], Icons.task_alt_rounded,
+        0xFF16A36A, 'Doing'),
+    _r(<String>['cat', 'dog', 'doll', 'pet'], Icons.pets_rounded, 0xFFFFA51F,
+        'Pet'),
+    _r(<String>['clean', 'cleaned'], Icons.cleaning_services_rounded,
+        0xFF16A36A, 'Cleaning'),
     _r(<String>['clock'], Icons.access_time_rounded, 0xFF4285F4, 'Clock'),
     _r(<String>['cold'], Icons.ac_unit_rounded, 0xFF4285F4, 'Cold'),
     _r(<String>['color', 'orange'], Icons.palette_rounded, 0xFFE94B4B, 'Color'),
-    _r(<String>['correct question', 'correct'], Icons.fact_check_rounded, 0xFF16A36A, 'Correct'),
+    _r(<String>['correct question', 'correct'], Icons.fact_check_rounded,
+        0xFF16A36A, 'Correct'),
     _r(<String>['course'], Icons.school_rounded, 0xFF4285F4, 'Course'),
-    _r(<String>['cricket'], Icons.sports_cricket_rounded, 0xFF16A36A, 'Cricket'),
-    _r(<String>['difficult'], Icons.psychology_rounded, 0xFFE94B4B, 'Difficult'),
+    _r(<String>['cricket'], Icons.sports_cricket_rounded, 0xFF16A36A,
+        'Cricket'),
+    _r(<String>['difficult'], Icons.psychology_rounded, 0xFFE94B4B,
+        'Difficult'),
     _r(<String>['easy'], Icons.lightbulb_rounded, 0xFFFFA51F, 'Easy'),
     _r(<String>['earth'], Icons.public_rounded, 0xFF16A36A, 'Earth'),
-    _r(<String>['english', 'language', 'languages'], Icons.translate_rounded, 0xFF4285F4, 'Language'),
-    _r(<String>['experience'], Icons.workspace_premium_rounded, 0xFFFFA51F, 'Experience'),
+    _r(<String>['english', 'language', 'languages'], Icons.translate_rounded,
+        0xFF4285F4, 'Language'),
+    _r(<String>['experience'], Icons.workspace_premium_rounded, 0xFFFFA51F,
+        'Experience'),
     _r(<String>['explain'], Icons.menu_book_rounded, 0xFF4285F4, 'Explanation'),
-    _r(<String>['feeling', 'doing well'], Icons.sentiment_satisfied_alt_rounded, 0xFFFFA51F, 'Feeling'),
-    _r(<String>['finish', 'finish work'], Icons.task_alt_rounded, 0xFF16A36A, 'Finished'),
-    _r(<String>['follow me'], Icons.follow_the_signs_rounded, 0xFF4285F4, 'Follow'),
+    _r(<String>['feeling', 'doing well'], Icons.sentiment_satisfied_alt_rounded,
+        0xFFFFA51F, 'Feeling'),
+    _r(<String>['finish', 'finish work'], Icons.task_alt_rounded, 0xFF16A36A,
+        'Finished'),
+    _r(<String>['follow me'], Icons.follow_the_signs_rounded, 0xFF4285F4,
+        'Follow'),
     _r(<String>['form'], Icons.assignment_rounded, 0xFF4285F4, 'Form'),
-    _r(<String>['funny'], Icons.sentiment_very_satisfied_rounded, 0xFFFFA51F, 'Funny'),
-    _r(<String>['have opportunity', 'opportunity'], Icons.lightbulb_rounded, 0xFFFFA51F, 'Opportunity'),
-    _r(<String>['have project', 'project'], Icons.work_rounded, 0xFF7756D8, 'Project'),
+    _r(<String>['funny'], Icons.sentiment_very_satisfied_rounded, 0xFFFFA51F,
+        'Funny'),
+    _r(<String>['have opportunity', 'opportunity'], Icons.lightbulb_rounded,
+        0xFFFFA51F, 'Opportunity'),
+    _r(<String>['have project', 'project'], Icons.work_rounded, 0xFF7756D8,
+        'Project'),
     _r(<String>['has tail', 'tail'], Icons.pets_rounded, 0xFFFFA51F, 'Tail'),
-    _r(<String>['has voice', 'hear', 'hearing'], Icons.record_voice_over_rounded, 0xFF4285F4, 'Voice'),
-    _r(<String>['healthy'], Icons.health_and_safety_rounded, 0xFF16A36A, 'Healthy'),
-    _r(<String>['helmet'], Icons.health_and_safety_rounded, 0xFFFFA51F, 'Helmet'),
+    _r(<String>['has voice', 'hear', 'hearing'],
+        Icons.record_voice_over_rounded, 0xFF4285F4, 'Voice'),
+    _r(<String>['healthy'], Icons.health_and_safety_rounded, 0xFF16A36A,
+        'Healthy'),
+    _r(<String>['helmet'], Icons.health_and_safety_rounded, 0xFFFFA51F,
+        'Helmet'),
     _r(<String>['hot'], Icons.local_fire_department_rounded, 0xFFE94B4B, 'Hot'),
     _r(<String>['inside'], Icons.home_rounded, 0xFF16A36A, 'Inside'),
-    _r(<String>['invite', 'invited'], Icons.event_rounded, 0xFF7756D8, 'Invitation'),
+    _r(<String>['invite', 'invited'], Icons.event_rounded, 0xFF7756D8,
+        'Invitation'),
     _r(<String>['job'], Icons.work_rounded, 0xFFFFA51F, 'Job'),
     _r(<String>['kind'], Icons.volunteer_activism_rounded, 0xFF16A36A, 'Kind'),
-    _r(<String>['know', 'knew'], Icons.psychology_rounded, 0xFF7756D8, 'Knowledge'),
-    _r(<String>['lie', 'lies', 'truth'], Icons.gavel_rounded, 0xFFE94B4B, 'Truth'),
+    _r(<String>['know', 'knew'], Icons.psychology_rounded, 0xFF7756D8,
+        'Knowledge'),
+    _r(<String>['lie', 'lies', 'truth'], Icons.gavel_rounded, 0xFFE94B4B,
+        'Truth'),
     _r(<String>['light'], Icons.light_mode_rounded, 0xFFFFA51F, 'Light'),
     _r(<String>['like', 'love'], Icons.favorite_rounded, 0xFFE94B4B, 'Love'),
     _r(<String>['live'], Icons.home_rounded, 0xFF16A36A, 'Living'),
-    _r(<String>['look', 'see', 'saw'], Icons.visibility_rounded, 0xFF4285F4, 'Seeing'),
+    _r(<String>['look', 'see', 'saw'], Icons.visibility_rounded, 0xFF4285F4,
+        'Seeing'),
     _r(<String>['man', 'men'], Icons.person_rounded, 0xFF4285F4, 'Person'),
-    _r(<String>['meet', 'met', 'meeting'], Icons.handshake_rounded, 0xFF16A36A, 'Meeting'),
+    _r(<String>['meet', 'met', 'meeting'], Icons.handshake_rounded, 0xFF16A36A,
+        'Meeting'),
     _r(<String>['monday'], Icons.calendar_today_rounded, 0xFF4285F4, 'Monday'),
     _r(<String>['music'], Icons.music_note_rounded, 0xFFE94B4B, 'Music'),
     _r(<String>['name'], Icons.badge_rounded, 0xFF7756D8, 'Name'),
     _r(<String>['need'], Icons.priority_high_rounded, 0xFFE94B4B, 'Need'),
     _r(<String>['neighbours'], Icons.groups_rounded, 0xFF7756D8, 'Neighbours'),
-    _r(<String>['new', 'old'], Icons.new_releases_rounded, 0xFFFFA51F, 'New or old'),
-    _r(<String>['no smoking'], Icons.smoke_free_rounded, 0xFFE94B4B, 'No smoking'),
+    _r(<String>['new', 'old'], Icons.new_releases_rounded, 0xFFFFA51F,
+        'New or old'),
+    _r(<String>['no smoking'], Icons.smoke_free_rounded, 0xFFE94B4B,
+        'No smoking'),
     _r(<String>['noise'], Icons.volume_up_rounded, 0xFFE94B4B, 'Noise'),
     _r(<String>['object'], Icons.category_rounded, 0xFF7756D8, 'Object'),
     _r(<String>['okay'], Icons.check_circle_rounded, 0xFF16A36A, 'Okay'),
     _r(<String>['outside'], Icons.landscape_rounded, 0xFF16A36A, 'Outside'),
     _r(<String>['person'], Icons.person_rounded, 0xFF4285F4, 'Person'),
-    _r(<String>['please'], Icons.volunteer_activism_rounded, 0xFF16A36A, 'Please'),
-    _r(<String>['practice', 'practiced'], Icons.fitness_center_rounded, 0xFF16A36A, 'Practice'),
+    _r(<String>['please'], Icons.volunteer_activism_rounded, 0xFF16A36A,
+        'Please'),
+    _r(<String>['practice', 'practiced'], Icons.fitness_center_rounded,
+        0xFF16A36A, 'Practice'),
     _r(<String>['promise'], Icons.handshake_rounded, 0xFF7756D8, 'Promise'),
     _r(<String>['quiet'], Icons.volume_off_rounded, 0xFF4285F4, 'Quiet'),
     _r(<String>['rest'], Icons.hotel_rounded, 0xFF7756D8, 'Rest'),
@@ -1704,38 +1422,50 @@ abstract final class _SentenceVisualResolver {
     _r(<String>['touch'], Icons.touch_app_rounded, 0xFF4285F4, 'Touching'),
     _r(<String>['umbrella'], Icons.umbrella_rounded, 0xFF4285F4, 'Umbrella'),
     _r(<String>['visit'], Icons.location_on_rounded, 0xFF4285F4, 'Visiting'),
-    _r(<String>['watch', 'watching'], Icons.visibility_rounded, 0xFF4285F4, 'Watching'),
+    _r(<String>['watch', 'watching'], Icons.visibility_rounded, 0xFF4285F4,
+        'Watching'),
     _r(<String>['window'], Icons.window_rounded, 0xFF4285F4, 'Window'),
     _r(<String>['boy'], Icons.person_rounded, 0xFF16A36A, 'Boy'),
     _r(<String>['girl'], Icons.face_rounded, 0xFF7756D8, 'Girl'),
-    _r(<String>['company'], Icons.business_center_rounded, 0xFF7756D8, 'Company'),
+    _r(<String>['company'], Icons.business_center_rounded, 0xFF7756D8,
+        'Company'),
     _r(<String>['device'], Icons.devices_rounded, 0xFF4285F4, 'Device'),
     _r(<String>['dhaka'], Icons.location_city_rounded, 0xFF4285F4, 'Dhaka'),
-    _r(<String>['draw picture', 'picture'], Icons.image_rounded, 0xFF7756D8, 'Picture'),
+    _r(<String>['draw picture', 'picture'], Icons.image_rounded, 0xFF7756D8,
+        'Picture'),
     _r(<String>['egg'], Icons.circle_rounded, 0xFFFFA51F, 'Egg'),
     _r(<String>['gift'], Icons.card_giftcard_rounded, 0xFFE94B4B, 'Gift'),
     _r(<String>['hand'], Icons.back_hand_rounded, 0xFFFFA51F, 'Hand'),
     _r(<String>['knife'], Icons.restaurant_rounded, 0xFFE94B4B, 'Knife'),
-    _r(<String>['learn', 'learners', 'learning'], Icons.menu_book_rounded, 0xFF4285F4, 'Learning'),
+    _r(<String>['learn', 'learners', 'learning'], Icons.menu_book_rounded,
+        0xFF4285F4, 'Learning'),
     _r(<String>['letter'], Icons.mail_rounded, 0xFF4285F4, 'Letter'),
     _r(<String>['market'], Icons.storefront_rounded, 0xFFFFA51F, 'Market'),
     _r(<String>['movie'], Icons.movie_rounded, 0xFF7756D8, 'Movie'),
-    _r(<String>['question'], Icons.help_outline_rounded, 0xFF0D9E9A, 'Question'),
+    _r(<String>['question'], Icons.help_outline_rounded, 0xFF0D9E9A,
+        'Question'),
     _r(<String>['sit'], Icons.event_seat_rounded, 0xFF7756D8, 'Sitting'),
-    _r(<String>['stand'], Icons.accessibility_new_rounded, 0xFF16A36A, 'Standing'),
+    _r(<String>['stand'], Icons.accessibility_new_rounded, 0xFF16A36A,
+        'Standing'),
     _r(<String>['start'], Icons.play_circle_rounded, 0xFF16A36A, 'Starting'),
-    _r(<String>['ticket'], Icons.confirmation_number_rounded, 0xFFFFA51F, 'Ticket'),
+    _r(<String>['ticket'], Icons.confirmation_number_rounded, 0xFFFFA51F,
+        'Ticket'),
     _r(<String>['tired'], Icons.battery_alert_rounded, 0xFFE94B4B, 'Tired'),
     _r(<String>['together'], Icons.groups_rounded, 0xFF16A36A, 'Together'),
-    _r(<String>['two boxes', 'one box'], Icons.inventory_2_rounded, 0xFFFFA51F, 'Box'),
-    _r(<String>['vehicle'], Icons.directions_car_rounded, 0xFF4285F4, 'Vehicle'),
-    _r(<String>['wake', 'wake up'], Icons.alarm_rounded, 0xFFFFA51F, 'Waking up'),
+    _r(<String>['two boxes', 'one box'], Icons.inventory_2_rounded, 0xFFFFA51F,
+        'Box'),
+    _r(<String>['vehicle'], Icons.directions_car_rounded, 0xFF4285F4,
+        'Vehicle'),
+    _r(<String>['wake', 'wake up'], Icons.alarm_rounded, 0xFFFFA51F,
+        'Waking up'),
     _r(<String>['want'], Icons.favorite_border_rounded, 0xFFE94B4B, 'Want'),
     _r(<String>['not do'], Icons.block_rounded, 0xFFE94B4B, 'Not doing'),
     _r(<String>['not mine'], Icons.inventory_2_rounded, 0xFFE94B4B, 'Not mine'),
-    _r(<String>['not there'], Icons.location_off_rounded, 0xFFE94B4B, 'Not there'),
+    _r(<String>['not there'], Icons.location_off_rounded, 0xFFE94B4B,
+        'Not there'),
     _r(<String>['thing near'], Icons.category_rounded, 0xFFFFA51F, 'Thing'),
-    _r(<String>['this', 'those'], Icons.touch_app_rounded, 0xFF4285F4, 'This or those'),
+    _r(<String>['this', 'those'], Icons.touch_app_rounded, 0xFF4285F4,
+        'This or those'),
   ];
 }
 

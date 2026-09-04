@@ -215,90 +215,92 @@ class _RuleTestScreenState
             24,
             18,
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 78,
-                height: 78,
-                decoration: BoxDecoration(
-                  color: passed
-                      ? AppColors.mint
-                      : const Color(0xFFFFF0F0),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  passed
-                      ? Icons.emoji_events_rounded
-                      : Icons.refresh_rounded,
-                  color: passed
-                      ? AppColors.primary
-                      : AppColors.error,
-                  size: 42,
-                ),
-              ),
-              const SizedBox(height: 17),
-              Text(
-                passed
-                    ? 'Excellent!'
-                    : 'Test Complete',
-                style: const TextStyle(
-                  color: AppColors.navy,
-                  fontSize: 23,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Score: $_correctAnswers/$total',
-                style: const TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 9),
-              Text(
-                passed
-                    ? 'Test pass হয়েছে। এখন speaking practice করুন।'
-                    : 'এই result সত্ত্বেও আপনি speaking practice করতে পারবেন।',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13.5,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 21),
-              SizedBox(
-                width: double.infinity,
-                height: 49,
-                child: FilledButton(
-                  onPressed: () {
-                    // --- INTERSTITIAL AD TRIGGER ---
-                    // অ্যাড থাকলে শো করবে, তারপর (বা না থাকলে) Practice Screen-এ চলে যাবে
-                    AdManager.instance.showInterstitialAd(
-                      onAdDismissed: () {
-                        Navigator.pop(dialogContext);
-
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute<void>(
-                            builder: (_) {
-                              return RulePracticeScreen(
-                                rule: widget.rule,
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    );
-                  },
-                  child: const Text(
-                    'Continue to Practice',
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 78,
+                  height: 78,
+                  decoration: BoxDecoration(
+                    color: passed
+                        ? AppColors.mint
+                        : const Color(0xFFFFF0F0),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    passed
+                        ? Icons.emoji_events_rounded
+                        : Icons.refresh_rounded,
+                    color: passed
+                        ? AppColors.primary
+                        : AppColors.error,
+                    size: 42,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 17),
+                Text(
+                  passed
+                      ? 'Excellent!'
+                      : 'Test Complete',
+                  style: const TextStyle(
+                    color: AppColors.navy,
+                    fontSize: 23,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Score: $_correctAnswers/$total',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                Text(
+                  passed
+                      ? 'Test pass হয়েছে। এখন speaking practice করুন।'
+                      : 'এই result সত্ত্বেও আপনি speaking practice করতে পারবেন।',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13.5,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 21),
+                SizedBox(
+                  width: double.infinity,
+                  height: 49,
+                  child: FilledButton(
+                    onPressed: () {
+                      // --- INTERSTITIAL AD TRIGGER ---
+                      // প্রথমে ডায়ালগ বন্ধ হবে, তারপর অ্যাড শো করে প্র্যাকটিস স্ক্রিনে যাবে
+                      Navigator.pop(dialogContext);
+
+                      AdManager.instance.showInterstitialAd(
+                        onAdDismissed: () {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute<void>(
+                              builder: (_) {
+                                return RulePracticeScreen(
+                                  rule: widget.rule,
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      );
+                    },
+                    child: const Text(
+                      'Continue to Practice',
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -345,7 +347,6 @@ class _RuleTestScreenState
             const _TestHeader(),
 
             // --- STICKY BANNER AD START ---
-            // Header এবং Progress Bar-এর মাঝখানে ফিক্সড থাকবে
             const BannerAdWidget(),
             // --- STICKY BANNER AD END ---
 

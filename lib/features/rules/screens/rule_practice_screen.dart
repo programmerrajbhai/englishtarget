@@ -33,7 +33,7 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
 
   int _currentIndex = 0;
 
-  // 100% FIXED: Storing state PER QUESTION so going 'Back' works perfectly
+  // Storing state PER QUESTION so going 'Back' works perfectly
   final Map<int, String> _transcripts = {};
   final Map<int, int> _matchScores = {};
 
@@ -417,6 +417,7 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
       context: context,
       isDismissible: false,
       enableDrag: false,
+      isScrollControlled: true, // 100% FIXED: OVERFLOW ISSUE SOLVED
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -424,123 +425,128 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
       builder: (sheetContext) {
         return SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 30, 24, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  passed ? Icons.stars_rounded : Icons.cancel_rounded,
-                  color: passed ? AppColors.primary : AppColors.error,
-                  size: 68,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  passed ? 'Practice Completed!' : 'Practice Failed!',
-                  style: TextStyle(
-                    color: passed ? AppColors.navy : AppColors.error,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.5,
+            padding: EdgeInsets.fromLTRB(24, 30, 24, MediaQuery.of(sheetContext).padding.bottom + 20),
+            child: SingleChildScrollView( // 100% FIXED: OVERFLOW ISSUE SOLVED
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    passed ? Icons.stars_rounded : Icons.cancel_rounded,
+                    color: passed ? AppColors.primary : AppColors.error,
+                    size: 68,
                   ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Score: $_correctAnswers/${_practices.length} Correct',
-                  style: const TextStyle(
-                      color: AppColors.navy,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  passed
-                      ? 'Great job! You can move to the next level.'
-                      : 'You need at least 60% correct to pass. Please try again.',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
-                      height: 1.5,
-                      fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 28),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    AdManager.instance.showInterstitialAd(
-                      onAdDismissed: () {
-                        Navigator.pop(sheetContext);
-                        setState(() {
-                          _currentIndex = 0;
-                          _transcripts.clear();
-                          _matchScores.clear();
-                          _attendedIndexes.clear();
-                          _correctIndexes.clear();
-                          _skippedIndexes.clear();
-                          _resultShowing = false;
-                        });
-                      },
-                    );
-
-
-                    //
-                    // Navigator.pop(sheetContext);
-                    // setState(() {
-                    //   _currentIndex = 0;
-                    //   _transcripts.clear();
-                    //   _matchScores.clear();
-                    //   _attendedIndexes.clear();
-                    //   _correctIndexes.clear();
-                    //   _skippedIndexes.clear();
-                    //   _resultShowing = false;
-                    // });
-                  },
-                  icon: const Icon(Icons.replay_rounded),
-                  label: const Text('Practice Again'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary, width: 1.5),
-                    minimumSize: const Size.fromHeight(54),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                FilledButton.icon(
-                  onPressed: passed
-                      ? () {
-                    // --- INTERSTITIAL AD TRIGGER (Next Level / Back to Rules) ---
-                    AdManager.instance.showInterstitialAd(
-                      onAdDismissed: () {
-                        Navigator.pop(sheetContext);
-                        if (nextRule == null) {
-                          Navigator.pop(context, true);
-                          return;
-                        }
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => RuleDetailsScreen(rule: nextRule),
-                          ),
-                        );
-                      },
-                    );
-                  }
-                      : null,
-                  icon: const Icon(Icons.arrow_forward_rounded),
-                  label: Text(nextRule == null ? 'Back to Rules' : 'Next Level'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    disabledBackgroundColor: const Color(0xFFD9E2DD),
-                    minimumSize: const Size.fromHeight(54),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                  const SizedBox(height: 16),
+                  Text(
+                    passed ? 'Practice Completed!' : 'Practice Failed!',
+                    style: TextStyle(
+                      color: passed ? AppColors.navy : AppColors.error,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Score: $_correctAnswers/${_practices.length} Correct',
+                    style: const TextStyle(
+                        color: AppColors.navy,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    passed
+                        ? 'Great job! You can move to the next level.'
+                        : 'Practice failed, but you can still try again or move to the next level.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                        height: 1.5,
+                        fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // 1. PRACTICE AGAIN BUTTON
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      // FIRST POP THE SHEET
+                      Navigator.pop(sheetContext);
+                      // THEN SHOW THE AD
+                      AdManager.instance.showInterstitialAd(
+                        onAdDismissed: () {
+                          setState(() {
+                            _currentIndex = 0;
+                            _transcripts.clear();
+                            _matchScores.clear();
+                            _attendedIndexes.clear();
+                            _correctIndexes.clear();
+                            _skippedIndexes.clear();
+                            _resultShowing = false;
+                          });
+                        },
+                      );
+                    },
+                    icon: const Icon(Icons.replay_rounded),
+                    label: const Text('Practice Again'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: const BorderSide(color: AppColors.primary, width: 1.5),
+                      minimumSize: const Size.fromHeight(54),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // 2. NEXT LEVEL OR BACK TO RULES BUTTON (100% FIXED: Always Clickable)
+                  // 2. NEXT LEVEL / BACK TO RULES BUTTON (100% FIXED)
+                  FilledButton.icon(
+                    onPressed: () {
+                      // প্রথমে BottomSheet বন্ধ করতে হবে
+                      Navigator.pop(sheetContext);
+
+                      // অ্যাড শো করার পর সরাসরি রুল লিস্টে ব্যাক করবে এবং true পাঠাবে যাতে প্রগ্রেস রিফ্রেশ হয়
+                      AdManager.instance.showInterstitialAd(
+                        onAdDismissed: () {
+                          // popUntil দিয়ে সরাসরি রুল লিস্ট স্ক্রিনে ফিরে যাবে (অথবা প্র্যাকটিস স্ক্রিন ও ডিটেইলস স্ক্রিন পপ করে দেবে)
+                          Navigator.popUntil(context, (route) => route.isFirst || route.settings.name == '/rules' || route.settings.name == 'rules_list');
+
+                          // বিকল্প হিসেবে যদি সরাসরি আগের রুল লিস্টে ব্যাক করতে চান:
+                          // Navigator.pop(context, true);
+                        },
+                      );
+                    },
+                    icon: const Icon(Icons.arrow_forward_rounded),
+                    label: Text(nextRule == null ? 'Complete & Back' : 'Next Level'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      minimumSize: const Size.fromHeight(54),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  ),
 
 
-              ],
+
+                  const SizedBox(height: 12),
+                  // 3. Back to Rule Details Button
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      Navigator.pop(context); // Go back to rule details
+                    },
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.textSecondary,
+                    ),
+                    child: const Text(
+                      'Back to Rule Details',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
