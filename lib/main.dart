@@ -22,4 +22,6 @@ void main() async {
   AdManager.instance.initialize();
 
   runApp(const EnglishTargetApp());
+
+
 }
