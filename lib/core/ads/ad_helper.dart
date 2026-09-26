@@ -1,27 +1,31 @@
 import 'dart:io';
 
 abstract final class AdHelper {
-  // Banner Ad ID
   static String get bannerAdUnitId {
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/6300978111';
-    return ''; // iOS এর জন্য ফাঁকা রাখা হলো
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-6432705880022694/2361322413';
+    }
+    throw UnsupportedError('iOS banner ad unit ID is not configured.');
   }
 
-  // Interstitial Ad ID (Full Screen)
   static String get interstitialAdUnitId {
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/1033173712';
-    return '';
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-6432705880022694/3371151759';
+    }
+    throw UnsupportedError('iOS interstitial ad unit ID is not configured.');
   }
 
-  // Rewarded Video Ad ID
   static String get rewardedAdUnitId {
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/5224354917';
-    return '';
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-6432705880022694/5344427607';
+    }
+    throw UnsupportedError('iOS rewarded ad unit ID is not configured.');
   }
 
-  // App Open Ad ID
   static String get appOpenAdUnitId {
-    if (Platform.isAndroid) return 'ca-app-pub-3940256099942544/9257395921';
-    return '';
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-6432705880022694/6859699573';
+    }
+    throw UnsupportedError('iOS app open ad unit ID is not configured.');
   }
 }

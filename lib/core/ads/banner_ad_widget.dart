@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'ad_config_service.dart'; // যুক্ত করা হয়েছে
+
+import 'ad_config_service.dart';
 
 class BannerAdWidget extends StatefulWidget {
   const BannerAdWidget({super.key});
@@ -11,73 +14,212 @@ class BannerAdWidget extends StatefulWidget {
 }
 
 class _BannerAdWidgetState extends State<BannerAdWidget> {
-  BannerAd? _bannerAd;
-  bool _isLoaded = false;
+  static const String _androidBannerId =
+      'ca-app-pub-6432705880022694/2361322413';
 
-  final String _adUnitId = Platform.isAndroid
-      ? 'ca-app-pub-6432705880022694/2361322413'
-      : 'ca-app-pub-3940256099942544/2934735716';
+  BannerAd? _bannerAd;
+  Timer? _retryTimer;
+
+  bool _isLoading = false;
+  bool _isLoaded = false;
+  int? _requestedWidth;
+  int _requestVersion = 0;
+  int _retryCount = 0;
+
+  bool get _adsEnabled =>
+      Platform.isAndroid && AdConfigService.instance.showAds;
+
+  @override
+  void initState() {
+    super.initState();
+    AdConfigService.instance.showAdsNotifier.addListener(_scheduleSync);
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _loadAd();
+    _scheduleSync();
   }
 
-  Future<void> _loadAd() async {
-    // অ্যাড বন্ধ থাকলে রিকোয়েস্ট পাঠাবে না
-    if (!AdConfigService.instance.showAds) return;
+  void _scheduleSync() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncAd();
+    });
+  }
 
-    final AnchoredAdaptiveBannerAdSize? size =
-    await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
-        MediaQuery.sizeOf(context).width.truncate());
+  void _syncAd() {
+    if (!_adsEnabled) {
+      _clearAd();
+      return;
+    }
 
-    if (size == null) return;
+    final width = MediaQuery.sizeOf(context).width.truncate();
+    if (width <= 0) return;
 
-    _bannerAd = BannerAd(
-      adUnitId: _adUnitId,
-      size: size,
-      request: const AdRequest(),
-      listener: BannerAdListener(
-        onAdLoaded: (Ad ad) {
-          if (!mounted) return;
-          setState(() {
+    if (_requestedWidth == width &&
+        (_isLoading || _bannerAd != null)) {
+      return;
+    }
+
+    _loadAd(width);
+  }
+
+  void _disposeAfterFrame(BannerAd? ad) {
+    if (ad == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ad.dispose();
+    });
+  }
+
+  void _clearAd() {
+    _requestVersion++;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _retryCount = 0;
+
+    final oldAd = _bannerAd;
+    final wasVisible = _isLoaded;
+
+    _bannerAd = null;
+    _isLoading = false;
+    _isLoaded = false;
+    _requestedWidth = null;
+
+    if (wasVisible && mounted) setState(() {});
+    _disposeAfterFrame(oldAd);
+  }
+
+  Future<void> _loadAd(int width) async {
+    _retryTimer?.cancel();
+    _retryTimer = null;
+
+    final version = ++_requestVersion;
+    final oldAd = _bannerAd;
+
+    _bannerAd = null;
+    _isLoaded = false;
+    _isLoading = true;
+    _requestedWidth = width;
+    setState(() {});
+    _disposeAfterFrame(oldAd);
+
+    try {
+      final size =
+      await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
+        width,
+      );
+
+      if (!mounted || version != _requestVersion || !_adsEnabled) {
+        return;
+      }
+
+      if (size == null) {
+        _isLoading = false;
+        debugPrint('BannerAd: adaptive size unavailable.');
+        _scheduleRetry();
+        return;
+      }
+
+      late final BannerAd ad;
+      ad = BannerAd(
+        adUnitId: _androidBannerId,
+        size: size,
+        request: const AdRequest(),
+        listener: BannerAdListener(
+          onAdLoaded: (loadedAd) {
+            if (!mounted ||
+                version != _requestVersion ||
+                !_adsEnabled ||
+                !identical(_bannerAd, loadedAd)) {
+              return;
+            }
+
+            _isLoading = false;
             _isLoaded = true;
-          });
-        },
-        onAdFailedToLoad: (Ad ad, LoadAdError error) {
-          debugPrint('BannerAd failed to load: $error');
-          ad.dispose();
-        },
-      ),
-    )..load();
+            _retryCount = 0;
+            debugPrint('BannerAd loaded successfully.');
+            setState(() {});
+          },
+          onAdFailedToLoad: (failedAd, error) {
+            if (version != _requestVersion ||
+                !identical(_bannerAd, failedAd)) {
+              return;
+            }
+
+            debugPrint(
+              'BannerAd failed: '
+                  'domain=${error.domain}, '
+                  'code=${error.code}, '
+                  'message=${error.message}, '
+                  'responseInfo=${error.responseInfo}',
+            );
+
+            _bannerAd = null;
+            _isLoading = false;
+            _isLoaded = false;
+            failedAd.dispose();
+
+            if (mounted) {
+              setState(() {});
+              _scheduleRetry();
+            }
+          },
+        ),
+      );
+
+      _bannerAd = ad;
+      await ad.load();
+    } catch (error) {
+      if (!mounted || version != _requestVersion) return;
+
+      debugPrint('BannerAd load exception: $error');
+      final failedAd = _bannerAd;
+      _bannerAd = null;
+      _isLoading = false;
+      _isLoaded = false;
+      failedAd?.dispose();
+      _scheduleRetry();
+    }
+  }
+
+  void _scheduleRetry() {
+    if (!mounted || !_adsEnabled || _retryCount >= 3) return;
+
+    final delay = Duration(seconds: 60 << _retryCount);
+    _retryCount++;
+
+    _retryTimer?.cancel();
+    _retryTimer = Timer(delay, () {
+      _retryTimer = null;
+      _scheduleSync();
+    });
   }
 
   @override
   void dispose() {
+    AdConfigService.instance.showAdsNotifier.removeListener(_scheduleSync);
+    _retryTimer?.cancel();
+    _requestVersion++;
     _bannerAd?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ValueListenableBuilder সার্ভারের ডেটা চেঞ্জ হওয়া মাত্রই UI আপডেট করবে
-    return ValueListenableBuilder<bool>(
-      valueListenable: AdConfigService.instance.showAdsNotifier,
-      builder: (context, showAds, child) {
-        if (!showAds) return const SizedBox.shrink(); // অ্যাড অফ থাকলে গায়েব
+    final ad = _bannerAd;
 
-        if (_bannerAd != null && _isLoaded) {
-          return SafeArea(
-            child: SizedBox(
-              width: _bannerAd!.size.width.toDouble(),
-              height: _bannerAd!.size.height.toDouble(),
-              child: AdWidget(ad: _bannerAd!),
-            ),
-          );
-        }
-        return const SizedBox.shrink();
-      },
+    if (!_adsEnabled || !_isLoaded || ad == null) {
+      return const SizedBox.shrink();
+    }
+
+    return SafeArea(
+      child: Center(
+        child: SizedBox(
+          width: ad.size.width.toDouble(),
+          height: ad.size.height.toDouble(),
+          child: AdWidget(ad: ad),
+        ),
+      ),
     );
   }
 }
