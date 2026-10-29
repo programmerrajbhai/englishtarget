@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
-import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
-import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/rule_content.dart';
 import '../services/rules_progress_service.dart';
@@ -276,22 +274,11 @@ class _RuleTestScreenState
                   height: 49,
                   child: FilledButton(
                     onPressed: () {
-                      // --- INTERSTITIAL AD TRIGGER ---
-                      // প্রথমে ডায়ালগ বন্ধ হবে, তারপর অ্যাড শো করে প্র্যাকটিস স্ক্রিনে যাবে
                       Navigator.pop(dialogContext);
-
-                      AdManager.instance.showInterstitialAd(
-                        onAdDismissed: () {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute<void>(
-                              builder: (_) {
-                                return RulePracticeScreen(
-                                  rule: widget.rule,
-                                );
-                              },
-                            ),
-                          );
-                        },
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute<void>(
+                          builder: (_) => RulePracticeScreen(rule: widget.rule),
+                        ),
                       );
                     },
                     child: const Text(
@@ -345,10 +332,6 @@ class _RuleTestScreenState
         child: Column(
           children: [
             const _TestHeader(),
-
-            // --- STICKY BANNER AD START ---
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
 
             _ProgressHeader(
               current: _currentIndex + 1,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
 import '../../../core/ads/banner_ad_widget.dart'; // <--- BANNER AD IMPORT
 import '../../../core/constants/app_colors.dart';
 import '../../splash/widgets/splash_mascot.dart';
@@ -56,24 +55,13 @@ class _BasicSentencesScreenState
   }
 
   Future<void> _openTopic(BasicSentenceTopic topic) async {
-    // --- INTERSTITIAL AD TRIGGER ---
-    // ইউজার যেকোনো টপিকে ক্লিক করলেই অ্যাড কল হবে
-    AdManager.instance.showInterstitialAd(
-      onAdDismissed: () {
-        // অ্যাড দেখা শেষ হলে (বা কুলডাউনে থাকলে) নেক্সট স্ক্রিনে (Practice Session) যাবে
-        Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) => BasicSentenceSessionScreen(
-              topic: topic,
-            ),
-          ),
-        ).then((_) {
-          // সেশন শেষ করে ব্যাক করার পর প্রগ্রেস আপডেট হবে
-          _loadProgress();
-        });
-      },
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => BasicSentenceSessionScreen(topic: topic),
+      ),
     );
+    if (mounted) await _loadProgress();
   }
 
   int _attended(BasicSentenceTopic topic) {
@@ -110,10 +98,6 @@ class _BasicSentencesScreenState
         bottom: false,
         child: Column(
           children: [
-            // --- STICKY BANNER AD START ---
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
-
             Expanded(
               child: _loading
                   ? const Center(
@@ -198,6 +182,13 @@ class _BasicSentencesScreenState
                       ),
                     ),
                   ),
+                  if (_topics.isNotEmpty)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: BannerAdWidget(),
+                      ),
+                    ),
                 ],
               ),
             ),

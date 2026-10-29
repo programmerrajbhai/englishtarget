@@ -1,12 +1,17 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'ad_config_service.dart';
 import 'ad_helper.dart';
 
 class AdManager {
+  static const String _lastAppOpenKey = 'ads_last_app_open_shown_at';
+  static const String _lastInterstitialKey = 'ads_last_interstitial_shown_at';
+
   AdManager._();
   static final AdManager instance = AdManager._();
 
@@ -28,10 +33,35 @@ class AdManager {
 
   Future<void> initialize() async {
     if (!Platform.isAndroid || _initialized) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final appOpenMillis = prefs.getInt(_lastAppOpenKey);
+      final interstitialMillis = prefs.getInt(_lastInterstitialKey);
+      if (appOpenMillis != null) {
+        _lastAppOpenShownAt = DateTime.fromMillisecondsSinceEpoch(appOpenMillis);
+      }
+      if (interstitialMillis != null) {
+        _lastInterstitialShownAt =
+            DateTime.fromMillisecondsSinceEpoch(interstitialMillis);
+      }
+    } catch (error) {
+      debugPrint('Ad cooldown restore failed: $error');
+    }
     await MobileAds.instance.initialize();
     _initialized = true;
     AdConfigService.instance.showAdsNotifier.addListener(_onConfigChanged);
     _onConfigChanged();
+  }
+
+  void _rememberShownAt(String key, DateTime time) {
+    unawaited(() async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt(key, time.millisecondsSinceEpoch);
+      } catch (error) {
+        debugPrint('Ad cooldown save failed: $error');
+      }
+    }());
   }
 
   void _onConfigChanged() {
@@ -80,7 +110,7 @@ class AdManager {
 
     final lastShown = _lastAppOpenShownAt;
     if (lastShown != null &&
-        DateTime.now().difference(lastShown).inMinutes < 3) {
+        DateTime.now().difference(lastShown).inMinutes < 15) {
       return;
     }
 
@@ -102,6 +132,10 @@ class AdManager {
     _isShowingAd = true;
 
     ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (ad) {
+        _lastAppOpenShownAt = DateTime.now();
+        _rememberShownAt(_lastAppOpenKey, _lastAppOpenShownAt!);
+      },
       onAdFailedToShowFullScreenContent: (ad, error) {
         _isShowingAd = false;
         debugPrint('AppOpenAd show failed: $error');
@@ -110,7 +144,6 @@ class AdManager {
       },
       onAdDismissedFullScreenContent: (ad) {
         _isShowingAd = false;
-        _lastAppOpenShownAt = DateTime.now();
         ad.dispose();
         loadAppOpenAd();
       },
@@ -151,7 +184,7 @@ class AdManager {
     }
     final lastShown = _lastInterstitialShownAt;
     if (lastShown != null &&
-        DateTime.now().difference(lastShown).inSeconds < 60) {
+        DateTime.now().difference(lastShown).inMinutes < 3) {
       onAdDismissed();
       return;
     }
@@ -166,6 +199,10 @@ class AdManager {
     _isShowingAd = true;
 
     ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdShowedFullScreenContent: (ad) {
+        _lastInterstitialShownAt = DateTime.now();
+        _rememberShownAt(_lastInterstitialKey, _lastInterstitialShownAt!);
+      },
       onAdFailedToShowFullScreenContent: (ad, error) {
         _isShowingAd = false;
         debugPrint('InterstitialAd show failed: $error');
@@ -175,7 +212,6 @@ class AdManager {
       },
       onAdDismissedFullScreenContent: (ad) {
         _isShowingAd = false;
-        _lastInterstitialShownAt = DateTime.now();
         ad.dispose();
         loadInterstitialAd();
         onAdDismissed();

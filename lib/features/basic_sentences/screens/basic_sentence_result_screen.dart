@@ -37,10 +37,6 @@ class BasicSentenceResultScreen extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
-            // --- STICKY BANNER AD START ---
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
-
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(22),
@@ -130,6 +126,7 @@ class BasicSentenceResultScreen extends StatelessWidget {
                 ),
               ),
             ),
+            const BannerAdWidget(),
           ],
         ),
       ),

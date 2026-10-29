@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
 import '../../../core/ads/banner_ad_widget.dart'; // <--- BANNER AD IMPORT
 import '../../../core/constants/app_colors.dart';
 import '../../home/widgets/xp_balance_pill.dart';
@@ -55,25 +54,13 @@ class _QuestionMakingScreenState extends State<QuestionMakingScreen> {
   }
 
   Future<void> _openTopic(QuestionMakingTopic topic) async {
-    // --- INTERSTITIAL AD TRIGGER ---
-    // টপিক ওপেন করার আগে অ্যাড শো করবে
-    AdManager.instance.showInterstitialAd(
-      onAdDismissed: () {
-        Navigator.push<void>(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) {
-              return QuestionTopicLearningScreen(
-                topic: topic,
-              );
-            },
-          ),
-        ).then((_) {
-          // ব্যাক করার পর প্রগ্রেস আপডেট হবে
-          _loadProgress();
-        });
-      },
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => QuestionTopicLearningScreen(topic: topic),
+      ),
     );
+    if (mounted) await _loadProgress();
   }
 
   int _completedTopics() {
@@ -109,10 +96,6 @@ class _QuestionMakingScreenState extends State<QuestionMakingScreen> {
         bottom: false,
         child: Column(
           children: [
-            // --- STICKY BANNER AD START ---
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
-
             Expanded(
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -215,6 +198,13 @@ class _QuestionMakingScreenState extends State<QuestionMakingScreen> {
                             ),
                           );
                         },
+                      ),
+                    ),
+                  if (!_loading && _topics.isNotEmpty)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: BannerAdWidget(),
                       ),
                     ),
                 ],

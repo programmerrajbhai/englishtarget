@@ -4,7 +4,6 @@ import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 import '../../../core/ads/ad_manager.dart';
-import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/microphone_disclosure.dart';
 import '../models/rule_content.dart';
@@ -470,22 +469,16 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                   // 1. PRACTICE AGAIN BUTTON
                   OutlinedButton.icon(
                     onPressed: () {
-                      // FIRST POP THE SHEET
                       Navigator.pop(sheetContext);
-                      // THEN SHOW THE AD
-                      AdManager.instance.showInterstitialAd(
-                        onAdDismissed: () {
-                          setState(() {
-                            _currentIndex = 0;
-                            _transcripts.clear();
-                            _matchScores.clear();
-                            _attendedIndexes.clear();
-                            _correctIndexes.clear();
-                            _skippedIndexes.clear();
-                            _resultShowing = false;
-                          });
-                        },
-                      );
+                      setState(() {
+                        _currentIndex = 0;
+                        _transcripts.clear();
+                        _matchScores.clear();
+                        _attendedIndexes.clear();
+                        _correctIndexes.clear();
+                        _skippedIndexes.clear();
+                        _resultShowing = false;
+                      });
                     },
                     icon: const Icon(Icons.replay_rounded),
                     label: const Text('Practice Again'),
@@ -607,10 +600,6 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
         top: false,
         child: Column(
           children: [
-            // --- STICKY BANNER AD START ---
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
-
             // Progress Bar Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),

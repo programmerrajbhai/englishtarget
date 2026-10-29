@@ -17,6 +17,7 @@ class EnglishTargetApp extends StatefulWidget {
 }
 
 class _EnglishTargetAppState extends State<EnglishTargetApp> with WidgetsBindingObserver {
+  DateTime? _backgroundedAt;
 
   @override
   void initState() {
@@ -35,8 +36,23 @@ class _EnglishTargetAppState extends State<EnglishTargetApp> with WidgetsBinding
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _backgroundedAt = DateTime.now();
+      return;
+    }
+
     if (state == AppLifecycleState.resumed) {
-      // ব্যাকগ্রাউন্ড থেকে ফিরে আসলে সাথে সাথে সার্ভার থেকে স্ট্যাটাস চেক করে অ্যাড দেখাবে
+      final DateTime? backgroundedAt = _backgroundedAt;
+      _backgroundedAt = null;
+
+      // Skip brief interruptions such as permission dialogs or quick app switching.
+      if (backgroundedAt == null ||
+          DateTime.now().difference(backgroundedAt) <
+              const Duration(seconds: 30)) {
+        return;
+      }
+
       AdConfigService.instance.fetchAdSettings().then((_) {
         AdManager.instance.showAppOpenAdIfAvailable();
       });

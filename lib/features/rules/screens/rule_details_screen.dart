@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
-import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
-import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../controllers/rule_learning_controller.dart';
 import '../models/rule_content.dart';
@@ -138,25 +136,13 @@ class _RuleDetailsScreenState extends State<RuleDetailsScreen> {
   }
 
   void _openTest() {
-    // --- INTERSTITIAL AD TRIGGER ---
-    // Test-এ যাওয়ার ঠিক আগে অ্যাড শো করবে
-    AdManager.instance.showInterstitialAd(
-      onAdDismissed: () {
-        Navigator.of(context)
-            .push(
+    Navigator.of(context)
+        .push<void>(
           MaterialPageRoute<void>(
-            builder: (_) {
-              return RuleTestScreen(
-                rule: widget.rule,
-              );
-            },
+            builder: (_) => RuleTestScreen(rule: widget.rule),
           ),
         )
-            .then((_) {
-          _controller.refreshProgress();
-        });
-      },
-    );
+        .then((_) => _controller.refreshProgress());
   }
 
   void _showMessage(
@@ -214,10 +200,6 @@ class _RuleDetailsScreenState extends State<RuleDetailsScreen> {
               },
             ),
             const _LessonSteps(),
-
-            // --- STICKY BANNER AD START ---
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
 
             Expanded(
               child: _controller.isLoading

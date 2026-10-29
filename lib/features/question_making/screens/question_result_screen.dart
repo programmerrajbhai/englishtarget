@@ -46,10 +46,6 @@ class QuestionResultScreen extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
-            // --- STICKY BANNER AD START ---
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
-
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(
@@ -267,6 +263,7 @@ class QuestionResultScreen extends StatelessWidget {
                 ),
               ),
             ),
+            const BannerAdWidget(),
           ],
         ),
       ),

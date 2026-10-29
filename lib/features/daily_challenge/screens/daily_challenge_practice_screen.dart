@@ -670,9 +670,6 @@ class _DailyChallengePracticeScreenState
       body: SafeArea(
         child: Column(
           children: [
-            // --- STICKY BANNER AD START ---
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
@@ -812,9 +809,6 @@ class DailyChallengeResultScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // --- STICKY BANNER AD START ---
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
@@ -893,6 +887,7 @@ class DailyChallengeResultScreen extends StatelessWidget {
                 ),
               ),
             ),
+            const BannerAdWidget(),
           ],
         ),
       ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
 import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../data/batches/rule_config.dart';
@@ -173,21 +172,15 @@ class _RulesListScreenState extends State<RulesListScreen> {
       return;
     }
 
-    // --- INTERSTITIAL AD TRIGGER ---
-    // ইউজার যেকোনো Rule-এ ক্লিক করলেই অ্যাড কল হবে
-    AdManager.instance.showInterstitialAd(
-      onAdDismissed: () {
-        // অ্যাড দেখা শেষ হলে (বা কুলডাউনে থাকলে) নেক্সট স্ক্রিনে যাবে
-        Navigator.of(context).push(
+    Navigator.of(context)
+        .push<void>(
           MaterialPageRoute<void>(
             builder: (_) => RuleDetailsScreen(rule: content),
           ),
-        ).then((_) {
-          // Rule Details থেকে ব্যাক করার পর প্রগ্রেস আপডেট হবে
-          _loadProgress();
+        )
+        .then((_) {
+          if (mounted) _loadProgress();
         });
-      },
-    );
   }
 
   void _showMessage(String message, {bool isError = false}) {
@@ -255,12 +248,6 @@ class _RulesListScreenState extends State<RulesListScreen> {
         bottom: false,
         child: Column(
           children: [
-            // --- STICKY BANNER AD START ---
-            // এটি স্ক্রিনের ওপরে ফিক্সড থাকবে, স্ক্রল করলে চলে যাবে না।
-            // const ব্যবহারের ফলে পারফরম্যান্স ড্রপ বা ল্যাগ হবে না।
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
-
             // --- SCROLLABLE CONTENT ---
             Expanded(
               child: RefreshIndicator(
@@ -364,6 +351,13 @@ class _RulesListScreenState extends State<RulesListScreen> {
                             horizontalPadding, 12, horizontalPadding, 40),
                         sliver: SliverList(
                           delegate: SliverChildListDelegate(_buildRuleListItems()),
+                        ),
+                      ),
+                    if (!_isLoading && _filteredRules.isNotEmpty)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: 12),
+                          child: BannerAdWidget(),
                         ),
                       ),
                   ],

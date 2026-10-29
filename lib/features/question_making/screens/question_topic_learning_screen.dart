@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
-import '../../../core/ads/banner_ad_widget.dart'; // <--- BANNER AD IMPORT
 import '../../../core/constants/app_colors.dart';
 
 import '../services/question_making_audio_service.dart';
@@ -17,21 +15,11 @@ class QuestionTopicLearningScreen extends StatelessWidget {
   });
 
   void _startPractice(BuildContext context) {
-    // --- INTERSTITIAL AD TRIGGER ---
-    // প্র্যাকটিস শুরু করার আগে অ্যাড শো করবে
-    AdManager.instance.showInterstitialAd(
-      onAdDismissed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) {
-              return QuestionPracticeScreen(
-                topic: topic,
-              );
-            },
-          ),
-        );
-      },
+    Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => QuestionPracticeScreen(topic: topic),
+      ),
     );
   }
 
@@ -82,10 +70,6 @@ class QuestionTopicLearningScreen extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
-            // --- STICKY BANNER AD START ---
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
-
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),

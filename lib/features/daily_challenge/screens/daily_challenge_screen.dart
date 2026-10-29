@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/ads/ad_manager.dart'; // <--- AD MANAGER IMPORT
 import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../question_making/services/question_making_audio_service.dart';
@@ -45,23 +44,13 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
   }
 
   Future<void> _startChallenge() async {
-    // --- INTERSTITIAL AD TRIGGER ---
-    // চ্যালেঞ্জ শুরু করার আগে অ্যাড শো করবে
-    AdManager.instance.showInterstitialAd(
-      onAdDismissed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute<void>(
-            builder: (_) {
-              return const DailyChallengePracticeScreen();
-            },
-          ),
-        ).then((_) {
-          // প্র্যাকটিস শেষ করে ব্যাক করার পর স্টেট আপডেট হবে
-          _loadState();
-        });
-      },
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => const DailyChallengePracticeScreen(),
+      ),
     );
+    if (mounted) await _loadState();
   }
 
   String _todayText() {
@@ -174,10 +163,6 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
           : SafeArea(
         child: Column(
           children: [
-            // --- STICKY BANNER AD START ---
-            const BannerAdWidget(),
-            // --- STICKY BANNER AD END ---
-
             // --- SCROLLABLE CONTENT ---
             Expanded(
               child: SingleChildScrollView(
@@ -325,6 +310,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 18),
+                    const BannerAdWidget(),
                   ],
                 ),
               ),
