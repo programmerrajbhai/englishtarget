@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../features/basic_sentences/screens/basic_sentences_screen.dart';
 import '../../features/daily_challenge/screens/daily_challenge_screen.dart';
 import '../../features/home/screens/main_navigation_screen.dart';
+import '../../features/freelancer_communication/screens/freelancer_path_screen.dart';
 import '../../features/onboarding/screens/onboarding_screen.dart';
 import '../../features/progress/screens/achievements_screen.dart';
 import '../../features/question_making/screens/question_making_screen.dart';
@@ -24,6 +25,8 @@ abstract final class AppRoutes {
   static const String questionMaking = '/question-making';
 
   static const String dailyChallenge = '/daily-challenge';
+
+  static const String freelancerCommunication = '/freelancer-communication';
 
   static const String settings = '/settings';
 
@@ -70,6 +73,12 @@ abstract final class AppRoutes {
       case dailyChallenge:
         return _buildRoute(
           const DailyChallengeScreen(),
+          routeSettings,
+        );
+
+      case freelancerCommunication:
+        return _buildRoute(
+          const FreelancerPathScreen(),
           routeSettings,
         );
 

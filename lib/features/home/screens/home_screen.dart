@@ -198,6 +198,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           const SizedBox(height: 16),
 
+                          _AnimatedEntry(
+                            delay: 2,
+                            child: _FreelancerCommunicationCard(
+                              onTap: () => _openRoute(
+                                AppRoutes.freelancerCommunication,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
 
 
                           // 4. START LEARNING SECTION
@@ -1333,4 +1344,97 @@ class _HomeErrorView extends StatelessWidget {
 
 double _safeProgress(double value) {
   return value.clamp(0.0, 1.0).toDouble();
+}
+
+class _FreelancerCommunicationCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _FreelancerCommunicationCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Ink(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: <Color>[Color(0xFF102A43), Color(0xFF087A4D)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: AppColors.navy.withAlpha(35),
+                blurRadius: 22,
+                offset: const Offset(0, 9),
+              ),
+            ],
+          ),
+          child: Row(
+            children: <Widget>[
+              Container(
+                width: 62,
+                height: 62,
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(28),
+                  borderRadius: BorderRadius.circular(19),
+                  border: Border.all(color: Colors.white.withAlpha(45)),
+                ),
+                child: const Icon(
+                  Icons.support_agent_rounded,
+                  color: Colors.white,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(width: 15),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Text(
+                          'NEW CAREER PATH',
+                          style: TextStyle(
+                            color: Color(0xFF91E3B9),
+                            fontSize: 10,
+                            letterSpacing: 1.1,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        SizedBox(width: 7),
+                        Icon(Icons.auto_awesome_rounded, color: Color(0xFFFFD76A), size: 14),
+                      ],
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      'Freelancer Communication',
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      'Practice real buyer chats, calls and project conversations.',
+                      style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: const Icon(Icons.arrow_forward_rounded, color: AppColors.primary, size: 20),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

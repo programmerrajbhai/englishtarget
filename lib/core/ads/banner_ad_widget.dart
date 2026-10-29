@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'ad_config_service.dart';
+import 'ad_helper.dart';
 
 class BannerAdWidget extends StatefulWidget {
   const BannerAdWidget({super.key});
@@ -14,9 +15,6 @@ class BannerAdWidget extends StatefulWidget {
 }
 
 class _BannerAdWidgetState extends State<BannerAdWidget> {
-  static const String _androidBannerId =
-      'ca-app-pub-6432705880022694/2361322413';
-
   BannerAd? _bannerAd;
   Timer? _retryTimer;
 
@@ -122,7 +120,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
       late final BannerAd ad;
       ad = BannerAd(
-        adUnitId: _androidBannerId,
+        adUnitId: AdHelper.bannerAdUnitId,
         size: size,
         request: const AdRequest(),
         listener: BannerAdListener(
@@ -183,10 +181,10 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   }
 
   void _scheduleRetry() {
-    if (!mounted || !_adsEnabled || _retryCount >= 3) return;
+    if (!mounted || !_adsEnabled) return;
 
     final delay = Duration(seconds: 60 << _retryCount);
-    _retryCount++;
+    if (_retryCount < 2) _retryCount++;
 
     _retryTimer?.cancel();
     _retryTimer = Timer(delay, () {
@@ -214,6 +212,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
     return SafeArea(
       child: Center(
+        heightFactor: 1.0,
         child: SizedBox(
           width: ad.size.width.toDouble(),
           height: ad.size.height.toDouble(),

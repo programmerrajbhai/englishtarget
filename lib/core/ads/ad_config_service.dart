@@ -1,49 +1,60 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class AdConfigService {
-  static final AdConfigService instance = AdConfigService._init();
-  AdConfigService._init();
+  AdConfigService._();
+  static final AdConfigService instance = AdConfigService._();
 
-  final ValueNotifier<bool> showAdsNotifier = ValueNotifier<bool>(true);
+  static const String _configUrl =
+      'https://willkoservices.com/ads_controllers/ads_config.json';
 
+  final ValueNotifier<bool> showAdsNotifier = ValueNotifier<bool>(false);
   bool get showAds => showAdsNotifier.value;
 
-  final String _configUrl = 'https://willkoservices.com/ads_controllers/ads_config.json';
-  Timer? _pollingTimer;
+  Timer? _timer;
+  bool _fetching = false;
 
-  // ব্যাকগ্রাউন্ডে অনবরত চেক করার জন্য
-  void startMonitoring() {
-    fetchAdSettings(); // প্রথমবার চেক
-    _pollingTimer?.cancel();
-
-    // প্রতি ১০ সেকেন্ড পরপর সার্ভার চেক করবে (অ্যাডমিন প্যানেল থেকে চেঞ্জ করলে ১০ সেকেন্ডের মধ্যে অ্যাপে ইফেক্ট পড়বে)
-    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      fetchAdSettings();
+  Future<void> initialize() async {
+    await fetchAdSettings();
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+      unawaited(fetchAdSettings());
     });
   }
 
   Future<void> fetchAdSettings() async {
+    if (_fetching) return;
+    _fetching = true;
     try {
-      final url = '$_configUrl?t=${DateTime.now().millisecondsSinceEpoch}';
-      final response = await http.get(Uri.parse(url));
+      final uri = Uri.parse(_configUrl).replace(
+        queryParameters: {'t': DateTime.now().millisecondsSinceEpoch.toString()},
+      );
+      final response = await http.get(
+        uri,
+        headers: const {'Cache-Control': 'no-cache'},
+      ).timeout(const Duration(seconds: 8));
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data != null && data['show_ads'] != null) {
-          final bool serverStatus = data['show_ads'] as bool;
-
-          // যদি সার্ভারের স্ট্যাটাস পরিবর্তন হয়, তবেই UI আপডেট করবে
-          if (showAdsNotifier.value != serverStatus) {
-            showAdsNotifier.value = serverStatus;
-            debugPrint('Ad Status Changed Instantly to: $serverStatus');
-          }
-        }
+      if (response.statusCode != 200) {
+        debugPrint('Ad config HTTP ${response.statusCode}');
+        return;
       }
-    } catch (e) {
-      debugPrint('Failed to fetch ad config: $e');
+      final data = jsonDecode(response.body);
+      if (data is! Map<String, dynamic> || data['show_ads'] is! bool) {
+        debugPrint('Ad config has no boolean show_ads.');
+        return;
+      }
+      final enabled = data['show_ads'] as bool;
+      if (showAdsNotifier.value != enabled) {
+        showAdsNotifier.value = enabled;
+        debugPrint('Ads enabled: $enabled');
+      }
+    } catch (error) {
+      debugPrint('Ad config request failed: $error');
+    } finally {
+      _fetching = false;
     }
   }
 }
