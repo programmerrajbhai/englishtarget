@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/ads/banner_ad_widget.dart'; // <--- BANNER AD IMPORT
 import '../../../core/constants/app_colors.dart';
+import '../../rules/widgets/rules_native_ad_widget.dart';
 import '../../splash/widgets/splash_mascot.dart';
 import '../data/basic_sentences_data.dart';
 import '../models/basic_sentence_topic.dart';
@@ -16,16 +17,20 @@ class BasicSentencesScreen extends StatefulWidget {
       _BasicSentencesScreenState();
 }
 
-class _BasicSentencesScreenState
-    extends State<BasicSentencesScreen> {
-  final Map<String, int> _attendedProgress =
-  <String, int>{};
+class _BasicSentencesScreenState extends State<BasicSentencesScreen> {
+  static const int _nativeAdAfterTopics = 8;
+  static const int _minimumTopicsForNativeAd = 12;
 
+  final Map<String, int> _attendedProgress = <String, int>{};
   bool _loading = true;
 
-  List<BasicSentenceTopic> get _topics {
-    return BasicSentencesData.topics;
-  }
+  List<BasicSentenceTopic> get _topics => BasicSentencesData.topics;
+
+  bool get _shouldShowNativeAd =>
+      _topics.length >= _minimumTopicsForNativeAd;
+
+  int get _listItemCount =>
+      _topics.length + (_shouldShowNativeAd ? 1 : 0);
 
   @override
   void initState() {
@@ -34,14 +39,11 @@ class _BasicSentencesScreenState
   }
 
   Future<void> _loadProgress() async {
-    final Map<String, int> progress =
-    <String, int>{};
+    final Map<String, int> progress = <String, int>{};
 
     for (final BasicSentenceTopic topic in _topics) {
       progress[topic.id] =
-      await BasicSentenceProgressService.getCount(
-        topic.id,
-      );
+      await BasicSentenceProgressService.getCount(topic.id);
     }
 
     if (!mounted) return;
@@ -61,33 +63,57 @@ class _BasicSentencesScreenState
         builder: (_) => BasicSentenceSessionScreen(topic: topic),
       ),
     );
-    if (mounted) await _loadProgress();
+
+    if (mounted) {
+      await _loadProgress();
+    }
   }
 
-  int _attended(BasicSentenceTopic topic) {
-    return _attendedProgress[topic.id] ?? 0;
-  }
+  int _attended(BasicSentenceTopic topic) =>
+      _attendedProgress[topic.id] ?? 0;
 
   int get _completedTopics {
-    return _topics.where((BasicSentenceTopic topic) {
-      return _attended(topic) >= 25;
-    }).length;
+    return _topics.where((topic) => _attended(topic) >= 25).length;
   }
 
   double get _overallProgress {
     if (_topics.isEmpty) return 0;
 
-    final int totalActivities =
-    _topics.fold<int>(
+    final int totalActivities = _topics.fold<int>(
       0,
-          (int total, BasicSentenceTopic topic) {
-        return total + _attended(topic);
-      },
+          (total, topic) => total + _attended(topic),
     );
 
     return (totalActivities / (_topics.length * 25))
         .clamp(0.0, 1.0)
         .toDouble();
+  }
+
+  Widget _buildTopicOrAd(BuildContext context, int index) {
+    if (_shouldShowNativeAd && index == _nativeAdAfterTopics) {
+      return const Padding(
+        padding: EdgeInsets.only(bottom: 14),
+        child: RulesNativeAdWidget(),
+      );
+    }
+
+    final int topicIndex = _shouldShowNativeAd &&
+        index > _nativeAdAfterTopics
+        ? index - 1
+        : index;
+
+    final BasicSentenceTopic topic = _topics[topicIndex];
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: topicIndex == _topics.length - 1 ? 0 : 14,
+      ),
+      child: _TopicCard(
+        topic: topic,
+        attended: _attended(topic),
+        onTap: () => _openTopic(topic),
+      ),
+    );
   }
 
   @override
@@ -96,108 +122,62 @@ class _BasicSentencesScreenState
       backgroundColor: AppColors.background,
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: _loading
-                  ? const Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
+        child: _loading
+            ? const Center(
+          child: CircularProgressIndicator(
+            color: AppColors.primary,
+          ),
+        )
+            : CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: <Widget>[
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+              sliver: SliverToBoxAdapter(
+                child: _Header(
+                  onBack: () => Navigator.maybePop(context),
                 ),
-              )
-                  : CustomScrollView(
-                physics: const BouncingScrollPhysics(),
-                slivers: <Widget>[
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      18,
-                      10,
-                      18,
-                      0,
-                    ),
-                    sliver: SliverToBoxAdapter(
-                      child: _Header(
-                        onBack: () =>
-                            Navigator.maybePop(context),
-                      ),
-                    ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      18,
-                      17,
-                      18,
-                      0,
-                    ),
-                    sliver: SliverToBoxAdapter(
-                      child: _HeroCard(
-                        progress: _overallProgress,
-                        completedTopics: _completedTopics,
-                        totalTopics: _topics.length,
-                      ),
-                    ),
-                  ),
-                  const SliverPadding(
-                    padding: EdgeInsets.fromLTRB(
-                      18,
-                      14,
-                      18,
-                      0,
-                    ),
-                    sliver: SliverToBoxAdapter(
-                      child: _SummaryCard(),
-                    ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      18,
-                      24,
-                      18,
-                      35,
-                    ),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                            (
-                            BuildContext context,
-                            int index,
-                            ) {
-                          final BasicSentenceTopic topic =
-                          _topics[index];
-
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              bottom: index ==
-                                  _topics.length - 1
-                                  ? 0
-                                  : 14,
-                            ),
-                            child: _TopicCard(
-                              topic: topic,
-                              attended: _attended(topic),
-                              onTap: () => _openTopic(topic),
-                            ),
-                          );
-                        },
-                        childCount: _topics.length,
-                      ),
-                    ),
-                  ),
-                  if (_topics.isNotEmpty)
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.only(bottom: 12),
-                        child: BannerAdWidget(),
-                      ),
-                    ),
-                ],
               ),
             ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 17, 18, 0),
+              sliver: SliverToBoxAdapter(
+                child: _HeroCard(
+                  progress: _overallProgress,
+                  completedTopics: _completedTopics,
+                  totalTopics: _topics.length,
+                ),
+              ),
+            ),
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(18, 14, 18, 0),
+              sliver: SliverToBoxAdapter(
+                child: _SummaryCard(),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 24, 18, 35),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  _buildTopicOrAd,
+                  childCount: _listItemCount,
+                ),
+              ),
+            ),
+            if (_topics.isNotEmpty)
+              const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: BannerAdWidget(),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 }
+
 
 class _Header extends StatelessWidget {
   final VoidCallback onBack;

@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 abstract final class AdHelper {
   static String get bannerAdUnitId {
     if (Platform.isAndroid) {
@@ -27,5 +29,18 @@ abstract final class AdHelper {
       return 'ca-app-pub-6432705880022694/6859699573';
     }
     throw UnsupportedError('iOS app open ad unit ID is not configured.');
+  }
+
+  static String get rulesNativeAdUnitId {
+    if (!kReleaseMode) {
+      // Google-এর test native ad. Debug/profile build-এ live ad request হবে না.
+      return 'ca-app-pub-3940256099942544/2247696110';
+    }
+
+    if (Platform.isAndroid) {
+      return 'ca-app-pub-6432705880022694/9559021668';
+    }
+
+    throw UnsupportedError('Rules native ad is Android-only.');
   }
 }

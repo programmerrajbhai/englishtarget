@@ -95,7 +95,16 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: const BannerAdWidget(),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFF4F7FA),
+          border: Border(
+            top: BorderSide(color: Color(0xFFE2E8F0)),
+          ),
+        ),
+        padding: const EdgeInsets.only(top: 8),
+        child: const BannerAdWidget(),
+      ),
       backgroundColor: const Color(0xFFF4F7FA), // Premium off-white background
       body: Stack(
         children: [

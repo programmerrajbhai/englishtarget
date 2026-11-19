@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/ads/banner_ad_widget.dart';
+import '../widgets/rules_native_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../data/batches/rule_config.dart';
 import '../models/rule_item.dart';
@@ -16,10 +17,13 @@ String _rawLevelName(RuleLevel level) {
 
 String _levelTitle(RuleLevel level) {
   final String raw = _rawLevelName(level);
-  return raw.split('_').map((String word) {
-    if (word.isEmpty) return word;
-    return '${word[0].toUpperCase()}${word.substring(1)}';
-  }).join(' ');
+  return raw
+      .split('_')
+      .map((String word) {
+        if (word.isEmpty) return word;
+        return '${word[0].toUpperCase()}${word.substring(1)}';
+      })
+      .join(' ');
 }
 
 String _levelSubtitle(RuleLevel level) {
@@ -70,10 +74,7 @@ Color _levelColor(RuleLevel level) {
 class RulesListScreen extends StatefulWidget {
   final bool showBackButton;
 
-  const RulesListScreen({
-    super.key,
-    this.showBackButton = true,
-  });
+  const RulesListScreen({super.key, this.showBackButton = true});
 
   @override
   State<RulesListScreen> createState() => _RulesListScreenState();
@@ -92,26 +93,32 @@ class _RulesListScreenState extends State<RulesListScreen> {
   bool _isLoading = true;
 
   List<String> get _orderedRuleIds {
-    return RulesData.rules.map((RuleItem rule) => rule.id).toList(growable: false);
+    return RulesData.rules
+        .map((RuleItem rule) => rule.id)
+        .toList(growable: false);
   }
 
   List<RuleItem> get _filteredRules {
     final String query = _searchQuery.trim().toLowerCase();
 
-    return RulesData.rules.where((RuleItem rule) {
-      final bool matchesCategory =
-          _selectedCategory == 'All' || rule.category == _selectedCategory;
+    return RulesData.rules
+        .where((RuleItem rule) {
+          final bool matchesCategory =
+              _selectedCategory == 'All' || rule.category == _selectedCategory;
 
-      final bool matchesLevel = _selectedLevel == _allLevels ||
-          _levelTitle(rule.level) == _selectedLevel;
+          final bool matchesLevel =
+              _selectedLevel == _allLevels ||
+              _levelTitle(rule.level) == _selectedLevel;
 
-      final bool matchesSearch = query.isEmpty ||
-          rule.title.toLowerCase().contains(query) ||
-          rule.shortMeaning.toLowerCase().contains(query) ||
-          rule.explanation.toLowerCase().contains(query);
+          final bool matchesSearch =
+              query.isEmpty ||
+              rule.title.toLowerCase().contains(query) ||
+              rule.shortMeaning.toLowerCase().contains(query) ||
+              rule.explanation.toLowerCase().contains(query);
 
-      return matchesCategory && matchesLevel && matchesSearch;
-    }).toList(growable: false);
+          return matchesCategory && matchesLevel && matchesSearch;
+        })
+        .toList(growable: false);
   }
 
   Map<RuleLevel, List<RuleItem>> get _groupedRules {
@@ -127,9 +134,11 @@ class _RulesListScreenState extends State<RulesListScreen> {
 
   List<RuleLevel> get _visibleLevels {
     final Map<RuleLevel, List<RuleItem>> grouped = _groupedRules;
-    return RuleLevel.values.where((RuleLevel level) {
-      return grouped[level]!.isNotEmpty;
-    }).toList(growable: false);
+    return RuleLevel.values
+        .where((RuleLevel level) {
+          return grouped[level]!.isNotEmpty;
+        })
+        .toList(growable: false);
   }
 
   int get _completedRulesCount {
@@ -146,7 +155,7 @@ class _RulesListScreenState extends State<RulesListScreen> {
 
   Future<void> _loadProgress() async {
     final Map<String, RuleProgress> progress =
-    await RulesProgressService.loadAllProgress();
+        await RulesProgressService.loadAllProgress();
 
     if (!mounted) return;
 
@@ -209,6 +218,8 @@ class _RulesListScreenState extends State<RulesListScreen> {
   List<Widget> _buildRuleListItems() {
     final List<Widget> items = [];
 
+    int displayedRuleCount = 0;
+
     for (final RuleLevel level in _visibleLevels) {
       items.add(
         Padding(
@@ -233,6 +244,16 @@ class _RulesListScreenState extends State<RulesListScreen> {
             ),
           ),
         );
+
+        displayedRuleCount++;
+        if (displayedRuleCount == 8 && _filteredRules.length >= 12) {
+          items.add(
+            const Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: RulesNativeAdWidget(),
+            ),
+          );
+        }
       }
     }
     return items;
@@ -240,7 +261,9 @@ class _RulesListScreenState extends State<RulesListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final double horizontalPadding = (MediaQuery.of(context).size.width * 0.045).clamp(16.0, 34.0).toDouble();
+    final double horizontalPadding = (MediaQuery.of(context).size.width * 0.045)
+        .clamp(16.0, 34.0)
+        .toDouble();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FA), // Premium off-white background
@@ -261,7 +284,11 @@ class _RulesListScreenState extends State<RulesListScreen> {
                     // 1. TOP HEADER & FILTERS
                     SliverPadding(
                       padding: EdgeInsets.fromLTRB(
-                          horizontalPadding, 16, horizontalPadding, 0),
+                        horizontalPadding,
+                        16,
+                        horizontalPadding,
+                        0,
+                      ),
                       sliver: SliverList(
                         delegate: SliverChildListDelegate([
                           _Header(
@@ -313,7 +340,8 @@ class _RulesListScreenState extends State<RulesListScreen> {
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           padding: EdgeInsets.symmetric(
-                              horizontal: horizontalPadding),
+                            horizontal: horizontalPadding,
+                          ),
                           itemCount: RulesData.categories.length,
                           separatorBuilder: (_, _) => const SizedBox(width: 10),
                           itemBuilder: (BuildContext context, int index) {
@@ -337,7 +365,8 @@ class _RulesListScreenState extends State<RulesListScreen> {
                       const SliverFillRemaining(
                         child: Center(
                           child: CircularProgressIndicator(
-                              color: AppColors.primary),
+                            color: AppColors.primary,
+                          ),
                         ),
                       )
                     else if (_filteredRules.isEmpty)
@@ -348,9 +377,15 @@ class _RulesListScreenState extends State<RulesListScreen> {
                     else
                       SliverPadding(
                         padding: EdgeInsets.fromLTRB(
-                            horizontalPadding, 12, horizontalPadding, 40),
+                          horizontalPadding,
+                          12,
+                          horizontalPadding,
+                          40,
+                        ),
                         sliver: SliverList(
-                          delegate: SliverChildListDelegate(_buildRuleListItems()),
+                          delegate: SliverChildListDelegate(
+                            _buildRuleListItems(),
+                          ),
                         ),
                       ),
                     if (!_isLoading && _filteredRules.isNotEmpty)
@@ -439,7 +474,11 @@ class _Header extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.workspace_premium_rounded, color: AppColors.amber, size: 18),
+              const Icon(
+                Icons.workspace_premium_rounded,
+                color: AppColors.amber,
+                size: 18,
+              ),
               const SizedBox(width: 6),
               Text(
                 '$completedRules/$totalRules',
@@ -461,10 +500,7 @@ class _ProgressSummary extends StatelessWidget {
   final int completed;
   final int total;
 
-  const _ProgressSummary({
-    required this.completed,
-    required this.total,
-  });
+  const _ProgressSummary({required this.completed, required this.total});
 
   @override
   Widget build(BuildContext context) {
@@ -499,7 +535,9 @@ class _ProgressSummary extends StatelessWidget {
                     strokeWidth: 7,
                     strokeCap: StrokeCap.round,
                     backgroundColor: const Color(0xFFF1F5F9),
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      AppColors.primary,
+                    ),
                   ),
                 ),
                 Text(
@@ -585,8 +623,9 @@ class _LevelSelector extends StatelessWidget {
             );
           }
           final RuleLevel level = RuleLevel.values[index - 1];
-          final List<RuleItem> levelRules =
-          rules.where((RuleItem rule) => rule.level == level).toList(growable: false);
+          final List<RuleItem> levelRules = rules
+              .where((RuleItem rule) => rule.level == level)
+              .toList(growable: false);
 
           return _LevelMiniCard(
             level: level,
@@ -691,19 +730,19 @@ class _SelectorCard extends StatelessWidget {
         ),
         boxShadow: selected
             ? [
-          BoxShadow(
-            color: color.withAlpha(40),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ]
+                BoxShadow(
+                  color: color.withAlpha(40),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ]
             : [
-          BoxShadow(
-            color: AppColors.navy.withAlpha(5),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          )
-        ],
+                BoxShadow(
+                  color: AppColors.navy.withAlpha(5),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -716,7 +755,9 @@ class _SelectorCard extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: selected ? Colors.white.withAlpha(40) : color.withAlpha(20),
+                  color: selected
+                      ? Colors.white.withAlpha(40)
+                      : color.withAlpha(20),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -747,7 +788,9 @@ class _SelectorCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: selected ? Colors.white.withAlpha(220) : AppColors.textSecondary,
+                        color: selected
+                            ? Colors.white.withAlpha(220)
+                            : AppColors.textSecondary,
                         fontSize: 10.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -794,7 +837,7 @@ class _LevelSectionHeader extends StatelessWidget {
             color: color.withAlpha(10),
             blurRadius: 15,
             offset: const Offset(0, 5),
-          )
+          ),
         ],
       ),
       child: Row(
@@ -806,11 +849,7 @@ class _LevelSectionHeader extends StatelessWidget {
               color: color.withAlpha(20),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(
-              _levelIcon(level),
-              color: color,
-              size: 26,
-            ),
+            child: Icon(_levelIcon(level), color: color, size: 26),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -913,9 +952,9 @@ class _SearchBox extends StatelessWidget {
           suffixIcon: query.isEmpty
               ? null
               : IconButton(
-            onPressed: onClear,
-            icon: const Icon(Icons.close_rounded, size: 22),
-          ),
+                  onPressed: onClear,
+                  icon: const Icon(Icons.close_rounded, size: 22),
+                ),
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -927,7 +966,10 @@ class _SearchBox extends StatelessWidget {
     );
   }
 
-  OutlineInputBorder _border({Color color = Colors.transparent, double width = 1}) {
+  OutlineInputBorder _border({
+    Color color = Colors.transparent,
+    double width = 1,
+  }) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(18),
       borderSide: BorderSide(color: color, width: width),
@@ -1033,11 +1075,7 @@ class _RuleTile extends StatelessWidget {
                     color: activeColor.withAlpha(20),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Icon(
-                    rule.icon,
-                    color: activeColor,
-                    size: 28,
-                  ),
+                  child: Icon(rule.icon, color: activeColor, size: 28),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -1072,7 +1110,9 @@ class _RuleTile extends StatelessWidget {
                           value: progress.progress,
                           minHeight: 6,
                           backgroundColor: const Color(0xFFF1F5F9),
-                          valueColor: AlwaysStoppedAnimation<Color>(activeColor),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            activeColor,
+                          ),
                         ),
                       ),
                     ],
@@ -1081,7 +1121,10 @@ class _RuleTile extends StatelessWidget {
                 const SizedBox(width: 14),
                 Container(
                   constraints: const BoxConstraints(minWidth: 80),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: completed ? activeColor : Colors.white,
                     borderRadius: BorderRadius.circular(24),
