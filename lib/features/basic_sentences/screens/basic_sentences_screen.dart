@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/ads/banner_ad_widget.dart'; // <--- BANNER AD IMPORT
+import '../../../core/ads/ad_manager.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../rules/widgets/rules_native_ad_widget.dart';
 import '../../splash/widgets/splash_mascot.dart';
@@ -13,24 +13,40 @@ class BasicSentencesScreen extends StatefulWidget {
   const BasicSentencesScreen({super.key});
 
   @override
-  State<BasicSentencesScreen> createState() =>
-      _BasicSentencesScreenState();
+  State<BasicSentencesScreen> createState() => _BasicSentencesScreenState();
 }
 
 class _BasicSentencesScreenState extends State<BasicSentencesScreen> {
-  static const int _nativeAdAfterTopics = 8;
-  static const int _minimumTopicsForNativeAd = 12;
+  static const int _firstNativeAdAfter = 2;
+  static const int _nextNativeAdEvery = 5;
+  static const Object _nativeAdMarker = Object();
 
   final Map<String, int> _attendedProgress = <String, int>{};
   bool _loading = true;
 
   List<BasicSentenceTopic> get _topics => BasicSentencesData.topics;
 
-  bool get _shouldShowNativeAd =>
-      _topics.length >= _minimumTopicsForNativeAd;
+  List<Object> get _feedItems {
+    final List<Object> items = <Object>[];
 
-  int get _listItemCount =>
-      _topics.length + (_shouldShowNativeAd ? 1 : 0);
+    for (int i = 0; i < _topics.length; i++) {
+      items.add(_topics[i]);
+
+      final int topicCount = i + 1;
+      final bool hasMoreTopics = i < _topics.length - 1;
+
+      if (!hasMoreTopics) continue;
+
+      if (topicCount == _firstNativeAdAfter) {
+        items.add(_nativeAdMarker);
+      } else if (topicCount > _firstNativeAdAfter &&
+          (topicCount - _firstNativeAdAfter) % _nextNativeAdEvery == 0) {
+        items.add(_nativeAdMarker);
+      }
+    }
+
+    return items;
+  }
 
   @override
   void initState() {
@@ -56,21 +72,26 @@ class _BasicSentencesScreenState extends State<BasicSentencesScreen> {
     });
   }
 
-  Future<void> _openTopic(BasicSentenceTopic topic) async {
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => BasicSentenceSessionScreen(topic: topic),
-      ),
-    );
+  void _openTopic(BasicSentenceTopic topic) {
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () async {
+        if (!mounted) return;
 
-    if (mounted) {
-      await _loadProgress();
-    }
+        await Navigator.push<void>(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => BasicSentenceSessionScreen(topic: topic),
+          ),
+        );
+
+        if (mounted) {
+          await _loadProgress();
+        }
+      },
+    );
   }
 
-  int _attended(BasicSentenceTopic topic) =>
-      _attendedProgress[topic.id] ?? 0;
+  int _attended(BasicSentenceTopic topic) => _attendedProgress[topic.id] ?? 0;
 
   int get _completedTopics {
     return _topics.where((topic) => _attended(topic) >= 25).length;
@@ -84,40 +105,13 @@ class _BasicSentencesScreenState extends State<BasicSentencesScreen> {
           (total, topic) => total + _attended(topic),
     );
 
-    return (totalActivities / (_topics.length * 25))
-        .clamp(0.0, 1.0)
-        .toDouble();
-  }
-
-  Widget _buildTopicOrAd(BuildContext context, int index) {
-    if (_shouldShowNativeAd && index == _nativeAdAfterTopics) {
-      return const Padding(
-        padding: EdgeInsets.only(bottom: 14),
-        child: RulesNativeAdWidget(),
-      );
-    }
-
-    final int topicIndex = _shouldShowNativeAd &&
-        index > _nativeAdAfterTopics
-        ? index - 1
-        : index;
-
-    final BasicSentenceTopic topic = _topics[topicIndex];
-
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: topicIndex == _topics.length - 1 ? 0 : 14,
-      ),
-      child: _TopicCard(
-        topic: topic,
-        attended: _attended(topic),
-        onTap: () => _openTopic(topic),
-      ),
-    );
+    return (totalActivities / (_topics.length * 25)).clamp(0.0, 1.0).toDouble();
   }
 
   @override
   Widget build(BuildContext context) {
+    final List<Object> items = _feedItems;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -156,28 +150,42 @@ class _BasicSentencesScreenState extends State<BasicSentencesScreen> {
               ),
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(18, 24, 18, 35),
+              padding: const EdgeInsets.fromLTRB(18, 24, 18, 30),
               sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  _buildTopicOrAd,
-                  childCount: _listItemCount,
+                      (BuildContext context, int index) {
+                    final Object item = items[index];
+                    final bool isLast = index == items.length - 1;
+
+                    if (identical(item, _nativeAdMarker)) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+                        child: const RulesNativeAdWidget(),
+                      );
+                    }
+
+                    final BasicSentenceTopic topic =
+                    item as BasicSentenceTopic;
+
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+                      child: _TopicCard(
+                        topic: topic,
+                        attended: _attended(topic),
+                        onTap: () => _openTopic(topic),
+                      ),
+                    );
+                  },
+                  childCount: items.length,
                 ),
               ),
             ),
-            if (_topics.isNotEmpty)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: BannerAdWidget(),
-                ),
-              ),
           ],
         ),
       ),
     );
   }
 }
-
 
 class _Header extends StatelessWidget {
   final VoidCallback onBack;
@@ -313,8 +321,7 @@ class _HeroCard extends StatelessWidget {
         children: <Widget>[
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 const Text(
                   'Build your English',
@@ -338,16 +345,12 @@ class _HeroCard extends StatelessWidget {
                   children: <Widget>[
                     Expanded(
                       child: ClipRRect(
-                        borderRadius:
-                        BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20),
                         child: LinearProgressIndicator(
                           value: progress,
                           minHeight: 7,
-                          backgroundColor:
-                          Colors.white24,
-                          valueColor:
-                          const AlwaysStoppedAnimation<
-                              Color>(
+                          backgroundColor: Colors.white24,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
                             Colors.white,
                           ),
                         ),
@@ -455,9 +458,7 @@ class _TopicCard extends StatelessWidget {
     final bool started = attended > 0;
     final Color color = topic.color;
 
-    final double progress = (attended / total)
-        .clamp(0.0, 1.0)
-        .toDouble();
+    final double progress = (attended / total).clamp(0.0, 1.0).toDouble();
 
     final String action = completed
         ? 'Review'
@@ -473,14 +474,10 @@ class _TopicCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: started
-                ? color.withAlpha(22)
-                : Colors.white,
+            color: started ? color.withAlpha(22) : Colors.white,
             borderRadius: BorderRadius.circular(23),
             border: Border.all(
-              color: started
-                  ? color.withAlpha(110)
-                  : AppColors.border,
+              color: started ? color.withAlpha(110) : AppColors.border,
               width: started ? 1.5 : 1,
             ),
           ),
@@ -498,9 +495,7 @@ class _TopicCard extends StatelessWidget {
                   ),
                 ),
                 child: Icon(
-                  completed
-                      ? Icons.check_rounded
-                      : topic.icon,
+                  completed ? Icons.check_rounded : topic.icon,
                   color: color,
                   size: 29,
                 ),
@@ -508,8 +503,7 @@ class _TopicCard extends StatelessWidget {
               const SizedBox(width: 13),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
                       topic.title,
@@ -535,15 +529,12 @@ class _TopicCard extends StatelessWidget {
                       children: <Widget>[
                         Expanded(
                           child: ClipRRect(
-                            borderRadius:
-                            BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(20),
                             child: LinearProgressIndicator(
                               value: progress,
                               minHeight: 6,
-                              backgroundColor:
-                              color.withAlpha(20),
-                              valueColor:
-                              AlwaysStoppedAnimation<Color>(
+                              backgroundColor: color.withAlpha(20),
+                              valueColor: AlwaysStoppedAnimation<Color>(
                                 color,
                               ),
                             ),
@@ -570,17 +561,13 @@ class _TopicCard extends StatelessWidget {
                   vertical: 9,
                 ),
                 decoration: BoxDecoration(
-                  color: started || completed
-                      ? color
-                      : color.withAlpha(18),
+                  color: started || completed ? color : color.withAlpha(18),
                   borderRadius: BorderRadius.circular(13),
                 ),
                 child: Text(
                   action,
                   style: TextStyle(
-                    color: started || completed
-                        ? Colors.white
-                        : color,
+                    color: started || completed ? Colors.white : color,
                     fontSize: 11.5,
                     fontWeight: FontWeight.w900,
                   ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/ads/banner_ad_widget.dart';
-import '../widgets/rules_native_ad_widget.dart';
+import '../../../core/ads/ad_manager.dart';
 import '../../../core/constants/app_colors.dart';
 import '../data/batches/rule_config.dart';
 import '../models/rule_item.dart';
@@ -9,6 +8,7 @@ import '../models/rule_progress.dart';
 import '../models/rules_data.dart';
 import '../repositories/rules_repository.dart';
 import '../services/rules_progress_service.dart';
+import '../widgets/rules_native_ad_widget.dart';
 import 'rule_details_screen.dart';
 
 String _rawLevelName(RuleLevel level) {
@@ -20,9 +20,9 @@ String _levelTitle(RuleLevel level) {
   return raw
       .split('_')
       .map((String word) {
-        if (word.isEmpty) return word;
-        return '${word[0].toUpperCase()}${word.substring(1)}';
-      })
+    if (word.isEmpty) return word;
+    return '${word[0].toUpperCase()}${word.substring(1)}';
+  })
       .join(' ');
 }
 
@@ -82,6 +82,8 @@ class RulesListScreen extends StatefulWidget {
 
 class _RulesListScreenState extends State<RulesListScreen> {
   static const String _allLevels = 'All Levels';
+  static const int _firstNativeAdAfter = 2;
+  static const int _nextNativeAdEvery = 5;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -92,32 +94,26 @@ class _RulesListScreenState extends State<RulesListScreen> {
   String _searchQuery = '';
   bool _isLoading = true;
 
-  List<String> get _orderedRuleIds {
-    return RulesData.rules
-        .map((RuleItem rule) => rule.id)
-        .toList(growable: false);
-  }
-
   List<RuleItem> get _filteredRules {
     final String query = _searchQuery.trim().toLowerCase();
 
     return RulesData.rules
         .where((RuleItem rule) {
-          final bool matchesCategory =
-              _selectedCategory == 'All' || rule.category == _selectedCategory;
+      final bool matchesCategory =
+          _selectedCategory == 'All' || rule.category == _selectedCategory;
 
-          final bool matchesLevel =
-              _selectedLevel == _allLevels ||
+      final bool matchesLevel =
+          _selectedLevel == _allLevels ||
               _levelTitle(rule.level) == _selectedLevel;
 
-          final bool matchesSearch =
-              query.isEmpty ||
+      final bool matchesSearch =
+          query.isEmpty ||
               rule.title.toLowerCase().contains(query) ||
               rule.shortMeaning.toLowerCase().contains(query) ||
               rule.explanation.toLowerCase().contains(query);
 
-          return matchesCategory && matchesLevel && matchesSearch;
-        })
+      return matchesCategory && matchesLevel && matchesSearch;
+    })
         .toList(growable: false);
   }
 
@@ -136,8 +132,8 @@ class _RulesListScreenState extends State<RulesListScreen> {
     final Map<RuleLevel, List<RuleItem>> grouped = _groupedRules;
     return RuleLevel.values
         .where((RuleLevel level) {
-          return grouped[level]!.isNotEmpty;
-        })
+      return grouped[level]!.isNotEmpty;
+    })
         .toList(growable: false);
   }
 
@@ -155,7 +151,7 @@ class _RulesListScreenState extends State<RulesListScreen> {
 
   Future<void> _loadProgress() async {
     final Map<String, RuleProgress> progress =
-        await RulesProgressService.loadAllProgress();
+    await RulesProgressService.loadAllProgress();
 
     if (!mounted) return;
 
@@ -165,12 +161,11 @@ class _RulesListScreenState extends State<RulesListScreen> {
     });
   }
 
-  // ALL TIME UNLOCKED LOGIC
   bool _isRuleUnlocked(RuleItem rule) {
     return true;
   }
 
-  Future<void> _openRule(RuleItem rule, bool isUnlocked) async {
+  void _openRule(RuleItem rule, bool isUnlocked) {
     final content = RulesRepository.findById(rule.id);
 
     if (content == null) {
@@ -181,15 +176,20 @@ class _RulesListScreenState extends State<RulesListScreen> {
       return;
     }
 
-    Navigator.of(context)
-        .push<void>(
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () {
+        if (!mounted) return;
+        Navigator.of(context)
+            .push<void>(
           MaterialPageRoute<void>(
             builder: (_) => RuleDetailsScreen(rule: content),
           ),
         )
-        .then((_) {
+            .then((_) {
           if (mounted) _loadProgress();
         });
+      },
+    );
   }
 
   void _showMessage(String message, {bool isError = false}) {
@@ -214,10 +214,16 @@ class _RulesListScreenState extends State<RulesListScreen> {
     super.dispose();
   }
 
-  // Generates flat list of widgets to avoid nested list scrolling issues
-  List<Widget> _buildRuleListItems() {
-    final List<Widget> items = [];
+  bool _shouldInsertNativeAd(int count, int total) {
+    if (count >= total) return false;
+    if (count == _firstNativeAdAfter) return true;
+    return count > _firstNativeAdAfter &&
+        (count - _firstNativeAdAfter) % _nextNativeAdEvery == 0;
+  }
 
+  List<Widget> _buildRuleListItems() {
+    final List<Widget> items = <Widget>[];
+    final int totalFiltered = _filteredRules.length;
     int displayedRuleCount = 0;
 
     for (final RuleLevel level in _visibleLevels) {
@@ -246,10 +252,10 @@ class _RulesListScreenState extends State<RulesListScreen> {
         );
 
         displayedRuleCount++;
-        if (displayedRuleCount == 8 && _filteredRules.length >= 12) {
+        if (_shouldInsertNativeAd(displayedRuleCount, totalFiltered)) {
           items.add(
             const Padding(
-              padding: EdgeInsets.only(top: 2),
+              padding: EdgeInsets.only(bottom: 14),
               child: RulesNativeAdWidget(),
             ),
           );
@@ -266,140 +272,121 @@ class _RulesListScreenState extends State<RulesListScreen> {
         .toDouble();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA), // Premium off-white background
+      backgroundColor: const Color(0xFFF4F7FA),
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            // --- SCROLLABLE CONTENT ---
-            Expanded(
-              child: RefreshIndicator(
-                color: AppColors.primary,
-                onRefresh: _loadProgress,
-                child: CustomScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(
-                    parent: BouncingScrollPhysics(),
-                  ),
-                  slivers: [
-                    // 1. TOP HEADER & FILTERS
-                    SliverPadding(
-                      padding: EdgeInsets.fromLTRB(
-                        horizontalPadding,
-                        16,
-                        horizontalPadding,
-                        0,
-                      ),
-                      sliver: SliverList(
-                        delegate: SliverChildListDelegate([
-                          _Header(
-                            showBackButton: widget.showBackButton,
-                            completedRules: _completedRulesCount,
-                            totalRules: RulesData.rules.length,
-                          ),
-                          const SizedBox(height: 24),
-                          _ProgressSummary(
-                            completed: _completedRulesCount,
-                            total: RulesData.rules.length,
-                          ),
-                          const SizedBox(height: 24),
-                          _LevelSelector(
-                            rules: RulesData.rules,
-                            progressMap: _progressMap,
-                            selectedLevel: _selectedLevel,
-                            onSelected: (String value) {
-                              setState(() {
-                                _selectedLevel = value;
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                          _SearchBox(
-                            controller: _searchController,
-                            query: _searchQuery,
-                            onChanged: (String value) {
-                              setState(() {
-                                _searchQuery = value;
-                              });
-                            },
-                            onClear: () {
-                              _searchController.clear();
-                              setState(() {
-                                _searchQuery = '';
-                              });
-                            },
-                          ),
-                          const SizedBox(height: 16),
-                        ]),
-                      ),
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: _loadProgress,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            slivers: [
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                  horizontalPadding,
+                  16,
+                  horizontalPadding,
+                  0,
+                ),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _Header(
+                      showBackButton: widget.showBackButton,
+                      completedRules: _completedRulesCount,
+                      totalRules: RulesData.rules.length,
                     ),
-
-                    // 2. HORIZONTAL CATEGORY CHIPS
-                    SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: 42,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: horizontalPadding,
-                          ),
-                          itemCount: RulesData.categories.length,
-                          separatorBuilder: (_, _) => const SizedBox(width: 10),
-                          itemBuilder: (BuildContext context, int index) {
-                            final String category = RulesData.categories[index];
-                            return _CategoryChip(
-                              label: category,
-                              selected: category == _selectedCategory,
-                              onTap: () {
-                                setState(() {
-                                  _selectedCategory = category;
-                                });
-                              },
-                            );
-                          },
-                        ),
-                      ),
+                    const SizedBox(height: 24),
+                    _ProgressSummary(
+                      completed: _completedRulesCount,
+                      total: RulesData.rules.length,
                     ),
-
-                    // 3. FLAT FULL-SCREEN RULE LIST
-                    if (_isLoading)
-                      const SliverFillRemaining(
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      )
-                    else if (_filteredRules.isEmpty)
-                      const SliverFillRemaining(
-                        hasScrollBody: false,
-                        child: _EmptyState(),
-                      )
-                    else
-                      SliverPadding(
-                        padding: EdgeInsets.fromLTRB(
-                          horizontalPadding,
-                          12,
-                          horizontalPadding,
-                          40,
-                        ),
-                        sliver: SliverList(
-                          delegate: SliverChildListDelegate(
-                            _buildRuleListItems(),
-                          ),
-                        ),
-                      ),
-                    if (!_isLoading && _filteredRules.isNotEmpty)
-                      const SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.only(bottom: 12),
-                          child: BannerAdWidget(),
-                        ),
-                      ),
-                  ],
+                    const SizedBox(height: 24),
+                    _LevelSelector(
+                      rules: RulesData.rules,
+                      progressMap: _progressMap,
+                      selectedLevel: _selectedLevel,
+                      onSelected: (String value) {
+                        setState(() {
+                          _selectedLevel = value;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    _SearchBox(
+                      controller: _searchController,
+                      query: _searchQuery,
+                      onChanged: (String value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
+                      onClear: () {
+                        _searchController.clear();
+                        setState(() {
+                          _searchQuery = '';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ]),
                 ),
               ),
-            ),
-          ],
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 42,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: horizontalPadding,
+                    ),
+                    itemCount: RulesData.categories.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 10),
+                    itemBuilder: (BuildContext context, int index) {
+                      final String category = RulesData.categories[index];
+                      return _CategoryChip(
+                        label: category,
+                        selected: category == _selectedCategory,
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory = category;
+                          });
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+              if (_isLoading)
+                const SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primary,
+                    ),
+                  ),
+                )
+              else if (_filteredRules.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _EmptyState(),
+                )
+              else
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    12,
+                    horizontalPadding,
+                    40,
+                  ),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate(
+                      _buildRuleListItems(),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -730,19 +717,19 @@ class _SelectorCard extends StatelessWidget {
         ),
         boxShadow: selected
             ? [
-                BoxShadow(
-                  color: color.withAlpha(40),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ]
+          BoxShadow(
+            color: color.withAlpha(40),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ]
             : [
-                BoxShadow(
-                  color: AppColors.navy.withAlpha(5),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+          BoxShadow(
+            color: AppColors.navy.withAlpha(5),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -952,9 +939,9 @@ class _SearchBox extends StatelessWidget {
           suffixIcon: query.isEmpty
               ? null
               : IconButton(
-                  onPressed: onClear,
-                  icon: const Icon(Icons.close_rounded, size: 22),
-                ),
+            onPressed: onClear,
+            icon: const Icon(Icons.close_rounded, size: 22),
+          ),
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(vertical: 16),
@@ -1165,9 +1152,9 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: const [
+      children: [
         SizedBox(height: 80),
         Icon(
           Icons.search_off_rounded,

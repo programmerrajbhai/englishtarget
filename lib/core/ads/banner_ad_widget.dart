@@ -183,7 +183,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   void _scheduleRetry() {
     if (!mounted || !_adsEnabled) return;
 
-    final delay = Duration(seconds: 60 << _retryCount);
+    final delay = Duration(seconds: 15 << _retryCount); // 15s, 30s, 60s
     if (_retryCount < 2) _retryCount++;
 
     _retryTimer?.cancel();

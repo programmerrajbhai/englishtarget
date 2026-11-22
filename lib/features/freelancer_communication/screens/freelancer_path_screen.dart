@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/ads/banner_ad_widget.dart';
+import '../../../core/ads/ad_manager.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../rules/widgets/rules_native_ad_widget.dart';
 import '../data/freelancer_course_data.dart';
 import '../models/freelancer_lesson.dart';
 import '../services/freelancer_progress_service.dart';
@@ -15,7 +16,11 @@ class FreelancerPathScreen extends StatefulWidget {
 }
 
 class _FreelancerPathScreenState extends State<FreelancerPathScreen> {
+  static const int _firstNativeAdAfter = 2;
+  static const int _nextNativeAdEvery = 5;
+
   Set<int> _completed = <int>{};
+  final Set<int> _adUnlocked = <int>{};
   bool _loading = true;
 
   @override
@@ -26,7 +31,7 @@ class _FreelancerPathScreenState extends State<FreelancerPathScreen> {
 
   Future<void> _loadProgress() async {
     final Set<int> completed =
-        await FreelancerProgressService.completedLessons();
+    await FreelancerProgressService.completedLessons();
     if (!mounted) return;
     setState(() {
       _completed = completed;
@@ -35,26 +40,176 @@ class _FreelancerPathScreenState extends State<FreelancerPathScreen> {
   }
 
   bool _isUnlocked(int lessonId) =>
-      lessonId == 1 || _completed.contains(lessonId - 1);
+      lessonId == 1 ||
+          _completed.contains(lessonId - 1) ||
+          _adUnlocked.contains(lessonId);
 
-  Future<void> _openLesson(FreelancerLesson lesson) async {
-    if (!_isUnlocked(lesson.id)) return;
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => FreelancerLessonScreen(lesson: lesson),
-      ),
+  void _openLesson(FreelancerLesson lesson) {
+    if (!_isUnlocked(lesson.id)) {
+      _showUnlockWithAdDialog(lesson);
+      return;
+    }
+
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () async {
+        if (!mounted) return;
+        await Navigator.push<void>(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => FreelancerLessonScreen(lesson: lesson),
+          ),
+        );
+        if (mounted) {
+          await _loadProgress();
+        }
+      },
     );
-    await _loadProgress();
+  }
+
+  Future<void> _showUnlockWithAdDialog(FreelancerLesson lesson) async {
+    await showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            'Unlock Level ${lesson.id}?',
+            style: const TextStyle(
+              color: AppColors.navy,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          content: const Text(
+            'Complete the previous level, or watch a short video ad to unlock this level right now.',
+            style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _unlockLessonWithAd(lesson);
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
+              icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
+              label: const Text('Watch Ad'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _unlockLessonWithAd(FreelancerLesson lesson) {
+    bool rewardEarned = false;
+
+    AdManager.instance.showRewardedAd(
+      onUserEarnedReward: (_) {
+        rewardEarned = true;
+      },
+      onAdDismissed: () async {
+        if (!mounted) return;
+        if (!rewardEarned) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(
+                content: Text('Ad is not ready right now. Please try again.'),
+              ),
+            );
+          return;
+        }
+
+        setState(() {
+          _adUnlocked.add(lesson.id);
+        });
+
+        await Navigator.push<void>(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => FreelancerLessonScreen(lesson: lesson),
+          ),
+        );
+        if (mounted) {
+          await _loadProgress();
+        }
+      },
+    );
+  }
+
+  bool _shouldInsertNativeAd(int lessonCount, int totalLessons) {
+    if (lessonCount >= totalLessons) return false;
+    if (lessonCount == _firstNativeAdAfter) return true;
+    return lessonCount > _firstNativeAdAfter &&
+        (lessonCount - _firstNativeAdAfter) % _nextNativeAdEvery == 0;
+  }
+
+  List<Widget> _buildCourseList(double progress) {
+    final List<FreelancerLesson> allLessons = FreelancerCourseData.lessons;
+    final int totalLessons = allLessons.length;
+    final List<Widget> children = <Widget>[
+      _CourseHero(progress: progress, completed: _completed.length),
+      const SizedBox(height: 24),
+    ];
+
+    int lessonCounter = 0;
+
+    for (int chapter = 1; chapter <= 5; chapter++) {
+      final List<FreelancerLesson> chapterLessons = allLessons
+          .where((FreelancerLesson item) => item.chapter == chapter)
+          .toList();
+
+      if (chapterLessons.isEmpty) continue;
+
+      children.add(
+        _ChapterHeader(
+          number: chapter,
+          title: chapterLessons.first.chapterTitle,
+        ),
+      );
+      children.add(const SizedBox(height: 10));
+
+      for (final FreelancerLesson lesson in chapterLessons) {
+        lessonCounter++;
+        children.add(
+          _LessonTile(
+            lesson: lesson,
+            completed: _completed.contains(lesson.id),
+            unlocked: _isUnlocked(lesson.id),
+            onTap: () => _openLesson(lesson),
+          ),
+        );
+
+        if (_shouldInsertNativeAd(lessonCounter, totalLessons)) {
+          children.add(
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: RulesNativeAdWidget(),
+            ),
+          );
+        }
+      }
+
+      children.add(const SizedBox(height: 18));
+    }
+
+    return children;
   }
 
   @override
   Widget build(BuildContext context) {
     final double progress =
         _completed.length / FreelancerCourseData.lessons.length;
+
     return Scaffold(
       backgroundColor: AppColors.background,
-      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         title: const Text('Freelancer Communication'),
         backgroundColor: AppColors.background,
@@ -63,42 +218,16 @@ class _FreelancerPathScreenState extends State<FreelancerPathScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _loadProgress,
-              color: AppColors.primary,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(
-                  parent: BouncingScrollPhysics(),
-                ),
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
-                children: <Widget>[
-                  _CourseHero(progress: progress, completed: _completed.length),
-                  const SizedBox(height: 24),
-                  for (int chapter = 1; chapter <= 5; chapter++) ...<Widget>[
-                    _ChapterHeader(
-                      number: chapter,
-                      title: FreelancerCourseData.lessons
-                          .firstWhere(
-                            (FreelancerLesson lesson) =>
-                                lesson.chapter == chapter,
-                          )
-                          .chapterTitle,
-                    ),
-                    const SizedBox(height: 10),
-                    for (final FreelancerLesson lesson
-                        in FreelancerCourseData.lessons.where(
-                          (FreelancerLesson item) => item.chapter == chapter,
-                        ))
-                      _LessonTile(
-                        lesson: lesson,
-                        completed: _completed.contains(lesson.id),
-                        unlocked: _isUnlocked(lesson.id),
-                        onTap: () => _openLesson(lesson),
-                      ),
-                    const SizedBox(height: 18),
-                  ],
-                ],
-              ),
-            ),
+        onRefresh: _loadProgress,
+        color: AppColors.primary,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
+          children: _buildCourseList(progress),
+        ),
+      ),
     );
   }
 }
@@ -252,7 +381,7 @@ class _LessonTile extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
-          onTap: unlocked ? onTap : null,
+          onTap: onTap,
           borderRadius: BorderRadius.circular(18),
           child: Container(
             padding: const EdgeInsets.all(15),
@@ -322,8 +451,10 @@ class _LessonTile extends StatelessWidget {
                   ),
                 ),
                 Icon(
-                  Icons.chevron_right_rounded,
-                  color: unlocked ? AppColors.primary : AppColors.border,
+                  unlocked
+                      ? Icons.chevron_right_rounded
+                      : Icons.play_circle_outline_rounded,
+                  color: unlocked ? AppColors.primary : AppColors.amber,
                 ),
               ],
             ),

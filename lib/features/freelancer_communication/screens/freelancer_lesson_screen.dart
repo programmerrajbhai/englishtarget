@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
+import '../../../core/ads/ad_manager.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/freelancer_lesson.dart';
 import '../services/freelancer_progress_service.dart';
@@ -38,16 +39,23 @@ class _FreelancerLessonScreenState extends State<FreelancerLessonScreen> {
 
   Future<void> _startPractice() async {
     await _tts.stop();
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => FreelancerConversationScreen(lesson: widget.lesson),
-      ),
+    if (!mounted) return;
+
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () async {
+        if (!mounted) return;
+        await Navigator.push<void>(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => FreelancerConversationScreen(lesson: widget.lesson),
+          ),
+        );
+        final int score = await FreelancerProgressService.bestScore(
+          widget.lesson.id,
+        );
+        if (mounted) setState(() => _bestScore = score);
+      },
     );
-    final int score = await FreelancerProgressService.bestScore(
-      widget.lesson.id,
-    );
-    if (mounted) setState(() => _bestScore = score);
   }
 
   @override

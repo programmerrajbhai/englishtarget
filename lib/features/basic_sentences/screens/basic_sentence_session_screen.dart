@@ -6,6 +6,8 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../../core/ads/ad_manager.dart';
+import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/microphone_disclosure.dart';
 import '../models/basic_sentence.dart';
@@ -36,9 +38,7 @@ class _BasicSentenceSessionScreenState
 
   late final List<BasicSentenceActivity> _activities;
 
-  // 100% FIXED: Removed 'late' and initialized with an empty list to prevent LateInitializationError
   List<String> _shuffledWords = <String>[];
-
   List<String> _mcqOptions = <String>[];
   String _selectedMcqOption = '';
 
@@ -98,7 +98,6 @@ class _BasicSentenceSessionScreenState
   void _prepareActivityData() {
     final BasicSentenceActivity? activity = _currentActivity;
 
-    // FIXED: Always reset lists before preparing new data to avoid state leaks and errors
     _shuffledWords = <String>[];
     _mcqOptions = <String>[];
 
@@ -117,15 +116,13 @@ class _BasicSentenceSessionScreenState
         do {
           _shuffledWords.shuffle(_random);
           attempts++;
-        } while (
-        _shuffledWords.join('|') == originalWords.join('|') &&
+        } while (_shuffledWords.join('|') == originalWords.join('|') &&
             attempts < 10);
       }
     } else if (activity.type == BasicSentenceActivityType.mcq) {
       final String correctEnglish = activity.sentence.english;
       final Set<String> options = <String>{correctEnglish};
 
-      // Generate fake options from the same topic for natural feel
       final List<BasicSentence> allTopicSentences = <BasicSentence>[
         ...widget.topic.learnSentences,
         ...widget.topic.buildSentences,
@@ -209,8 +206,7 @@ class _BasicSentenceSessionScreenState
       return;
     }
 
-    final bool accepted =
-    await MicrophoneDisclosure.ensureAccepted(context);
+    final bool accepted = await MicrophoneDisclosure.ensureAccepted(context);
 
     if (!accepted || !mounted) {
       return;
@@ -290,8 +286,7 @@ class _BasicSentenceSessionScreenState
     final Set<String> actualWords = actualText.split(' ').toSet();
     final Set<String> expectedWords = expectedText.split(' ').toSet();
 
-    final int matched =
-        actualWords.intersection(expectedWords).length;
+    final int matched = actualWords.intersection(expectedWords).length;
 
     if (expectedWords.isEmpty) return 0;
 
@@ -305,6 +300,149 @@ class _BasicSentenceSessionScreenState
         .replaceAll(RegExp(r"[^a-z0-9']+"), ' ')
         .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
+  }
+
+  // --- REWARDED AD: HINT FOR MCQ ---
+  Future<void> _useMcqHintWithAd() async {
+    final BasicSentenceActivity? activity = _currentActivity;
+    if (activity == null || _checked || _mcqOptions.length <= 2) return;
+
+    await _stopAudio();
+    if (!mounted) return;
+
+    bool rewardEarned = false;
+
+    AdManager.instance.showRewardedAd(
+      onUserEarnedReward: (_) {
+        rewardEarned = true;
+      },
+      onAdDismissed: () {
+        if (!mounted) return;
+        if (!rewardEarned) {
+          _showMessage('Ad is not ready right now. Please try again shortly.');
+          return;
+        }
+
+        final String correctEnglish = activity.sentence.english;
+        final List<String> wrongOptions =
+        _mcqOptions.where((opt) => opt != correctEnglish).toList();
+
+        if (wrongOptions.isNotEmpty) {
+          final String toRemove = wrongOptions.first;
+          setState(() {
+            _mcqOptions.remove(toRemove);
+            if (_selectedMcqOption == toRemove) {
+              _selectedMcqOption = '';
+            }
+          });
+          _showMessage('Hint applied! One wrong option removed.');
+        }
+      },
+    );
+  }
+
+  // --- REWARDED AD: HINT FOR BUILD ---
+  Future<void> _useBuildHintWithAd() async {
+    final BasicSentenceActivity? activity = _currentActivity;
+    if (activity == null || _checked) return;
+
+    final List<String> expectedWords = activity.sentence.words;
+    if (expectedWords.isEmpty || _usedWords.length >= _shuffledWords.length) {
+      return;
+    }
+
+    await _stopAudio();
+    if (!mounted) return;
+
+    bool rewardEarned = false;
+
+    AdManager.instance.showRewardedAd(
+      onUserEarnedReward: (_) {
+        rewardEarned = true;
+      },
+      onAdDismissed: () {
+        if (!mounted) return;
+        if (!rewardEarned) {
+          _showMessage('Ad is not ready right now. Please try again shortly.');
+          return;
+        }
+
+        final List<String> currentWords = _buildAnswer.isEmpty
+            ? <String>[]
+            : _buildAnswer.split(' ');
+
+        // ইউজার ভুল অর্ডারে শব্দ বসালে রিসেট করে প্রথম সঠিক শব্দ বসাবে
+        bool prefixMatches = currentWords.length <= expectedWords.length;
+        if (prefixMatches) {
+          for (int i = 0; i < currentWords.length; i++) {
+            if (_normalize(currentWords[i]) != _normalize(expectedWords[i])) {
+              prefixMatches = false;
+              break;
+            }
+          }
+        }
+
+        if (!prefixMatches) {
+          setState(() {
+            _buildAnswer = '';
+            _usedWords.clear();
+          });
+        }
+
+        final int nextWordPosition = prefixMatches ? currentWords.length : 0;
+        if (nextWordPosition >= expectedWords.length) return;
+
+        final String targetWord = expectedWords[nextWordPosition];
+
+        int matchIndex = -1;
+        for (int i = 0; i < _shuffledWords.length; i++) {
+          if (!_usedWords.contains(i) &&
+              _normalize(_shuffledWords[i]) == _normalize(targetWord)) {
+            matchIndex = i;
+            break;
+          }
+        }
+
+        if (matchIndex != -1) {
+          _selectWord(matchIndex, _shuffledWords[matchIndex]);
+          _showMessage('Hint applied! Next correct word placed.');
+        }
+      },
+    );
+  }
+
+  // --- REWARDED AD: RETRY WRONG ANSWER ---
+  Future<void> _retryActivityWithAd() async {
+    if (!_checked || _isCorrect) return;
+
+    await _stopAudio();
+    if (!mounted) return;
+
+    bool rewardEarned = false;
+
+    AdManager.instance.showRewardedAd(
+      onUserEarnedReward: (_) {
+        rewardEarned = true;
+      },
+      onAdDismissed: () {
+        if (!mounted) return;
+        if (!rewardEarned) {
+          _showMessage('Ad is not ready right now. Please try again shortly.');
+          return;
+        }
+
+        setState(() {
+          _checked = false;
+          _isCorrect = false;
+          _speechScore = 0;
+          _buildAnswer = '';
+          _recognizedText = '';
+          _selectedMcqOption = '';
+          _usedWords.clear();
+        });
+        _showMessage('You can try again now!');
+      },
+    );
   }
 
   Future<void> _skipActivity() async {
@@ -324,16 +462,21 @@ class _BasicSentenceSessionScreenState
     if (!mounted) return;
 
     if (_currentIndex + 1 >= _activities.length) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => BasicSentenceResultScreen(
-            topic: widget.topic,
-            total: _activities.length,
-            correct: _correct,
-            skipped: _skipped,
-          ),
-        ),
+      AdManager.instance.showInterstitialAd(
+        onAdDismissed: () {
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => BasicSentenceResultScreen(
+                topic: widget.topic,
+                total: _activities.length,
+                correct: _correct,
+                skipped: _skipped,
+              ),
+            ),
+          );
+        },
       );
       return;
     }
@@ -491,6 +634,7 @@ class _BasicSentenceSessionScreenState
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         title: Text(widget.topic.title),
         actions: <Widget>[
@@ -501,6 +645,7 @@ class _BasicSentenceSessionScreenState
         ],
       ),
       body: SafeArea(
+        bottom: false,
         child: Column(
           children: <Widget>[
             Padding(
@@ -567,6 +712,15 @@ class _BasicSentenceSessionScreenState
                       _selectedMcqOption = option;
                     });
                   },
+                  onMcqHint: () {
+                    unawaited(_useMcqHintWithAd());
+                  },
+                  onBuildHint: () {
+                    unawaited(_useBuildHintWithAd());
+                  },
+                  onRetryWithAd: () {
+                    unawaited(_retryActivityWithAd());
+                  },
                 ),
               ),
             ),
@@ -600,6 +754,9 @@ class _ActivityContent extends StatelessWidget {
   final VoidCallback onSpeakContinue;
   final VoidCallback onMcqCheck;
   final void Function(String option) onMcqOptionTap;
+  final VoidCallback onMcqHint;
+  final VoidCallback onBuildHint;
+  final VoidCallback onRetryWithAd;
 
   const _ActivityContent({
     required this.activity,
@@ -623,6 +780,9 @@ class _ActivityContent extends StatelessWidget {
     required this.onSpeakContinue,
     required this.onMcqCheck,
     required this.onMcqOptionTap,
+    required this.onMcqHint,
+    required this.onBuildHint,
+    required this.onRetryWithAd,
   });
 
   @override
@@ -646,6 +806,8 @@ class _ActivityContent extends StatelessWidget {
           onListen: onListen,
           onCheck: onMcqCheck,
           onOptionTap: onMcqOptionTap,
+          onHint: onMcqHint,
+          onRetryWithAd: onRetryWithAd,
         );
 
       case BasicSentenceActivityType.build:
@@ -659,6 +821,8 @@ class _ActivityContent extends StatelessWidget {
           onListen: onListen,
           onCheck: onBuildCheck,
           onWordTap: onWordTap,
+          onHint: onBuildHint,
+          onRetryWithAd: onRetryWithAd,
         );
 
       case BasicSentenceActivityType.speak:
@@ -674,6 +838,7 @@ class _ActivityContent extends StatelessWidget {
           onMicrophone: onMicrophone,
           onCheck: onSpeakCheck,
           onContinue: onSpeakContinue,
+          onRetryWithAd: onRetryWithAd,
         );
     }
   }
@@ -776,6 +941,8 @@ class _McqCard extends StatelessWidget {
   final VoidCallback onListen;
   final VoidCallback onCheck;
   final void Function(String option) onOptionTap;
+  final VoidCallback onHint;
+  final VoidCallback onRetryWithAd;
 
   const _McqCard({
     required this.activity,
@@ -786,6 +953,8 @@ class _McqCard extends StatelessWidget {
     required this.onListen,
     required this.onCheck,
     required this.onOptionTap,
+    required this.onHint,
+    required this.onRetryWithAd,
   });
 
   @override
@@ -794,6 +963,12 @@ class _McqCard extends StatelessWidget {
       color: AppColors.amber,
       label: 'QUIZ',
       icon: Icons.quiz_rounded,
+      trailing: !checked && options.length > 2
+          ? _HintAdButton(
+        color: AppColors.amber,
+        onTap: onHint,
+      )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -889,8 +1064,12 @@ class _McqCard extends StatelessWidget {
               isCorrect: isCorrect,
               correctAnswer: activity.sentence.english,
             ),
+            if (!isCorrect) ...<Widget>[
+              const SizedBox(height: 12),
+              _RetryAdButton(onTap: onRetryWithAd),
+            ],
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -918,6 +1097,8 @@ class _BuildCard extends StatelessWidget {
   final VoidCallback onListen;
   final VoidCallback onCheck;
   final void Function(int index, String word) onWordTap;
+  final VoidCallback onHint;
+  final VoidCallback onRetryWithAd;
 
   const _BuildCard({
     required this.activity,
@@ -929,6 +1110,8 @@ class _BuildCard extends StatelessWidget {
     required this.onListen,
     required this.onCheck,
     required this.onWordTap,
+    required this.onHint,
+    required this.onRetryWithAd,
   });
 
   @override
@@ -937,6 +1120,12 @@ class _BuildCard extends StatelessWidget {
       color: AppColors.blue,
       label: 'BUILD',
       icon: Icons.extension_rounded,
+      trailing: !checked && usedWords.length < shuffledWords.length
+          ? _HintAdButton(
+        color: AppColors.blue,
+        onTap: onHint,
+      )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -987,9 +1176,7 @@ class _BuildCard extends StatelessWidget {
             child: Text(
               answer.isEmpty ? 'Tap the words below' : answer,
               style: TextStyle(
-                color: answer.isEmpty
-                    ? AppColors.textSecondary
-                    : AppColors.navy,
+                color: answer.isEmpty ? AppColors.textSecondary : AppColors.navy,
                 fontSize: 17,
                 fontWeight: FontWeight.w800,
               ),
@@ -1020,8 +1207,12 @@ class _BuildCard extends StatelessWidget {
               isCorrect: isCorrect,
               correctAnswer: activity.sentence.english,
             ),
+            if (!isCorrect) ...<Widget>[
+              const SizedBox(height: 12),
+              _RetryAdButton(onTap: onRetryWithAd),
+            ],
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -1051,6 +1242,7 @@ class _SpeakCard extends StatelessWidget {
   final VoidCallback onMicrophone;
   final VoidCallback onCheck;
   final VoidCallback onContinue;
+  final VoidCallback onRetryWithAd;
 
   const _SpeakCard({
     required this.activity,
@@ -1064,6 +1256,7 @@ class _SpeakCard extends StatelessWidget {
     required this.onMicrophone,
     required this.onCheck,
     required this.onContinue,
+    required this.onRetryWithAd,
   });
 
   @override
@@ -1181,8 +1374,12 @@ class _SpeakCard extends StatelessWidget {
               correctAnswer:
               '${activity.sentence.english}  Score: $speechScore%',
             ),
+            if (!isCorrect) ...<Widget>[
+              const SizedBox(height: 12),
+              _RetryAdButton(onTap: onRetryWithAd),
+            ],
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -1203,16 +1400,90 @@ class _SpeakCard extends StatelessWidget {
   }
 }
 
+class _HintAdButton extends StatelessWidget {
+  final Color color;
+  final VoidCallback onTap;
+
+  const _HintAdButton({
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withAlpha(22),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withAlpha(70)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(Icons.lightbulb_rounded, color: color, size: 15),
+            const SizedBox(width: 4),
+            Text(
+              'Hint (Ad)',
+              style: TextStyle(
+                color: color,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RetryAdButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _RetryAdButton({
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 46,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        icon: const Icon(Icons.play_circle_outline_rounded, size: 20),
+        label: const Text(
+          'Watch Ad to Retry',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.navy,
+          side: const BorderSide(color: AppColors.border, width: 1.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ActivityCard extends StatelessWidget {
   final Color color;
   final String label;
   final IconData icon;
+  final Widget? trailing;
   final Widget child;
 
   const _ActivityCard({
     required this.color,
     required this.label,
     required this.icon,
+    this.trailing,
     required this.child,
   });
 
@@ -1253,6 +1524,8 @@ class _ActivityCard extends StatelessWidget {
                   letterSpacing: 1,
                 ),
               ),
+              const Spacer(),
+              if (trailing != null) trailing!,
             ],
           ),
           const SizedBox(height: 22),

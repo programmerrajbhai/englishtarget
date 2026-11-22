@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
+import '../../../core/ads/ad_manager.dart';
+import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/rule_content.dart';
 import '../services/rules_progress_service.dart';
@@ -15,17 +17,16 @@ class RuleTestScreen extends StatefulWidget {
   });
 
   @override
-  State<RuleTestScreen> createState() =>
-      _RuleTestScreenState();
+  State<RuleTestScreen> createState() => _RuleTestScreenState();
 }
 
-class _RuleTestScreenState
-    extends State<RuleTestScreen> {
+class _RuleTestScreenState extends State<RuleTestScreen> {
   late final FlutterTts _tts;
 
   int _currentIndex = 0;
   int _correctAnswers = 0;
 
+  List<String> _currentOptions = <String>[];
   String? _selectedAnswer;
   bool _hasAnswered = false;
   bool _isCorrect = false;
@@ -37,13 +38,11 @@ class _RuleTestScreenState
   }
 
   bool get _isLastQuestion {
-    return _currentIndex ==
-        widget.rule.tests.length - 1;
+    return _currentIndex == widget.rule.tests.length - 1;
   }
 
   double get _progress {
-    return (_currentIndex + 1) /
-        widget.rule.tests.length;
+    return (_currentIndex + 1) / widget.rule.tests.length;
   }
 
   @override
@@ -51,6 +50,9 @@ class _RuleTestScreenState
     super.initState();
 
     _tts = FlutterTts();
+    if (widget.rule.tests.isNotEmpty) {
+      _currentOptions = List<String>.from(widget.rule.tests.first.options);
+    }
     _configureTts();
   }
 
@@ -87,13 +89,8 @@ class _RuleTestScreenState
     final question = _currentTest.question;
 
     try {
-      final isBangla =
-      RegExp(r'[\u0980-\u09FF]')
-          .hasMatch(question);
-
-      await _tts.setLanguage(
-        isBangla ? 'bn-BD' : 'en-US',
-      );
+      final isBangla = RegExp(r'[\u0980-\u09FF]').hasMatch(question);
+      await _tts.setLanguage(isBangla ? 'bn-BD' : 'en-US');
     } catch (_) {
       await _tts.setLanguage('en-US');
     }
@@ -115,14 +112,51 @@ class _RuleTestScreenState
     await _tts.speak('Not correct. Try again.');
   }
 
+  // --- REWARDED AD: HINT ---
+  Future<void> _useHintWithAd() async {
+    if (_hasAnswered || _currentOptions.length <= 2) return;
+
+    await _tts.stop();
+    if (!mounted) return;
+
+    bool rewardEarned = false;
+
+    AdManager.instance.showRewardedAd(
+      onUserEarnedReward: (_) {
+        rewardEarned = true;
+      },
+      onAdDismissed: () {
+        if (!mounted) return;
+        if (!rewardEarned) {
+          _showMessage('Ad is not ready right now. Please try again shortly.');
+          return;
+        }
+
+        final String correctNorm =
+        _currentTest.correctAnswer.trim().toLowerCase();
+        final List<String> wrongOptions = _currentOptions
+            .where((String opt) => opt.trim().toLowerCase() != correctNorm)
+            .toList();
+
+        if (wrongOptions.isNotEmpty) {
+          final String toRemove = wrongOptions.first;
+          setState(() {
+            _currentOptions.remove(toRemove);
+            if (_selectedAnswer == toRemove) {
+              _selectedAnswer = null;
+            }
+          });
+          _showMessage('Hint applied! One wrong option removed.');
+        }
+      },
+    );
+  }
+
   void _selectAnswer(String answer) {
     if (_hasAnswered) return;
 
-    final isCorrect =
-        answer.trim().toLowerCase() ==
-            _currentTest.correctAnswer
-                .trim()
-                .toLowerCase();
+    final isCorrect = answer.trim().toLowerCase() ==
+        _currentTest.correctAnswer.trim().toLowerCase();
 
     setState(() {
       _selectedAnswer = answer;
@@ -143,15 +177,14 @@ class _RuleTestScreenState
 
   void _continue() {
     if (!_hasAnswered) {
-      _showMessage(
-        'আগে একটি answer select করুন।',
-      );
+      _showMessage('আগে একটি answer select করুন।');
       return;
     }
 
     if (!_isLastQuestion) {
       setState(() {
         _currentIndex++;
+        _currentOptions = List<String>.from(_currentTest.options);
         _selectedAnswer = null;
         _hasAnswered = false;
         _isCorrect = false;
@@ -165,13 +198,13 @@ class _RuleTestScreenState
   Future<void> _finishTest() async {
     if (_isSaving) return;
 
-    final total =
-        widget.rule.tests.length;
+    final total = widget.rule.tests.length;
 
     setState(() {
       _isSaving = true;
     });
 
+    await _tts.stop();
     await RulesProgressService.saveTestResult(
       ruleId: widget.rule.id,
       correctAnswers: _correctAnswers,
@@ -184,12 +217,16 @@ class _RuleTestScreenState
       _isSaving = false;
     });
 
-    final passed =
-        _correctAnswers / total >= 0.70;
+    final passed = _correctAnswers / total >= 0.70;
 
-    await _showResultDialog(
-      passed: passed,
-      total: total,
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () async {
+        if (!mounted) return;
+        await _showResultDialog(
+          passed: passed,
+          total: total,
+        );
+      },
     );
   }
 
@@ -206,8 +243,7 @@ class _RuleTestScreenState
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
           ),
-          contentPadding:
-          const EdgeInsets.fromLTRB(
+          contentPadding: const EdgeInsets.fromLTRB(
             24,
             27,
             24,
@@ -221,26 +257,20 @@ class _RuleTestScreenState
                   width: 78,
                   height: 78,
                   decoration: BoxDecoration(
-                    color: passed
-                        ? AppColors.mint
-                        : const Color(0xFFFFF0F0),
+                    color: passed ? AppColors.mint : const Color(0xFFFFF0F0),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     passed
                         ? Icons.emoji_events_rounded
                         : Icons.refresh_rounded,
-                    color: passed
-                        ? AppColors.primary
-                        : AppColors.error,
+                    color: passed ? AppColors.primary : AppColors.error,
                     size: 42,
                   ),
                 ),
                 const SizedBox(height: 17),
                 Text(
-                  passed
-                      ? 'Excellent!'
-                      : 'Test Complete',
+                  passed ? 'Excellent!' : 'Test Complete',
                   style: const TextStyle(
                     color: AppColors.navy,
                     fontSize: 23,
@@ -281,9 +311,7 @@ class _RuleTestScreenState
                         ),
                       );
                     },
-                    child: const Text(
-                      'Continue to Practice',
-                    ),
+                    child: const Text('Continue to Practice'),
                   ),
                 ),
               ],
@@ -332,43 +360,47 @@ class _RuleTestScreenState
         child: Column(
           children: [
             const _TestHeader(),
-
             _ProgressHeader(
               current: _currentIndex + 1,
               total: widget.rule.tests.length,
               progress: _progress,
             ),
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: BannerAdWidget(),
+            ),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final padding =
-                  (constraints.maxWidth * 0.055)
+                  final padding = (constraints.maxWidth * 0.055)
                       .clamp(18.0, 34.0)
                       .toDouble();
 
                   return Center(
                     child: ConstrainedBox(
-                      constraints:
-                      const BoxConstraints(
+                      constraints: const BoxConstraints(
                         maxWidth: 760,
                       ),
                       child: ListView(
                         padding: EdgeInsets.fromLTRB(
                           padding,
-                          21,
+                          16,
                           padding,
                           28,
                         ),
                         children: [
-                          const _TestHeading(),
+                          Row(
+                            children: [
+                              const Expanded(child: _TestHeading()),
+                              if (!_hasAnswered && _currentOptions.length > 2)
+                                _HintAdButton(onTap: _useHintWithAd),
+                            ],
+                          ),
                           const SizedBox(height: 18),
                           _QuestionCard(
-                            question:
-                            _currentTest.question,
-                            questionNumber:
-                            _currentIndex + 1,
-                            totalQuestions:
-                            widget.rule.tests.length,
+                            question: _currentTest.question,
+                            questionNumber: _currentIndex + 1,
+                            totalQuestions: widget.rule.tests.length,
                             isSpeaking: _isSpeaking,
                             onSpeak: _speakQuestion,
                           ),
@@ -383,24 +415,18 @@ class _RuleTestScreenState
                           ),
                           const SizedBox(height: 13),
                           _OptionsList(
-                            options:
-                            _currentTest.options,
-                            selected:
-                            _selectedAnswer,
-                            correctAnswer:
-                            _currentTest.correctAnswer,
-                            hasAnswered:
-                            _hasAnswered,
+                            options: _currentOptions,
+                            selected: _selectedAnswer,
+                            correctAnswer: _currentTest.correctAnswer,
+                            hasAnswered: _hasAnswered,
                             onSelect: _selectAnswer,
                           ),
                           if (_hasAnswered) ...[
                             const SizedBox(height: 16),
                             _FeedbackCard(
                               isCorrect: _isCorrect,
-                              correctAnswer:
-                              _currentTest.correctAnswer,
-                              explanation:
-                              _currentTest.explanation,
+                              correctAnswer: _currentTest.correctAnswer,
+                              explanation: _currentTest.explanation,
                             ),
                           ],
                         ],
@@ -415,6 +441,43 @@ class _RuleTestScreenState
               saving: _isSaving,
               lastQuestion: _isLastQuestion,
               onPressed: _continue,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HintAdButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _HintAdButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.amber.withAlpha(24),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.amber.withAlpha(80)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.lightbulb_rounded, color: AppColors.amber, size: 15),
+            SizedBox(width: 4),
+            Text(
+              'Hint (Ad)',
+              style: TextStyle(
+                color: AppColors.navy,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ],
         ),
@@ -506,23 +569,19 @@ class _ProgressHeader extends StatelessWidget {
               children: List.generate(
                 total,
                     (index) {
-                  final active =
-                      index < current;
+                  final active = index < current;
 
                   return Expanded(
                     child: Container(
                       height: 7,
                       margin: EdgeInsets.only(
-                        right: index == total - 1
-                            ? 0
-                            : 4,
+                        right: index == total - 1 ? 0 : 4,
                       ),
                       decoration: BoxDecoration(
                         color: active
                             ? AppColors.primary
                             : const Color(0xFFE1E7E4),
-                        borderRadius:
-                        BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                     ),
                   );
@@ -557,8 +616,7 @@ class _TestHeading extends StatelessWidget {
           height: 46,
           decoration: BoxDecoration(
             color: AppColors.mint,
-            borderRadius:
-            BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: const Icon(
             Icons.quiz_rounded,
@@ -569,8 +627,7 @@ class _TestHeading extends StatelessWidget {
         const SizedBox(width: 12),
         const Expanded(
           child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Check your learning',
@@ -618,8 +675,7 @@ class _QuestionCard extends StatelessWidget {
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
         color: AppColors.mint,
-        borderRadius:
-        BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: const Color(0xFFC9E7D7),
         ),
@@ -643,8 +699,7 @@ class _QuestionCard extends StatelessWidget {
           const SizedBox(width: 13),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Question $questionNumber of $totalQuestions',
@@ -689,32 +744,21 @@ class _OptionsList extends StatelessWidget {
   });
 
   bool _same(String first, String second) {
-    return first.trim().toLowerCase() ==
-        second.trim().toLowerCase();
+    return first.trim().toLowerCase() == second.trim().toLowerCase();
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: options.map((option) {
-        final isSelected =
-            selected != null &&
-                _same(selected!, option);
-
-        final isCorrect =
-            hasAnswered &&
-                _same(option, correctAnswer);
-
-        final isWrong =
-            hasAnswered &&
-                isSelected &&
-                !isCorrect;
+        final isSelected = selected != null && _same(selected!, option);
+        final isCorrect = hasAnswered && _same(option, correctAnswer);
+        final isWrong = hasAnswered && isSelected && !isCorrect;
 
         Color borderColor = AppColors.border;
         Color backgroundColor = Colors.white;
         Color iconColor = AppColors.textSecondary;
-        IconData icon =
-            Icons.radio_button_off_rounded;
+        IconData icon = Icons.radio_button_off_rounded;
 
         if (isCorrect) {
           borderColor = AppColors.primary;
@@ -723,48 +767,34 @@ class _OptionsList extends StatelessWidget {
           icon = Icons.check_circle_rounded;
         } else if (isWrong) {
           borderColor = AppColors.error;
-          backgroundColor =
-          const Color(0xFFFFF3F3);
+          backgroundColor = const Color(0xFFFFF3F3);
           iconColor = AppColors.error;
           icon = Icons.cancel_rounded;
         } else if (isSelected) {
           borderColor = AppColors.primary;
-          backgroundColor =
-          const Color(0xFFF2FBF6);
+          backgroundColor = const Color(0xFFF2FBF6);
           iconColor = AppColors.primary;
-          icon =
-              Icons.radio_button_checked_rounded;
+          icon = Icons.radio_button_checked_rounded;
         }
 
         return Padding(
-          padding: const EdgeInsets.only(
-            bottom: 11,
-          ),
+          padding: const EdgeInsets.only(bottom: 11),
           child: Material(
             color: backgroundColor,
-            borderRadius:
-            BorderRadius.circular(17),
+            borderRadius: BorderRadius.circular(17),
             child: InkWell(
-              onTap: hasAnswered
-                  ? null
-                  : () => onSelect(option),
-              borderRadius:
-              BorderRadius.circular(17),
+              onTap: hasAnswered ? null : () => onSelect(option),
+              borderRadius: BorderRadius.circular(17),
               child: Container(
-                padding:
-                const EdgeInsets.symmetric(
+                padding: const EdgeInsets.symmetric(
                   horizontal: 15,
                   vertical: 17,
                 ),
                 decoration: BoxDecoration(
-                  borderRadius:
-                  BorderRadius.circular(17),
+                  borderRadius: BorderRadius.circular(17),
                   border: Border.all(
                     color: borderColor,
-                    width: isSelected ||
-                        isCorrect
-                        ? 1.7
-                        : 1,
+                    width: isSelected || isCorrect ? 1.7 : 1,
                   ),
                 ),
                 child: Row(
@@ -810,43 +840,32 @@ class _FeedbackCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isCorrect
-        ? AppColors.primary
-        : AppColors.error;
+    final color = isCorrect ? AppColors.primary : AppColors.error;
 
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: BoxDecoration(
-        color: isCorrect
-            ? AppColors.mint
-            : const Color(0xFFFFF3F3),
-        borderRadius:
-        BorderRadius.circular(19),
+        color: isCorrect ? AppColors.mint : const Color(0xFFFFF3F3),
+        borderRadius: BorderRadius.circular(19),
         border: Border.all(
           color: color.withAlpha(55),
         ),
       ),
       child: Row(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
-            isCorrect
-                ? Icons.check_circle_rounded
-                : Icons.info_rounded,
+            isCorrect ? Icons.check_circle_rounded : Icons.info_rounded,
             color: color,
             size: 28,
           ),
           const SizedBox(width: 11),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  isCorrect
-                      ? 'Excellent!'
-                      : 'Review this rule',
+                  isCorrect ? 'Excellent!' : 'Review this rule',
                   style: TextStyle(
                     color: color,
                     fontSize: 17,
@@ -930,8 +949,7 @@ class _BottomButton extends StatelessWidget {
                 ? const SizedBox(
               width: 22,
               height: 22,
-              child:
-              CircularProgressIndicator(
+              child: CircularProgressIndicator(
                 color: Colors.white,
                 strokeWidth: 2.5,
               ),

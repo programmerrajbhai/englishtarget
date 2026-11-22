@@ -9,7 +9,9 @@ import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../core/ads/ad_manager.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../rules/widgets/rules_native_ad_widget.dart';
 import 'progress_screen.dart';
 
 class AchievementsScreen extends StatefulWidget {
@@ -89,8 +91,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     try {
       final Uint8List bytes = await _capturePoster();
 
-      final Directory cacheDirectory =
-      await getTemporaryDirectory();
+      final Directory cacheDirectory = await getTemporaryDirectory();
 
       final File imageFile = File(
         '${cacheDirectory.path}/english_target_progress.png',
@@ -108,8 +109,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
             mimeType: 'image/png',
           ),
         ],
-        text:
-        'I am learning with English Target! '
+        text: 'I am learning with English Target! '
             '${data.xp} XP, Level ${data.level}.',
         subject: 'My English Target Progress',
       );
@@ -126,7 +126,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     }
   }
 
-
   Future<void> _saveProgress() async {
     if (_isBusy) {
       return;
@@ -136,11 +135,12 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
       _isBusy = true;
     });
 
+    bool savedSuccessfully = false;
+
     try {
       final Uint8List bytes = await _capturePoster();
 
-      final Directory directory =
-      await getTemporaryDirectory();
+      final Directory directory = await getTemporaryDirectory();
 
       final File imageFile = File(
         '${directory.path}/english_target_progress.png',
@@ -179,6 +179,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
         );
       }
 
+      savedSuccessfully = true;
       _showMessage(
         'Progress card Gallery-তে save হয়েছে।',
       );
@@ -194,6 +195,12 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           _isBusy = false;
         });
       }
+    }
+
+    if (savedSuccessfully && mounted) {
+      AdManager.instance.showInterstitialAd(
+        onAdDismissed: () {},
+      );
     }
   }
 
@@ -251,8 +258,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
             }
 
             final LearningProgressSnapshot data = snapshot.data!;
-            final List<_Achievement> achievements =
-            _createAchievements(data);
+            final List<_Achievement> achievements = _createAchievements(data);
 
             final int unlocked = achievements
                 .where((_Achievement item) => item.unlocked)
@@ -287,8 +293,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                   const SizedBox(height: 28),
                   _SectionTitle(
                     title: 'Your milestones',
-                    subtitle:
-                    '$unlocked of ${achievements.length} unlocked',
+                    subtitle: '$unlocked of ${achievements.length} unlocked',
                   ),
                   const SizedBox(height: 14),
                   SizedBox(
@@ -297,14 +302,12 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                       scrollDirection: Axis.horizontal,
                       physics: const BouncingScrollPhysics(),
                       itemCount: achievements.length,
-                      separatorBuilder: (_, __) =>
-                      const SizedBox(width: 11),
+                      separatorBuilder: (_, __) => const SizedBox(width: 11),
                       itemBuilder: (
                           BuildContext context,
                           int index,
                           ) {
-                        final _Achievement achievement =
-                        achievements[index];
+                        final _Achievement achievement = achievements[index];
 
                         return _AchievementCard(
                           achievement: achievement,
@@ -315,7 +318,9 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 22),
+                  const RulesNativeAdWidget(),
+                  const SizedBox(height: 24),
                   const _SectionTitle(
                     title: 'Next goals',
                     subtitle: 'Keep improving every day',
@@ -335,8 +340,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                       ),
                     ),
                   ),
-                  if (unlocked == achievements.length)
-                    const _CompleteCard(),
+                  if (unlocked == achievements.length) const _CompleteCard(),
                 ],
               ),
             );
@@ -520,10 +524,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                   child: LinearProgressIndicator(
                     value: achievement.progress,
                     minHeight: 7,
-                    backgroundColor:
-                    achievement.color.withAlpha(25),
-                    valueColor:
-                    AlwaysStoppedAnimation<Color>(
+                    backgroundColor: achievement.color.withAlpha(25),
+                    valueColor: AlwaysStoppedAnimation<Color>(
                       achievement.color,
                     ),
                   ),
@@ -573,8 +575,7 @@ class _ProgressPoster extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int percentage =
-    (data.overallProgress * 100).round();
+    final int percentage = (data.overallProgress * 100).round();
 
     return Container(
       padding: const EdgeInsets.fromLTRB(
@@ -648,8 +649,7 @@ class _ProgressPoster extends StatelessWidget {
             children: <Widget>[
               const Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
                       'I am becoming\nmore confident.',
@@ -684,10 +684,8 @@ class _ProgressPoster extends StatelessWidget {
                       child: CircularProgressIndicator(
                         value: data.overallProgress,
                         strokeWidth: 8,
-                        backgroundColor:
-                        Colors.white.withAlpha(35),
-                        valueColor:
-                        const AlwaysStoppedAnimation<Color>(
+                        backgroundColor: Colors.white.withAlpha(35),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
                           Color(0xFF67E8B0),
                         ),
                       ),
@@ -731,14 +729,14 @@ class _ProgressPoster extends StatelessWidget {
                 icon: Icons.local_fire_department_rounded,
                 value: '${data.streak}',
                 label: 'day streak',
-                color: Color(0xFFFF8D58),
+                color: const Color(0xFFFF8D58),
               ),
               const _PosterDivider(),
               _PosterMetric(
                 icon: Icons.workspace_premium_rounded,
                 value: '$unlocked/$total',
                 label: 'badges',
-                color: Color(0xFF9DEBC8),
+                color: const Color(0xFF9DEBC8),
               ),
             ],
           ),
@@ -807,8 +805,7 @@ class _PosterMetric extends StatelessWidget {
           const SizedBox(width: 5),
           Flexible(
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
                   value,
@@ -921,8 +918,7 @@ class _AchievementCard extends StatelessWidget {
               ),
             ),
             child: Column(
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 _AchievementIcon(
                   achievement: achievement,
@@ -987,12 +983,9 @@ class _AchievementIcon extends StatelessWidget {
         ),
       ),
       child: Icon(
-        achievement.unlocked
-            ? achievement.icon
-            : Icons.lock_rounded,
-        color: achievement.unlocked
-            ? achievement.color
-            : AppColors.textSecondary,
+        achievement.unlocked ? achievement.icon : Icons.lock_rounded,
+        color:
+        achievement.unlocked ? achievement.color : AppColors.textSecondary,
         size: size * .46,
       ),
     );
@@ -1033,8 +1026,7 @@ class _GoalCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                  CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
                       achievement.title,
@@ -1060,10 +1052,8 @@ class _GoalCard extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: achievement.progress,
                         minHeight: 6,
-                        backgroundColor:
-                        achievement.color.withAlpha(22),
-                        valueColor:
-                        AlwaysStoppedAnimation<Color>(
+                        backgroundColor: achievement.color.withAlpha(22),
+                        valueColor: AlwaysStoppedAnimation<Color>(
                           achievement.color,
                         ),
                       ),
@@ -1172,8 +1162,7 @@ List<_Achievement> _createAchievements(
       description: 'Complete today’s challenge',
       icon: Icons.emoji_events_rounded,
       color: Colors.orange,
-      unlocked: data.dailyTotal > 0 &&
-          data.dailyCompleted >= data.dailyTotal,
+      unlocked: data.dailyTotal > 0 && data.dailyCompleted >= data.dailyTotal,
       progress: ratio(
         data.dailyCompleted,
         data.dailyTotal,

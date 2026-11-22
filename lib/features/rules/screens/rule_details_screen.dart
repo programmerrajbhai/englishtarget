@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
+import '../../../core/ads/ad_manager.dart';
+import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../controllers/rule_learning_controller.dart';
 import '../models/rule_content.dart';
-import 'rule_test_screen.dart'; // <--- ENSURE THIS FILE EXISTS IN THE SAME FOLDER
+import 'rule_test_screen.dart';
 
 class RuleDetailsScreen extends StatefulWidget {
   final RuleContent rule;
@@ -132,17 +134,25 @@ class _RuleDetailsScreenState extends State<RuleDetailsScreen> {
       return;
     }
 
-    _openTest();
+    await _openTest();
   }
 
-  void _openTest() {
-    Navigator.of(context)
-        .push<void>(
+  Future<void> _openTest() async {
+    await _tts.stop();
+    if (!mounted) return;
+
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () {
+        if (!mounted) return;
+        Navigator.of(context)
+            .push<void>(
           MaterialPageRoute<void>(
             builder: (_) => RuleTestScreen(rule: widget.rule),
           ),
         )
-        .then((_) => _controller.refreshProgress());
+            .then((_) => _controller.refreshProgress());
+      },
+    );
   }
 
   void _showMessage(
@@ -200,7 +210,10 @@ class _RuleDetailsScreenState extends State<RuleDetailsScreen> {
               },
             ),
             const _LessonSteps(),
-
+            const Padding(
+              padding: EdgeInsets.only(top: 6),
+              child: BannerAdWidget(),
+            ),
             Expanded(
               child: _controller.isLoading
                   ? const Center(
@@ -222,7 +235,7 @@ class _RuleDetailsScreenState extends State<RuleDetailsScreen> {
                       child: ListView(
                         padding: EdgeInsets.fromLTRB(
                           padding,
-                          18,
+                          14,
                           padding,
                           25,
                         ),
@@ -378,21 +391,21 @@ class _LessonSteps extends StatelessWidget {
           ),
         ),
       ),
-      child: Row(
+      child: const Row(
         children: [
-          const _StepItem(
+          _StepItem(
             title: 'Learn',
             icon: Icons.menu_book_rounded,
             active: true,
           ),
-          const _StepLine(),
-          const _StepItem(
+          _StepLine(),
+          _StepItem(
             title: 'Test',
             icon: Icons.quiz_rounded,
             active: false,
           ),
-          const _StepLine(),
-          const _StepItem(
+          _StepLine(),
+          _StepItem(
             title: 'Speak',
             icon: Icons.mic_rounded,
             active: false,
@@ -1002,7 +1015,6 @@ class _BottomControls extends StatelessWidget {
   }
 }
 
-/// Resolves every example key to a semantic icon.
 abstract final class _SentenceVisualResolver {
   static _VisualInfo resolve({
     required RuleExample example,
@@ -1108,16 +1120,8 @@ abstract final class _SentenceVisualResolver {
     }
   }
 
-  static _VisualInfo _i(
-      IconData icon,
-      Color color,
-      String label,
-      ) {
-    return _VisualInfo(
-      icon: icon,
-      color: color,
-      label: label,
-    );
+  static _VisualInfo _i(IconData icon, Color color, String label) {
+    return _VisualInfo(icon: icon, color: color, label: label);
   }
 
   static _VisualRule _r(
@@ -1126,10 +1130,7 @@ abstract final class _SentenceVisualResolver {
       int color,
       String label,
       ) {
-    return _VisualRule(
-      words,
-      _i(icon, Color(color), label),
-    );
+    return _VisualRule(words, _i(icon, Color(color), label));
   }
 
   static final List<_VisualRule> _rules = <_VisualRule>[
@@ -1165,12 +1166,11 @@ abstract final class _SentenceVisualResolver {
         'Phone'),
     _r(<String>['computer', 'কম্পিউটার'], Icons.computer_rounded, 0xFF4285F4,
         'Computer'),
-    _r(<String>['chair', 'চেয়ার', 'চেয়ার'], Icons.chair_rounded, 0xFFFFA51F,
-        'Chair'),
-    _r(<String>['car', 'গাড়ি', 'গাড়ি'], Icons.directions_car_rounded,
-        0xFF4285F4, 'Car'),
-    _r(<String>['house', 'home', 'বাড়ি', 'বাড়ি'], Icons.home_rounded,
-        0xFF16A36A, 'Home'),
+    _r(<String>['chair', 'চেয়ার'], Icons.chair_rounded, 0xFFFFA51F, 'Chair'),
+    _r(<String>['car', 'গাড়ি'], Icons.directions_car_rounded, 0xFF4285F4,
+        'Car'),
+    _r(<String>['house', 'home', 'বাড়ি'], Icons.home_rounded, 0xFF16A36A,
+        'Home'),
     _r(<String>['hospital', 'হাসপাতাল'], Icons.local_hospital_rounded,
         0xFFE94B4B, 'Hospital'),
     _r(<String>['tree', 'গাছ'], Icons.park_rounded, 0xFF16A36A, 'Tree'),
@@ -1404,8 +1404,6 @@ abstract final class _SentenceVisualResolver {
     _r(<String>['touch'], Icons.touch_app_rounded, 0xFF4285F4, 'Touching'),
     _r(<String>['umbrella'], Icons.umbrella_rounded, 0xFF4285F4, 'Umbrella'),
     _r(<String>['visit'], Icons.location_on_rounded, 0xFF4285F4, 'Visiting'),
-    _r(<String>['watch', 'watching'], Icons.visibility_rounded, 0xFF4285F4,
-        'Watching'),
     _r(<String>['window'], Icons.window_rounded, 0xFF4285F4, 'Window'),
     _r(<String>['boy'], Icons.person_rounded, 0xFF16A36A, 'Boy'),
     _r(<String>['girl'], Icons.face_rounded, 0xFF7756D8, 'Girl'),

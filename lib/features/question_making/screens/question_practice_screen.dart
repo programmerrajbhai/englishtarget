@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:speech_to_text/speech_recognition_result.dart' as stt;
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
+import '../../../core/ads/ad_manager.dart';
+import '../../../core/ads/banner_ad_widget.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/microphone_disclosure.dart';
 import '../services/question_making_audio_service.dart';
@@ -45,13 +47,11 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
   bool _isListening = false;
   bool _speechAvailable = false;
   bool _speechInitializing = false;
-  bool _speechInitializationAttempted = false;
   String _recognizedText = '';
 
   // State Variables
   bool _isChecked = false;
   bool _isCorrect = false;
-  bool _answered = false;
 
   QuestionMakingActivity get _currentActivity => _activities[_currentIndex];
   QuestionMakingItem get _question => _currentActivity.question;
@@ -75,7 +75,6 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
 
     setState(() {
       _speechInitializing = true;
-      _speechInitializationAttempted = true;
     });
 
     try {
@@ -100,7 +99,8 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     final QuestionMakingActivity activity = _currentActivity;
 
     if (activity.type == QuestionMakingActivityType.build) {
-      final List<String> words = List<String>.from(_question.words)..shuffle(Random());
+      final List<String> words = List<String>.from(_question.words)
+        ..shuffle(Random());
       _selectedWords = <String>[];
       _availableWords = words;
     } else if (activity.type == QuestionMakingActivityType.mcq) {
@@ -108,7 +108,8 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
       final Set<String> options = <String>{correctEnglish};
 
       final List<QuestionMakingItem> allQuestions =
-      List<QuestionMakingItem>.from(widget.topic.questions)..shuffle(Random());
+      List<QuestionMakingItem>.from(widget.topic.questions)
+        ..shuffle(Random());
 
       for (final QuestionMakingItem q in allQuestions) {
         if (options.length >= 3) break;
@@ -123,7 +124,6 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
 
     _isChecked = false;
     _isCorrect = false;
-    _answered = false;
     _isListening = false;
     _recognizedText = '';
   }
@@ -139,6 +139,107 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
 
   Future<void> _speak(String text) async {
     await QuestionMakingAudioService.speak(text);
+  }
+
+  // --- REWARDED AD: HINT FOR MCQ ---
+  Future<void> _useMcqHintWithAd() async {
+    if (_isChecked || _mcqOptions.length <= 2) return;
+
+    await QuestionMakingAudioService.stop();
+    if (!mounted) return;
+
+    bool rewardEarned = false;
+
+    AdManager.instance.showRewardedAd(
+      onUserEarnedReward: (_) {
+        rewardEarned = true;
+      },
+      onAdDismissed: () {
+        if (!mounted) return;
+        if (!rewardEarned) {
+          _showMessage('Ad is not ready right now. Please try again shortly.');
+          return;
+        }
+
+        final List<String> wrongOptions = _mcqOptions
+            .where((String opt) => opt != _question.english)
+            .toList();
+
+        if (wrongOptions.isNotEmpty) {
+          final String toRemove = wrongOptions.first;
+          setState(() {
+            _mcqOptions.remove(toRemove);
+            if (_selectedMcqOption == toRemove) {
+              _selectedMcqOption = '';
+            }
+          });
+          _showMessage('Hint applied! One wrong option removed.');
+        }
+      },
+    );
+  }
+
+  // --- REWARDED AD: HINT FOR BUILD ---
+  Future<void> _useBuildHintWithAd() async {
+    if (_isChecked || _availableWords.isEmpty) return;
+
+    final List<String> expectedWords = _question.words;
+    if (expectedWords.isEmpty) return;
+
+    await QuestionMakingAudioService.stop();
+    if (!mounted) return;
+
+    bool rewardEarned = false;
+
+    AdManager.instance.showRewardedAd(
+      onUserEarnedReward: (_) {
+        rewardEarned = true;
+      },
+      onAdDismissed: () {
+        if (!mounted) return;
+        if (!rewardEarned) {
+          _showMessage('Ad is not ready right now. Please try again shortly.');
+          return;
+        }
+
+        bool prefixMatches = _selectedWords.length <= expectedWords.length;
+        if (prefixMatches) {
+          for (int i = 0; i < _selectedWords.length; i++) {
+            if (_normalize(_selectedWords[i]) !=
+                _normalize(expectedWords[i])) {
+              prefixMatches = false;
+              break;
+            }
+          }
+        }
+
+        if (!prefixMatches) {
+          setState(() {
+            _availableWords.addAll(_selectedWords);
+            _selectedWords.clear();
+          });
+        }
+
+        final int nextWordPosition =
+        prefixMatches ? _selectedWords.length : 0;
+        if (nextWordPosition >= expectedWords.length) return;
+
+        final String targetWord = expectedWords[nextWordPosition];
+
+        String? matchedWord;
+        for (final String w in _availableWords) {
+          if (_normalize(w) == _normalize(targetWord)) {
+            matchedWord = w;
+            break;
+          }
+        }
+
+        if (matchedWord != null) {
+          _selectWord(matchedWord);
+          _showMessage('Hint applied! Next correct word placed.');
+        }
+      },
+    );
   }
 
   // ---- LOGIC METHODS ----
@@ -212,7 +313,7 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     });
   }
 
-  void _checkAnswer() async {
+  Future<void> _checkAnswer() async {
     if (_isListening) await _stopListening();
 
     bool isCorrect = false;
@@ -220,13 +321,16 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     if (_currentActivity.type == QuestionMakingActivityType.mcq) {
       isCorrect = _selectedMcqOption == _question.english;
     } else if (_currentActivity.type == QuestionMakingActivityType.build) {
-      isCorrect = _normalize(_selectedWords.join(' ')) == _normalize(_question.english);
+      isCorrect =
+          _normalize(_selectedWords.join(' ')) == _normalize(_question.english);
     } else if (_currentActivity.type == QuestionMakingActivityType.speak) {
       final actualWords = _normalize(_recognizedText).split(' ').toSet();
       final expectedWords = _normalize(_question.english).split(' ').toSet();
       final matched = actualWords.intersection(expectedWords).length;
-      final score = expectedWords.isEmpty ? 0 : ((matched / expectedWords.length) * 100).round();
-      isCorrect = score >= 70; // 70% match
+      final score = expectedWords.isEmpty
+          ? 0
+          : ((matched / expectedWords.length) * 100).round();
+      isCorrect = score >= 70;
     }
 
     setState(() {
@@ -269,17 +373,25 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     if (!mounted) return;
 
     if (_currentIndex >= _activities.length - 1) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute<void>(
-          builder: (_) => QuestionResultScreen(
-            topic: widget.topic,
-            totalQuestions: _activities.length,
-            correctAnswers: _correctAnswers,
-            skippedAnswers: _skippedAnswers,
-            earnedXp: _earnedXp,
-          ),
-        ),
+      await QuestionMakingAudioService.stop();
+      if (!mounted) return;
+
+      AdManager.instance.showInterstitialAd(
+        onAdDismissed: () {
+          if (!mounted) return;
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute<void>(
+              builder: (_) => QuestionResultScreen(
+                topic: widget.topic,
+                totalQuestions: _activities.length,
+                correctAnswers: _correctAnswers,
+                skippedAnswers: _skippedAnswers,
+                earnedXp: _earnedXp,
+              ),
+            ),
+          );
+        },
       );
       return;
     }
@@ -293,11 +405,18 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            message,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
   }
 
   @override
@@ -316,7 +435,11 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
       children: [
         const Text(
           'Read and understand',
-          style: TextStyle(color: AppColors.navy, fontSize: 22, fontWeight: FontWeight.w900),
+          style: TextStyle(
+            color: AppColors.navy,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+          ),
         ),
         const SizedBox(height: 20),
         Container(
@@ -338,7 +461,11 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
             children: [
               Text(
                 _question.bengali,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.navy),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.navy,
+                ),
               ),
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
@@ -350,7 +477,11 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                   Expanded(
                     child: Text(
                       _question.english,
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.primary),
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                   InkWell(
@@ -362,7 +493,11 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                         color: AppColors.primary.withAlpha(20),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Icon(Icons.volume_up_rounded, color: AppColors.primary, size: 28),
+                      child: const Icon(
+                        Icons.volume_up_rounded,
+                        color: AppColors.primary,
+                        size: 28,
+                      ),
                     ),
                   ),
                 ],
@@ -378,16 +513,35 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Select the correct translation',
-          style: TextStyle(color: AppColors.navy, fontSize: 22, fontWeight: FontWeight.w900),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Select the correct translation',
+                style: TextStyle(
+                  color: AppColors.navy,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            if (!_isChecked && _mcqOptions.length > 2)
+              _HintAdButton(
+                color: AppColors.amber,
+                onTap: () => unawaited(_useMcqHintWithAd()),
+              ),
+          ],
         ),
         const SizedBox(height: 15),
         Text(
           _question.bengali,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 26),
         ..._mcqOptions.map((String option) {
           final bool isSelected = _selectedMcqOption == option;
           final bool isRightAnswer = option == _question.english;
@@ -413,23 +567,25 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
           }
 
           return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.only(bottom: 14),
             child: GestureDetector(
-              onTap: _isChecked ? null : () => setState(() => _selectedMcqOption = option),
+              onTap: _isChecked
+                  ? null
+                  : () => setState(() => _selectedMcqOption = option),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 decoration: BoxDecoration(
                   color: bgColor,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: borderColor, width: 2),
-                  // 3D Effect
                   boxShadow: [
                     if (!isSelected && !_isChecked)
-                      BoxShadow(
-                        color: const Color(0xFFE5E5E5),
-                        offset: const Offset(0, 4),
+                      const BoxShadow(
+                        color: Color(0xFFE5E5E5),
+                        offset: Offset(0, 4),
                       )
                     else if (isSelected && !_isChecked)
                       BoxShadow(
@@ -458,9 +614,24 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Translate this sentence',
-          style: TextStyle(color: AppColors.navy, fontSize: 22, fontWeight: FontWeight.w900),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Translate this sentence',
+                style: TextStyle(
+                  color: AppColors.navy,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            if (!_isChecked && _availableWords.isNotEmpty)
+              _HintAdButton(
+                color: AppColors.primary,
+                onTap: () => unawaited(_useBuildHintWithAd()),
+              ),
+          ],
         ),
         const SizedBox(height: 10),
         Row(
@@ -469,17 +640,24 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
             Expanded(
               child: Text(
                 _question.bengali,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
             IconButton(
               onPressed: () => _speak(_question.english),
-              icon: const Icon(Icons.volume_up_rounded, color: AppColors.primary, size: 28),
+              icon: const Icon(
+                Icons.volume_up_rounded,
+                color: AppColors.primary,
+                size: 28,
+              ),
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        // Dropzone Area
+        const SizedBox(height: 18),
         Container(
           width: double.infinity,
           constraints: const BoxConstraints(minHeight: 100),
@@ -489,7 +667,9 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: _isChecked
-                  ? (_isCorrect ? const Color(0xFF58A700) : const Color(0xFFEA2B2B))
+                  ? (_isCorrect
+                  ? const Color(0xFF58A700)
+                  : const Color(0xFFEA2B2B))
                   : const Color(0xFFE5E5E5),
               width: 2,
             ),
@@ -498,27 +678,38 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
               ? const Center(
             child: Text(
               'Tap words to build',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           )
               : Wrap(
             spacing: 10,
             runSpacing: 10,
-            children: _selectedWords.map((word) => GestureDetector(
-              onTap: () => _removeSelectedWord(word),
-              child: _Word3DChip(word: word, isSelected: false),
-            )).toList(),
+            children: _selectedWords
+                .map(
+                  (word) => GestureDetector(
+                onTap: () => _removeSelectedWord(word),
+                child: _Word3DChip(word: word, isSelected: false),
+              ),
+            )
+                .toList(),
           ),
         ),
-        const SizedBox(height: 30),
-        // Available Words
+        const SizedBox(height: 26),
         Wrap(
           spacing: 10,
           runSpacing: 12,
-          children: _availableWords.map((word) => GestureDetector(
-            onTap: () => _selectWord(word),
-            child: _Word3DChip(word: word, isSelected: false),
-          )).toList(),
+          children: _availableWords
+              .map(
+                (word) => GestureDetector(
+              onTap: () => _selectWord(word),
+              child: _Word3DChip(word: word, isSelected: false),
+            ),
+          )
+              .toList(),
         ),
       ],
     );
@@ -532,10 +723,14 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
           alignment: Alignment.centerLeft,
           child: Text(
             'Speak this sentence',
-            style: TextStyle(color: AppColors.navy, fontSize: 22, fontWeight: FontWeight.w900),
+            style: TextStyle(
+              color: AppColors.navy,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 26),
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
@@ -548,46 +743,69 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
               Text(
                 _question.bengali,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 15),
               Text(
                 _question.english,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.navy),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.navy,
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 50),
+        const SizedBox(height: 40),
         GestureDetector(
-          onTap: _isChecked ? null : (_isListening ? _stopListening : _startListening),
+          onTap: _isChecked
+              ? null
+              : (_isListening ? _stopListening : _startListening),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            width: _isListening ? 140 : 120,
-            height: _isListening ? 140 : 120,
+            width: _isListening ? 136 : 116,
+            height: _isListening ? 136 : 116,
             decoration: BoxDecoration(
               color: _isListening ? Colors.red : AppColors.primary,
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: (_isListening ? Colors.red : AppColors.primary).withAlpha(60),
+                  color:
+                  (_isListening ? Colors.red : AppColors.primary).withAlpha(60),
                   blurRadius: _isListening ? 30 : 10,
                   spreadRadius: _isListening ? 10 : 0,
                   offset: const Offset(0, 5),
                 ),
               ],
             ),
-            child: Icon(_isListening ? Icons.mic_rounded : Icons.mic_none_rounded, color: Colors.white, size: 55),
+            child: Icon(
+              _isListening ? Icons.mic_rounded : Icons.mic_none_rounded,
+              color: Colors.white,
+              size: 52,
+            ),
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 24),
         Text(
-          _speechInitializing ? 'Preparing mic...' : _isListening ? 'Listening... Tap to stop' : 'Tap the microphone to speak',
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.bold),
+          _speechInitializing
+              ? 'Preparing mic...'
+              : _isListening
+              ? 'Listening... Tap to stop'
+              : 'Tap the microphone to speak',
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         if (_recognizedText.isNotEmpty) ...[
-          const SizedBox(height: 25),
+          const SizedBox(height: 22),
           Container(
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
@@ -595,68 +813,70 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
               borderRadius: BorderRadius.circular(15),
               border: Border.all(color: Colors.grey.shade300),
             ),
-            child: Text('You said: $_recognizedText', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.navy)),
+            child: Text(
+              'You said: $_recognizedText',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: AppColors.navy,
+              ),
+            ),
           ),
         ]
       ],
     );
   }
 
-  // --- PREMIUM BOTTOM BAR UI ---
-  Widget _buildBottomBar() {
-    final bool isLearn = _currentActivity.type == QuestionMakingActivityType.learn;
+  // --- SAFE ACTION PANEL (SCROLLABLE, SEPARATED FROM BOTTOM BANNER) ---
+  Widget _buildActionPanel() {
+    final bool isLearn =
+        _currentActivity.type == QuestionMakingActivityType.learn;
 
-    // Learn Screen Button
     if (isLearn) {
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE5E5E5), width: 2)),
-        ),
-        child: _ChunkyButton(
-          label: 'Continue',
-          color: AppColors.primary,
-          shadowColor: const Color(0xFF1B6E96), // Darker primary
-          onPressed: () {
-            _isCorrect = true;
-            _moveToNext();
-          },
-        ),
+      return _ChunkyButton(
+        label: 'Continue',
+        color: AppColors.primary,
+        shadowColor: const Color(0xFF1B6E96),
+        onPressed: () {
+          _isCorrect = true;
+          _moveToNext();
+        },
       );
     }
 
-    // Unchecked State Button
     if (!_isChecked) {
-      final bool canCheck = (_currentActivity.type == QuestionMakingActivityType.mcq && _selectedMcqOption.isNotEmpty) ||
-          (_currentActivity.type == QuestionMakingActivityType.build && _selectedWords.length == _question.words.length) ||
-          (_currentActivity.type == QuestionMakingActivityType.speak && _recognizedText.isNotEmpty);
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE5E5E5), width: 2)),
-        ),
-        child: _ChunkyButton(
-          label: 'Check Answer',
-          color: canCheck ? AppColors.primary : const Color(0xFFE5E5E5),
-          shadowColor: canCheck ? const Color(0xFF1B6E96) : const Color(0xFFC0C0C0),
-          textColor: canCheck ? Colors.white : const Color(0xFFAFAFAF),
-          onPressed: canCheck ? _checkAnswer : null,
-        ),
+      final bool canCheck = (_currentActivity.type ==
+          QuestionMakingActivityType.mcq &&
+          _selectedMcqOption.isNotEmpty) ||
+          (_currentActivity.type == QuestionMakingActivityType.build &&
+              _selectedWords.length == _question.words.length) ||
+          (_currentActivity.type == QuestionMakingActivityType.speak &&
+              _recognizedText.isNotEmpty);
+
+      return _ChunkyButton(
+        label: 'Check Answer',
+        color: canCheck ? AppColors.primary : const Color(0xFFE5E5E5),
+        shadowColor:
+        canCheck ? const Color(0xFF1B6E96) : const Color(0xFFC0C0C0),
+        textColor: canCheck ? Colors.white : const Color(0xFFAFAFAF),
+        onPressed: canCheck ? _checkAnswer : null,
       );
     }
 
-    // Checked State (Correct/Wrong) Panel
-    final bgColor = _isCorrect ? const Color(0xFFD7FFB8) : const Color(0xFFFFDFE0);
-    final textColor = _isCorrect ? const Color(0xFF58A700) : const Color(0xFFEA2B2B);
-    final buttonColor = _isCorrect ? const Color(0xFF58A700) : const Color(0xFFEA2B2B);
-    final buttonShadow = _isCorrect ? const Color(0xFF468500) : const Color(0xFFC11818);
+    final Color bgColor =
+    _isCorrect ? const Color(0xFFD7FFB8) : const Color(0xFFFFDFE0);
+    final Color textColor =
+    _isCorrect ? const Color(0xFF58A700) : const Color(0xFFEA2B2B);
+    final Color buttonColor =
+    _isCorrect ? const Color(0xFF58A700) : const Color(0xFFEA2B2B);
+    final Color buttonShadow =
+    _isCorrect ? const Color(0xFF468500) : const Color(0xFFC11818);
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: bgColor,
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -666,7 +886,7 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
                 ),
@@ -680,7 +900,11 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
               const SizedBox(width: 12),
               Text(
                 _isCorrect ? 'Excellent!' : 'Correct solution:',
-                style: TextStyle(color: textColor, fontSize: 20, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ],
           ),
@@ -688,20 +912,27 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
             const SizedBox(height: 10),
             Text(
               _question.english,
-              style: TextStyle(color: textColor, fontSize: 18, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: textColor,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           _ChunkyButton(
             label: _isCorrect ? 'Continue' : 'Got it',
             color: buttonColor,
             shadowColor: buttonShadow,
-            onPressed: _isCorrect ? _moveToNext : () {
+            onPressed: _isCorrect
+                ? _moveToNext
+                : () {
               setState(() {
                 _isChecked = false;
                 _selectedMcqOption = '';
                 _selectedWords.clear();
-                _availableWords = List.from(_question.words)..shuffle();
+                _availableWords = List<String>.from(_question.words)
+                  ..shuffle();
                 _recognizedText = '';
               });
             },
@@ -713,9 +944,13 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_activities.isEmpty) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_activities.isEmpty) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    final type = _currentActivity.type;
+    final QuestionMakingActivityType type = _currentActivity.type;
     final Widget content = type == QuestionMakingActivityType.learn
         ? _buildLearnView()
         : type == QuestionMakingActivityType.mcq
@@ -726,11 +961,16 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      bottomNavigationBar: const BannerAdWidget(),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 28),
+          icon: const Icon(
+            Icons.close_rounded,
+            color: AppColors.textSecondary,
+            size: 28,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: AnimatedContainer(
@@ -749,9 +989,9 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
-              // Add a nice light reflection effect
               child: Container(
-                margin: const EdgeInsets.only(top: 2, left: 6, right: 6, bottom: 8),
+                margin:
+                const EdgeInsets.only(top: 2, left: 6, right: 6, bottom: 8),
                 decoration: BoxDecoration(
                   color: Colors.white.withAlpha(70),
                   borderRadius: BorderRadius.circular(10),
@@ -763,29 +1003,77 @@ class _QuestionPracticeScreenState extends State<QuestionPracticeScreen> {
         actions: [
           TextButton(
             onPressed: _skipActivity,
-            child: const Text('SKIP', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w900)),
+            child: const Text(
+              'SKIP',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           )
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
-                physics: const BouncingScrollPhysics(),
-                child: content,
-              ),
-            ),
-            _buildBottomBar(),
-          ],
+        bottom: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              content,
+              const SizedBox(height: 28),
+              _buildActionPanel(),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// ---- CUSTOM WIDGETS FOR PREMIUM UI ----
+// ---- CUSTOM WIDGETS ----
+
+class _HintAdButton extends StatelessWidget {
+  final Color color;
+  final VoidCallback onTap;
+
+  const _HintAdButton({
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withAlpha(22),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withAlpha(70)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(Icons.lightbulb_rounded, color: color, size: 15),
+            const SizedBox(width: 4),
+            Text(
+              'Hint (Ad)',
+              style: TextStyle(
+                color: color,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 class _Word3DChip extends StatelessWidget {
   final String word;
@@ -801,19 +1089,19 @@ class _Word3DChip extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFFE5E5E5), width: 2),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFFE5E5E5),
-            offset: const Offset(0, 4),
+            color: Color(0xFFE5E5E5),
+            offset: Offset(0, 4),
           )
         ],
       ),
       child: Text(
         word,
         style: const TextStyle(
-            color: AppColors.navy,
-            fontSize: 18,
-            fontWeight: FontWeight.w800
+          color: AppColors.navy,
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -845,23 +1133,22 @@ class _ChunkyButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           foregroundColor: textColor,
-          elevation: 0, // We use custom border for 3D effect
+          elevation: 0,
           padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide.none,
           ),
         ).copyWith(
-          // Simulate 3D Bottom Border
           side: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.pressed) || onPressed == null) {
-              return BorderSide(color: Colors.transparent, width: 0);
+              return const BorderSide(color: Colors.transparent, width: 0);
             }
-            return BorderSide(color: shadowColor, width: 4); // Bottom shadow
+            return BorderSide(color: shadowColor, width: 4);
           }),
         ),
         child: Padding(
-          padding: const EdgeInsets.only(top: 4.0), // Adjust text position
+          padding: const EdgeInsets.only(top: 4.0),
           child: Text(
             label.toUpperCase(),
             style: TextStyle(

@@ -6,6 +6,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+import '../../../core/ads/ad_manager.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/microphone_disclosure.dart';
 import '../models/freelancer_lesson.dart';
@@ -64,6 +65,51 @@ class _FreelancerConversationScreenState
     await _tts.speak(_turn.buyerMessage);
     if (!mounted) return;
     setState(() => _avatarState = BuyerAvatarState.idle);
+  }
+
+  Future<void> _stopAllAudio() async {
+    await _tts.stop();
+    await _speech.stop();
+    if (!mounted) return;
+    setState(() {
+      _isListening = false;
+      if (_avatarState == BuyerAvatarState.speaking ||
+          _avatarState == BuyerAvatarState.listening) {
+        _avatarState = BuyerAvatarState.idle;
+      }
+    });
+  }
+
+  // --- REWARDED AD: REVEAL PRO REPLY ---
+  Future<void> _revealProReplyWithAd() async {
+    if (_checked || _turn.acceptedReplies.isEmpty) return;
+
+    await _stopAllAudio();
+    if (!mounted) return;
+
+    bool rewardEarned = false;
+
+    AdManager.instance.showRewardedAd(
+      onUserEarnedReward: (_) {
+        rewardEarned = true;
+      },
+      onAdDismissed: () {
+        if (!mounted) return;
+        if (!rewardEarned) {
+          _showMessage('Ad is not ready right now. Please try again shortly.');
+          return;
+        }
+
+        final String proReply = _turn.acceptedReplies.first;
+        setState(() {
+          _replyController.text = proReply;
+          _replyController.selection = TextSelection.collapsed(
+            offset: proReply.length,
+          );
+        });
+        _showMessage('Pro reply filled! Tap "Check My Reply" to continue.');
+      },
+    );
   }
 
   Future<void> _toggleListening() async {
@@ -192,6 +238,8 @@ class _FreelancerConversationScreenState
   }
 
   Future<void> _finishConversation() async {
+    await _stopAllAudio();
+
     final int finalScore = (_totalScore / widget.lesson.conversation.length)
         .round();
     await FreelancerProgressService.completeLesson(
@@ -200,6 +248,15 @@ class _FreelancerConversationScreenState
     );
     if (!mounted) return;
 
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () async {
+        if (!mounted) return;
+        await _showCompleteSheet(finalScore);
+      },
+    );
+  }
+
+  Future<void> _showCompleteSheet(int finalScore) async {
     await showModalBottomSheet<void>(
       context: context,
       isDismissible: false,
@@ -389,6 +446,7 @@ class _FreelancerConversationScreenState
             ),
             const SizedBox(height: 10),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: <Widget>[
                 const Icon(
                   Icons.lightbulb_outline_rounded,
@@ -405,6 +463,45 @@ class _FreelancerConversationScreenState
                     ),
                   ),
                 ),
+                if (!_checked) ...<Widget>[
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () => unawaited(_revealProReplyWithAd()),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.amber.withAlpha(25),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppColors.amber.withAlpha(80),
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Icon(
+                            Icons.auto_awesome_rounded,
+                            color: AppColors.amber,
+                            size: 14,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            'Pro Reply (Ad)',
+                            style: TextStyle(
+                              color: AppColors.navy,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
             if (_checked) ...<Widget>[
@@ -421,47 +518,28 @@ class _FreelancerConversationScreenState
         minimum: const EdgeInsets.fromLTRB(18, 10, 18, 16),
         child: _checked
             ? Row(
-                children: <Widget>[
-                  if (_lastScore < 60) ...<Widget>[
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _retry,
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(54),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: const Text(
-                          'Try Again',
-                          style: TextStyle(fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                  ],
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _nextTurn,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        minimumSize: const Size.fromHeight(54),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Text(
-                        _turnIndex == totalTurns - 1 ? 'See Result' : 'Next',
-                        style: const TextStyle(fontWeight: FontWeight.w900),
-                      ),
+          children: <Widget>[
+            if (_lastScore < 60) ...<Widget>[
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _retry,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(54),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                ],
-              )
-            : FilledButton.icon(
-                onPressed: _avatarState == BuyerAvatarState.thinking
-                    ? null
-                    : _checkReply,
+                  child: const Text(
+                    'Try Again',
+                    style: TextStyle(fontWeight: FontWeight.w900),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: FilledButton(
+                onPressed: _nextTurn,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   minimumSize: const Size.fromHeight(54),
@@ -469,12 +547,31 @@ class _FreelancerConversationScreenState
                     borderRadius: BorderRadius.circular(16),
                   ),
                 ),
-                icon: const Icon(Icons.send_rounded),
-                label: const Text(
-                  'Check My Reply',
-                  style: TextStyle(fontWeight: FontWeight.w900),
+                child: Text(
+                  _turnIndex == totalTurns - 1 ? 'See Result' : 'Next',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
               ),
+            ),
+          ],
+        )
+            : FilledButton.icon(
+          onPressed: _avatarState == BuyerAvatarState.thinking
+              ? null
+              : _checkReply,
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            minimumSize: const Size.fromHeight(54),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          icon: const Icon(Icons.send_rounded),
+          label: const Text(
+            'Check My Reply',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
+        ),
       ),
     );
   }
@@ -495,7 +592,7 @@ class _BuyerAvatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool active =
         state == BuyerAvatarState.speaking ||
-        state == BuyerAvatarState.listening;
+            state == BuyerAvatarState.listening;
     final Color accent = switch (state) {
       BuyerAvatarState.success => AppColors.primary,
       BuyerAvatarState.retry => AppColors.amber,
@@ -729,7 +826,7 @@ List<String> _tokens(String value) => value
 int _lcsLength(List<String> a, List<String> b) {
   final List<List<int>> table = List<List<int>>.generate(
     a.length + 1,
-    (_) => List<int>.filled(b.length + 1, 0),
+        (_) => List<int>.filled(b.length + 1, 0),
   );
   for (int i = 1; i <= a.length; i++) {
     for (int j = 1; j <= b.length; j++) {

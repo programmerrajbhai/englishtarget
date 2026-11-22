@@ -11,7 +11,6 @@ import '../models/rule_progress.dart';
 import '../models/rules_data.dart';
 import '../repositories/rules_repository.dart';
 import '../services/rules_progress_service.dart';
-import 'rule_details_screen.dart';
 
 class RulePracticeScreen extends StatefulWidget {
   const RulePracticeScreen({
@@ -32,7 +31,6 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
 
   int _currentIndex = 0;
 
-  // Storing state PER QUESTION so going 'Back' works perfectly
   final Map<int, String> _transcripts = {};
   final Map<int, int> _matchScores = {};
 
@@ -72,16 +70,6 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
   }
 
   int get _correctAnswers => _correctIndexes.length;
-
-  int get _attendedPercent {
-    if (_practices.isEmpty) return 0;
-    return ((_attendedIndexes.length / _practices.length) * 100).round();
-  }
-
-  int get _skippedPercent {
-    if (_practices.isEmpty) return 0;
-    return ((_skippedIndexes.length / _practices.length) * 100).round();
-  }
 
   @override
   void initState() {
@@ -159,7 +147,9 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
       if (!mounted) return;
 
       if (!_speechReady) {
-        _showMessage('Microphone permission denied or speech service unavailable.');
+        _showMessage(
+          'Microphone permission denied or speech service unavailable.',
+        );
         return;
       }
     }
@@ -234,16 +224,18 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
         return 100;
       }
 
-      final List<String> actualWords = actual.split(' ')..removeWhere((w) => w.isEmpty);
-      final List<String> expectedWords = expected.split(' ')..removeWhere((w) => w.isEmpty);
+      final List<String> actualWords = actual.split(' ')
+        ..removeWhere((w) => w.isEmpty);
+      final List<String> expectedWords = expected.split(' ')
+        ..removeWhere((w) => w.isEmpty);
 
       if (expectedWords.isEmpty) continue;
 
       int matchCount = 0;
-      List<String> tempActual = List.from(actualWords);
+      final List<String> tempActual = List<String>.from(actualWords);
 
-      for (String eWord in expectedWords) {
-        int idx = tempActual.indexOf(eWord);
+      for (final String eWord in expectedWords) {
+        final int idx = tempActual.indexOf(eWord);
         if (idx != -1) {
           matchCount++;
           tempActual.removeAt(idx);
@@ -253,7 +245,10 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
       final int lengthDifference = (actual.length - expected.length).abs();
       final int lengthScore = (100 - lengthDifference * 2).clamp(0, 100);
 
-      final int score = (((matchCount / expectedWords.length) * 75) + (lengthScore * 0.25)).round().clamp(0, 100);
+      final int score = (((matchCount / expectedWords.length) * 75) +
+          (lengthScore * 0.25))
+          .round()
+          .clamp(0, 100);
 
       if (score > highestScore) {
         highestScore = score;
@@ -364,6 +359,10 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
       return;
     }
 
+    await _speech.stop();
+    await _tts.stop();
+    if (!mounted) return;
+
     setState(() => _isSaving = true);
 
     final int total = _practices.length;
@@ -388,12 +387,19 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
       widget.rule.id,
     );
 
+    if (!mounted) return;
+
     setState(() {
       _isSaving = false;
       _resultShowing = true;
     });
 
-    await _showResult(progress, passed);
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () async {
+        if (!mounted) return;
+        await _showResult(progress, passed);
+      },
+    );
   }
 
   RuleContent? _getNextRule() {
@@ -416,7 +422,7 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
       context: context,
       isDismissible: false,
       enableDrag: false,
-      isScrollControlled: true, // 100% FIXED: OVERFLOW ISSUE SOLVED
+      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -424,8 +430,13 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
       builder: (sheetContext) {
         return SafeArea(
           child: Padding(
-            padding: EdgeInsets.fromLTRB(24, 30, 24, MediaQuery.of(sheetContext).padding.bottom + 20),
-            child: SingleChildScrollView( // 100% FIXED: OVERFLOW ISSUE SOLVED
+            padding: EdgeInsets.fromLTRB(
+              24,
+              30,
+              24,
+              MediaQuery.of(sheetContext).padding.bottom + 20,
+            ),
+            child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -448,9 +459,10 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                   Text(
                     'Score: $_correctAnswers/${_practices.length} Correct',
                     style: const TextStyle(
-                        color: AppColors.navy,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800),
+                      color: AppColors.navy,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -459,14 +471,13 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                         : 'Practice failed, but you can still try again or move to the next level.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 14,
-                        height: 1.5,
-                        fontWeight: FontWeight.w600),
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                      height: 1.5,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 28),
-
-                  // 1. PRACTICE AGAIN BUTTON
                   OutlinedButton.icon(
                     onPressed: () {
                       Navigator.pop(sheetContext);
@@ -484,34 +495,34 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                     label: const Text('Practice Again'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary, width: 1.5),
+                      side: const BorderSide(
+                        color: AppColors.primary,
+                        width: 1.5,
+                      ),
                       minimumSize: const Size.fromHeight(54),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18)),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // 2. NEXT LEVEL OR BACK TO RULES BUTTON (100% FIXED: Always Clickable)
-                  // 2. NEXT LEVEL / BACK TO RULES BUTTON (100% FIXED)
                   FilledButton.icon(
                     onPressed: () {
-                      // প্রথমে BottomSheet বন্ধ করতে হবে
                       Navigator.pop(sheetContext);
-
-                      // অ্যাড শো করার পর সরাসরি রুল লিস্টে ব্যাক করবে এবং true পাঠাবে যাতে প্রগ্রেস রিফ্রেশ হয়
-                      AdManager.instance.showInterstitialAd(
-                        onAdDismissed: () {
-                          // popUntil দিয়ে সরাসরি রুল লিস্ট স্ক্রিনে ফিরে যাবে (অথবা প্র্যাকটিস স্ক্রিন ও ডিটেইলস স্ক্রিন পপ করে দেবে)
-                          Navigator.popUntil(context, (route) => route.isFirst || route.settings.name == '/rules' || route.settings.name == 'rules_list');
-
-                          // বিকল্প হিসেবে যদি সরাসরি আগের রুল লিস্টে ব্যাক করতে চান:
-                          // Navigator.pop(context, true);
-                        },
-                      );
+                      if (mounted) {
+                        Navigator.popUntil(
+                          context,
+                              (route) =>
+                          route.isFirst ||
+                              route.settings.name == '/rules' ||
+                              route.settings.name == 'rules_list',
+                        );
+                      }
                     },
                     icon: const Icon(Icons.arrow_forward_rounded),
-                    label: Text(nextRule == null ? 'Complete & Back' : 'Next Level'),
+                    label: Text(
+                      nextRule == null ? 'Complete & Back' : 'Next Level',
+                    ),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       minimumSize: const Size.fromHeight(54),
@@ -520,15 +531,11 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                       ),
                     ),
                   ),
-
-
-
                   const SizedBox(height: 12),
-                  // 3. Back to Rule Details Button
                   TextButton(
                     onPressed: () {
                       Navigator.pop(sheetContext);
-                      Navigator.pop(context); // Go back to rule details
+                      if (mounted) Navigator.pop(context);
                     },
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.textSecondary,
@@ -581,7 +588,7 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
     final SpeakingTest practice = _currentPractice;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA), // Premium off-white background
+      backgroundColor: const Color(0xFFF4F7FA),
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: AppColors.navy,
@@ -600,7 +607,6 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
         top: false,
         child: Column(
           children: [
-            // Progress Bar Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               color: Colors.white,
@@ -620,44 +626,58 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                   const SizedBox(width: 14),
                   Text(
                     '${_currentIndex + 1} / ${_practices.length}',
-                    style: const TextStyle(fontWeight: FontWeight.w900, color: AppColors.navy, fontSize: 15),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.navy,
+                      fontSize: 15,
+                    ),
                   ),
                 ],
               ),
             ),
-
-            // MAIN CARD CONTENT AREA (SCROLLABLE)
             Expanded(
               child: Center(
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 680),
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
                     child: Column(
                       children: [
-                        // Category Label
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.mint,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.primary.withAlpha(40)),
+                            border: Border.all(
+                              color: AppColors.primary.withAlpha(40),
+                            ),
                           ),
                           child: Text(
                             'Category: ${widget.rule.title}',
-                            style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 13),
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 24),
-
-                        // Prompt Card
                         Container(
                           width: double.infinity,
                           padding: const EdgeInsets.all(28),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(28),
-                            border: Border.all(color: practice.visualColor.withAlpha(50), width: 1.5),
+                            border: Border.all(
+                              color: practice.visualColor.withAlpha(50),
+                              width: 1.5,
+                            ),
                             boxShadow: [
                               BoxShadow(
                                 color: practice.visualColor.withAlpha(15),
@@ -675,52 +695,87 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                                   color: practice.visualColor.withAlpha(20),
                                   shape: BoxShape.circle,
                                 ),
-                                child: Icon(practice.visualIcon, color: practice.visualColor, size: 36),
+                                child: Icon(
+                                  practice.visualIcon,
+                                  color: practice.visualColor,
+                                  size: 36,
+                                ),
                               ),
                               const SizedBox(height: 20),
                               const Text(
                                 'বলুন:',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 15, fontWeight: FontWeight.w700),
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 practice.instruction,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(color: AppColors.navy, fontSize: 24, fontWeight: FontWeight.w900, height: 1.3),
+                                style: const TextStyle(
+                                  color: AppColors.navy,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.3,
+                                ),
                               ),
                               const SizedBox(height: 28),
                               OutlinedButton.icon(
                                 onPressed: _listenFirst,
-                                icon: const Icon(Icons.volume_up_rounded, size: 20),
-                                label: const Text('Listen Pronunciation', style: TextStyle(fontWeight: FontWeight.w700)),
+                                icon: const Icon(
+                                  Icons.volume_up_rounded,
+                                  size: 20,
+                                ),
+                                label: const Text(
+                                  'Listen Pronunciation',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: AppColors.navy,
-                                  side: const BorderSide(color: AppColors.border, width: 1.5),
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                  side: const BorderSide(
+                                    color: AppColors.border,
+                                    width: 1.5,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(height: 20),
-
-                        // Hint Box
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF0F7FF),
                             borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: const Color(0xFFCFE1F6)),
+                            border: Border.all(
+                              color: const Color(0xFFCFE1F6),
+                            ),
                           ),
                           child: const Row(
                             children: [
-                              Icon(Icons.lightbulb_rounded, color: AppColors.amber, size: 22),
+                              Icon(
+                                Icons.lightbulb_rounded,
+                                color: AppColors.amber,
+                                size: 22,
+                              ),
                               SizedBox(width: 12),
                               Expanded(
                                 child: Text(
                                   'Hint: স্পষ্ট উচ্চারণে স্বাভাবিক গতিতে বলুন।',
-                                  style: TextStyle(color: AppColors.navy, fontSize: 13.5, fontWeight: FontWeight.w700),
+                                  style: TextStyle(
+                                    color: AppColors.navy,
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
                             ],
@@ -732,13 +787,13 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                 ),
               ),
             ),
-
-            // FIXED BOTTOM INTERACTION DYNAMIC PANEL
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(32),
+                ),
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.navy.withAlpha(10),
@@ -750,32 +805,46 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // 1. Show Result if checked
                   if (_currentMatchScore != null) ...[
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 14,
+                      ),
                       margin: const EdgeInsets.only(bottom: 18),
                       decoration: BoxDecoration(
-                        color: _currentMatchScore! >= 70 ? AppColors.mint : const Color(0xFFFFF2F2),
+                        color: _currentMatchScore! >= 70
+                            ? AppColors.mint
+                            : const Color(0xFFFFF2F2),
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: _currentMatchScore! >= 70 ? AppColors.primary.withAlpha(40) : AppColors.error.withAlpha(40),
+                          color: _currentMatchScore! >= 70
+                              ? AppColors.primary.withAlpha(40)
+                              : AppColors.error.withAlpha(40),
                         ),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            _currentMatchScore! >= 70 ? Icons.check_circle_rounded : Icons.error_outline_rounded,
-                            color: _currentMatchScore! >= 70 ? AppColors.primary : AppColors.error,
+                            _currentMatchScore! >= 70
+                                ? Icons.check_circle_rounded
+                                : Icons.error_outline_rounded,
+                            color: _currentMatchScore! >= 70
+                                ? AppColors.primary
+                                : AppColors.error,
                             size: 24,
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            _currentMatchScore! >= 70 ? 'Awesome! Correct ($_currentMatchScore% match)' : 'Keep trying! Accuracy: $_currentMatchScore%',
+                            _currentMatchScore! >= 70
+                                ? 'Awesome! Correct ($_currentMatchScore% match)'
+                                : 'Keep trying! Accuracy: $_currentMatchScore%',
                             style: TextStyle(
-                              color: _currentMatchScore! >= 70 ? AppColors.primary : AppColors.error,
+                              color: _currentMatchScore! >= 70
+                                  ? AppColors.primary
+                                  : AppColors.error,
                               fontSize: 14.5,
                               fontWeight: FontWeight.w900,
                             ),
@@ -784,12 +853,13 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                       ),
                     ),
                   ],
-
-                  // 2. Transcript text
                   if (_currentTranscript.isNotEmpty) ...[
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 16,
+                      ),
                       margin: const EdgeInsets.only(bottom: 18),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF8FAFC),
@@ -799,33 +869,49 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                       child: Text(
                         '"$_currentTranscript"',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(color: AppColors.navy, fontSize: 17, fontWeight: FontWeight.w700, fontStyle: FontStyle.italic),
+                        style: const TextStyle(
+                          color: AppColors.navy,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     ),
                   ],
-
-                  // 3. Dynamic Controls Logic
-                  if (_currentMatchScore != null && _currentMatchScore! >= 70) ...[
-                    // CORRECT STATE -> User must tap Next
+                  if (_currentMatchScore != null &&
+                      _currentMatchScore! >= 70) ...[
                     const Padding(
                       padding: EdgeInsets.only(top: 8.0, bottom: 8.0),
                       child: Text(
                         'Tap Next to continue',
-                        style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w800, fontSize: 15),
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
                       ),
                     ),
-                  ] else if (_currentTranscript.isNotEmpty && !_isListening && _currentMatchScore == null) ...[
-                    // WAITING TO BE CHECKED STATE
+                  ] else if (_currentTranscript.isNotEmpty &&
+                      !_isListening &&
+                      _currentMatchScore == null) ...[
                     Row(
                       children: [
                         OutlinedButton.icon(
                           onPressed: _toggleMicrophone,
                           icon: const Icon(Icons.mic_rounded),
-                          label: const Text('Retry', style: TextStyle(fontWeight: FontWeight.w800)),
+                          label: const Text(
+                            'Retry',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.navy,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -833,25 +919,35 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                           child: FilledButton.icon(
                             onPressed: _isChecking ? null : _checkSentence,
                             icon: const Icon(Icons.check_rounded, size: 22),
-                            label: const Text('Check Answer', style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w900)),
+                            label: const Text(
+                              'Check Answer',
+                              style: TextStyle(
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                             style: FilledButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(18),
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ] else ...[
-                    // INITIAL, LISTENING, OR WRONG STATE -> Show Big Mic to speak/retry
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: (_isListening ? AppColors.error : AppColors.primary).withAlpha(60),
+                            color: (_isListening
+                                ? AppColors.error
+                                : AppColors.primary)
+                                .withAlpha(60),
                             blurRadius: _isListening ? 25 : 15,
                             spreadRadius: _isListening ? 5 : 0,
                           ),
@@ -860,13 +956,20 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                       child: IconButton.filled(
                         onPressed: _isInitializing ? null : _toggleMicrophone,
                         style: IconButton.styleFrom(
-                          backgroundColor: _isListening ? AppColors.error : AppColors.primary,
+                          backgroundColor: _isListening
+                              ? AppColors.error
+                              : AppColors.primary,
                           fixedSize: const Size(76, 76),
                         ),
                         icon: _isInitializing
-                            ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 3)
+                            ? const CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 3,
+                        )
                             : Icon(
-                          _isListening ? Icons.stop_rounded : Icons.mic_rounded,
+                          _isListening
+                              ? Icons.stop_rounded
+                              : Icons.mic_rounded,
                           color: Colors.white,
                           size: 38,
                         ),
@@ -876,17 +979,20 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                     Text(
                       _isListening
                           ? 'Listening carefully... বলুন'
-                          : (_currentMatchScore != null && _currentMatchScore! < 70)
+                          : (_currentMatchScore != null &&
+                          _currentMatchScore! < 70)
                           ? 'Tap microphone to try again'
                           : 'Tap microphone to speak',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w800),
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ]
                 ],
               ),
             ),
-
-            // FIXED BOTTOM NAVIGATION (Previous, Skip, Next)
             Container(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
               decoration: const BoxDecoration(
@@ -901,11 +1007,19 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                       child: OutlinedButton.icon(
                         onPressed: _isFirst ? null : _previousPractice,
                         icon: const Icon(Icons.arrow_back_rounded, size: 20),
-                        label: const Text('Previous', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                        label: const Text(
+                          'Previous',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.navy,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
                         ),
                       ),
                     ),
@@ -914,20 +1028,37 @@ class _RulePracticeScreenState extends State<RulePracticeScreen>
                       onPressed: _isSaving ? null : _skipPractice,
                       style: TextButton.styleFrom(
                         foregroundColor: AppColors.textSecondary,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                       ),
-                      child: const Text('Skip', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                      child: const Text(
+                        'Skip',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton.icon(
                         onPressed: _isSaving ? null : _nextPractice,
                         icon: const Icon(Icons.arrow_forward_rounded, size: 20),
-                        label: Text(_isLast ? 'Submit' : 'Next', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                        label: Text(
+                          _isLast ? 'Submit' : 'Next',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.navy,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
                         ),
                       ),
                     ),

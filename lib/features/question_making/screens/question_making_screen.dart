@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/ads/banner_ad_widget.dart'; // <--- BANNER AD IMPORT
+import '../../../core/ads/ad_manager.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../home/widgets/xp_balance_pill.dart';
 import '../../rules/widgets/rules_native_ad_widget.dart';
@@ -13,22 +13,40 @@ class QuestionMakingScreen extends StatefulWidget {
   const QuestionMakingScreen({super.key});
 
   @override
-  State<QuestionMakingScreen> createState() =>
-      _QuestionMakingScreenState();
+  State<QuestionMakingScreen> createState() => _QuestionMakingScreenState();
 }
 
 class _QuestionMakingScreenState extends State<QuestionMakingScreen> {
-  static const int _nativeAdAfterTopics = 8;
-  static const int _minimumTopicsForNativeAd = 12;
+  static const int _firstNativeAdAfter = 2;
+  static const int _nextNativeAdEvery = 5;
+  static const Object _nativeAdMarker = Object();
 
   final Map<String, int> _progress = <String, int>{};
   bool _loading = true;
 
   List<QuestionMakingTopic> get _topics => QuestionMakingData.topics;
 
-  bool get _showNativeAd => _topics.length >= _minimumTopicsForNativeAd;
+  List<Object> get _feedItems {
+    final List<Object> items = <Object>[];
 
-  int get _listItemCount => _topics.length + (_showNativeAd ? 1 : 0);
+    for (int i = 0; i < _topics.length; i++) {
+      items.add(_topics[i]);
+
+      final int topicCount = i + 1;
+      final bool hasMoreTopics = i < _topics.length - 1;
+
+      if (!hasMoreTopics) continue;
+
+      if (topicCount == _firstNativeAdAfter) {
+        items.add(_nativeAdMarker);
+      } else if (topicCount > _firstNativeAdAfter &&
+          (topicCount - _firstNativeAdAfter) % _nextNativeAdEvery == 0) {
+        items.add(_nativeAdMarker);
+      }
+    }
+
+    return items;
+  }
 
   @override
   void initState() {
@@ -54,21 +72,29 @@ class _QuestionMakingScreenState extends State<QuestionMakingScreen> {
     });
   }
 
-  Future<void> _openTopic(QuestionMakingTopic topic) async {
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => QuestionTopicLearningScreen(topic: topic),
-      ),
-    );
+  void _openTopic(QuestionMakingTopic topic) {
+    AdManager.instance.showInterstitialAd(
+      onAdDismissed: () async {
+        if (!mounted) return;
 
-    if (mounted) await _loadProgress();
+        await Navigator.push<void>(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => QuestionTopicLearningScreen(topic: topic),
+          ),
+        );
+
+        if (mounted) await _loadProgress();
+      },
+    );
   }
 
   int _completedTopics() {
-    return _topics.where(
+    return _topics
+        .where(
           (QuestionMakingTopic topic) => (_progress[topic.id] ?? 0) >= 25,
-    ).length;
+    )
+        .length;
   }
 
   double _overallProgress() {
@@ -84,34 +110,10 @@ class _QuestionMakingScreenState extends State<QuestionMakingScreen> {
         .toDouble();
   }
 
-  Widget _buildTopicItem(BuildContext context, int index) {
-    if (_showNativeAd && index == _nativeAdAfterTopics) {
-      return const Padding(
-        padding: EdgeInsets.only(bottom: 13),
-        child: RulesNativeAdWidget(),
-      );
-    }
-
-    final int topicIndex =
-    _showNativeAd && index > _nativeAdAfterTopics ? index - 1 : index;
-
-    final QuestionMakingTopic topic = _topics[topicIndex];
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 13),
-      child: _TopicCard(
-        topic: topic,
-        completed: _progress[topic.id] ?? 0,
-        onTap: () => _openTopic(topic),
-      ),
-    );
-
-
-  }
-
   @override
   Widget build(BuildContext context) {
     final double overallProgress = _overallProgress();
+    final List<Object> items = _feedItems;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -172,15 +174,29 @@ class _QuestionMakingScreenState extends State<QuestionMakingScreen> {
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 30),
                 sliver: SliverList.builder(
-                  itemCount: _listItemCount,
-                  itemBuilder: _buildTopicItem,
-                ),
-              ),
-            if (!_loading && _topics.isNotEmpty)
-              const SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: BannerAdWidget(),
+                  itemCount: items.length,
+                  itemBuilder: (BuildContext context, int index) {
+                    final Object item = items[index];
+
+                    if (identical(item, _nativeAdMarker)) {
+                      return const Padding(
+                        padding: EdgeInsets.only(bottom: 13),
+                        child: RulesNativeAdWidget(),
+                      );
+                    }
+
+                    final QuestionMakingTopic topic =
+                    item as QuestionMakingTopic;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 13),
+                      child: _TopicCard(
+                        topic: topic,
+                        completed: _progress[topic.id] ?? 0,
+                        onTap: () => _openTopic(topic),
+                      ),
+                    );
+                  },
                 ),
               ),
           ],
@@ -189,7 +205,6 @@ class _QuestionMakingScreenState extends State<QuestionMakingScreen> {
     );
   }
 }
-
 
 class _HeroCard extends StatelessWidget {
   final double progress;
@@ -202,9 +217,6 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Variable intentionally kept if needed later, though not currently displayed
-    // final int percentage = (progress * 100).round();
-
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -360,7 +372,6 @@ class _TopicCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double progress = (completed / 25).clamp(0.0, 1.0);
-
     final bool isCompleted = completed >= 25;
 
     return InkWell(
