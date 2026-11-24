@@ -15,7 +15,7 @@ class AdManager with WidgetsBindingObserver {
   // সেফ এবং হাই-ইনকাম Cooldown ও Background রুল
   static const int _interstitialCooldownSeconds = 75; // ১ মিনিট ১৫ সেকেন্ড
   static const int _appOpenCooldownMinutes = 15; // ১৫ মিনিট
-  static const int _minBackgroundSecondsForAppOpen = 40; // ৪০ সেকেন্ড বাইরে থাকলে
+  static const int _minBackgroundSecondsForAppOpen = 40;
   static const int _maxRetryAttempts = 3;
 
   AdManager._();

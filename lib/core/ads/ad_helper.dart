@@ -3,7 +3,7 @@ import 'dart:io';
 abstract final class AdHelper {
   /// true  = Test Ads (ডেভেলপমেন্ট ও টেস্টিংয়ের জন্য)
   /// false = Live Ads (Play Store রিলিজের জন্য)
-  static const bool useTestAds = false;
+  static const bool useTestAds = true;
 
   static String get bannerAdUnitId {
     if (useTestAds) {
@@ -54,4 +54,5 @@ abstract final class AdHelper {
     }
     throw UnsupportedError('Rules native ad is Android-only.');
   }
+
 }
