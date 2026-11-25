@@ -40,8 +40,10 @@ Widget searchAvatar(dynamic key) {
           : Image.network(
         url,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) =>
-        const Icon(Icons.person, color: searchGreen),
+        errorBuilder: (_, __, ___) => const ColoredBox(
+          color: Color(0xFFE8F7F1),
+          child: Icon(Icons.person, color: searchGreen),
+        ),
       ),
     ),
   );
@@ -84,17 +86,21 @@ class _SearchPersonCardState extends State<SearchPersonCard> {
                 return;
               }
 
-              // Profile-এ follow বদলালে Search card-ও update হবে।
               setState(() {
-                widget.person['name'] = profile['name'];
-                widget.person['avatar_key'] = profile['avatar_key'];
-                widget.person['level'] = profile['level'];
-                widget.person['followers_count'] =
-                profile['followers_count'];
-                widget.person['is_following'] =
-                profile['is_following'];
+                for (final field in [
+                  'name',
+                  'bio',
+                  'avatar_key',
+                  'level',
+                  'followers_count',
+                  'is_following',
+                ]) {
+                  widget.person[field] = profile[field];
+                }
+
                 widget.person['is_mutual'] =
-                    CommunityApi.flag(profile['is_following']) &&
+                    !CommunityApi.flag(widget.person['is_self']) &&
+                        CommunityApi.flag(profile['is_following']) &&
                         CommunityApi.flag(widget.person['follows_you']);
               });
             },
@@ -109,7 +115,9 @@ class _SearchPersonCardState extends State<SearchPersonCard> {
   @override
   Widget build(BuildContext context) {
     final person = widget.person;
+    final self = CommunityApi.flag(person['is_self']);
     final following = CommunityApi.flag(person['is_following']);
+    final bio = '${person['bio'] ?? ''}'.trim();
 
     return searchCard(
       Row(
@@ -143,7 +151,21 @@ class _SearchPersonCardState extends State<SearchPersonCard> {
                             fontSize: 12,
                           ),
                         ),
-                        if (CommunityApi.flag(person['is_mutual']))
+                        if (bio.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 5),
+                            child: Text(
+                              bio,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.blueGrey,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        if (!self &&
+                            CommunityApi.flag(person['is_mutual']))
                           const Text(
                             'You follow each other',
                             style: TextStyle(
@@ -159,22 +181,42 @@ class _SearchPersonCardState extends State<SearchPersonCard> {
             ),
           ),
           const SizedBox(width: 8),
-          FilledButton(
-            onPressed: widget.busy ? null : widget.onFollow,
-            style: FilledButton.styleFrom(
-              backgroundColor:
-              following ? const Color(0xFFE8F7F1) : searchGreen,
-              foregroundColor: following ? searchGreen : Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-            ),
-            child: widget.busy
-                ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
+          if (self)
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 7,
+              ),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F7F1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Text(
+                'You',
+                style: TextStyle(
+                  color: searchGreen,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             )
-                : Text(following ? 'Following' : 'Follow'),
-          ),
+          else
+            FilledButton(
+              onPressed: widget.busy ? null : widget.onFollow,
+              style: FilledButton.styleFrom(
+                backgroundColor:
+                following ? const Color(0xFFE8F7F1) : searchGreen,
+                foregroundColor:
+                following ? searchGreen : Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              child: widget.busy
+                  ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+                  : Text(following ? 'Following' : 'Follow'),
+            ),
         ],
       ),
     );
@@ -193,7 +235,10 @@ class SearchPostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final image = CommunityApi.mediaUrl(post['media_key']);
+    final media = CommunityApi.mediaUrl(post['media_key']);
+    final english = '${post['english_sentence'] ?? ''}'.trim();
+    final bangla = '${post['bangla_meaning'] ?? ''}'.trim();
+
     final isImage = post['post_type'] == 'image' ||
         '${post['media_type']}'.startsWith('image/');
 
@@ -253,13 +298,46 @@ class SearchPostCard extends StatelessWidget {
                   height: 1.5,
                 ),
               ),
-              if (image != null && isImage)
+              if (english.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(
+                    english,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: searchInk,
+                      fontWeight: FontWeight.w600,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              if (bangla.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F7F1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'অর্থ: $bangla',
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: searchInk,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              if (media != null && isImage)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: Image.network(
-                      image,
+                      media,
                       height: 170,
                       width: double.infinity,
                       fit: BoxFit.cover,
@@ -268,7 +346,7 @@ class SearchPostCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              if (image != null && !isImage)
+              if (media != null && !isImage)
                 const Padding(
                   padding: EdgeInsets.only(top: 12),
                   child: Text(

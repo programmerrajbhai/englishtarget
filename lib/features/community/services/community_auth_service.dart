@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class CommunityAuthService {
 // উদাহরণ—এখানে তোমার Mac-এর আসল IP বসাবে।
   static const baseUrl =
-      'http://192.168.1.102/english_target_api';
+      'https://teamethicalcyberforce.com/english_api';
   static const _tokenKey = 'community_token';
   static final _storage = SharedPreferencesAsync();
 

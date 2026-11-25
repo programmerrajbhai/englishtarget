@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../services/community_api.dart';
 import '../services/community_auth_service.dart';
+
 import '../widgets/community_content_menu.dart';
+import '../widgets/community_feed_header.dart';
 import '../widgets/community_feed_post_card.dart';
 import '../widgets/community_search_cards.dart';
+
 import 'community_create_post_screen.dart';
 import 'community_discussion_screen.dart';
 import 'community_login_screen.dart';
@@ -16,14 +19,15 @@ class CommunityFeedScreen extends StatefulWidget {
   const CommunityFeedScreen({super.key});
 
   @override
-  State<CommunityFeedScreen> createState() =>
-      _CommunityFeedScreenState();
+  State<CommunityFeedScreen> createState() {
+    return _CommunityFeedScreenState();
+  }
 }
 
 class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
-  static const mint = Color(0xFFE8F7F1);
+  static const Color background = Color(0xFFE4F6EF);
 
-  static const categories = {
+  static const Map<String, String> categories = {
     '': 'All',
     'ask_doubt': 'Ask Doubt',
     'speaking': 'Speaking',
@@ -31,8 +35,8 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     'notes': 'Notes',
   };
 
-  final _posts = <Map<String, dynamic>>[];
-  final _liking = <int>{};
+  final List<Map<String, dynamic>> _posts = [];
+  final Set<int> _liking = {};
 
   String _type = 'for_you';
   String _category = '';
@@ -42,6 +46,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   int _generation = 0;
 
   bool _guest = true;
+  bool _sessionChecked = false;
   bool _loading = true;
   bool _loadingMore = false;
   bool _hasMore = false;
@@ -54,10 +59,14 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   }
 
   Future<void> _load({bool more = false}) async {
-    if (more && (_loading || _loadingMore || !_hasMore)) return;
+    if (!mounted) return;
 
-    final generation = ++_generation;
-    final nextPage = more ? _page + 1 : 1;
+    if (more && (_loading || _loadingMore || !_hasMore)) {
+      return;
+    }
+
+    final int generation = ++_generation;
+    final int nextPage = more ? _page + 1 : 1;
 
     setState(() {
       _error = null;
@@ -72,13 +81,22 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     });
 
     try {
+      final token = await CommunityAuthService.getToken();
+
+      if (!mounted || generation != _generation) return;
+
+      setState(() {
+        _guest = token == null || token.isEmpty;
+        _sessionChecked = true;
+      });
+
       final data = await CommunityApi.feed(
         page: nextPage,
         type: _type,
         category: _category,
       );
 
-      final token = await CommunityAuthService.getToken();
+      final currentToken = await CommunityAuthService.getToken();
 
       if (!mounted || generation != _generation) return;
 
@@ -89,21 +107,31 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       }
 
       setState(() {
-        final ids = _posts.map((post) => '${post['id']}').toSet();
+        final existingIds = _posts
+            .map((post) => CommunityApi.number(post['id']))
+            .toSet();
 
         for (final row in rows) {
-          if (row is Map && ids.add('${row['id']}')) {
-            _posts.add(Map<String, dynamic>.from(row));
+          if (row is Map) {
+            final post = Map<String, dynamic>.from(row);
+            final id = CommunityApi.number(post['id']);
+
+            if (existingIds.add(id)) {
+              _posts.add(post);
+            }
           }
         }
 
-        _guest = data.containsKey('is_guest')
-            ? CommunityApi.flag(data['is_guest'])
-            : token == null || token.isEmpty;
+        if (data.containsKey('is_guest')) {
+          _guest = CommunityApi.flag(data['is_guest']);
+        } else {
+          _guest = currentToken == null || currentToken.isEmpty;
+        }
 
         _page = nextPage;
 
         final pagination = data['pagination'];
+
         _hasMore = pagination is Map &&
             CommunityApi.flag(pagination['has_more']);
       });
@@ -128,7 +156,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       });
     } catch (e) {
       if (mounted && generation == _generation) {
-        setState(() => _error = CommunityApi.errorText(e));
+        setState(() {
+          _error = CommunityApi.errorText(e);
+        });
       }
     } finally {
       if (mounted && generation == _generation) {
@@ -144,7 +174,10 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     final token = await CommunityAuthService.getToken();
 
     if (!mounted) return false;
-    if (token != null && token.isNotEmpty) return true;
+
+    if (token != null && token.isNotEmpty) {
+      return true;
+    }
 
     final success = await Navigator.push<bool>(
       context,
@@ -153,7 +186,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       ),
     );
 
-    if (!mounted || success != true) return false;
+    if (!mounted || success != true) {
+      return false;
+    }
 
     await _load();
     return mounted;
@@ -163,12 +198,18 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       Widget screen, {
         bool requiresLogin = false,
       }) async {
-    if (_opening) return;
+    if (_opening || !mounted) return;
 
-    setState(() => _opening = true);
+    setState(() {
+      _opening = true;
+    });
 
     try {
-      if (requiresLogin && !await _ensureLogin()) return;
+      if (requiresLogin) {
+        final authorized = await _ensureLogin();
+        if (!authorized) return;
+      }
+
       if (!mounted) return;
 
       await Navigator.push(
@@ -176,9 +217,15 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         MaterialPageRoute(builder: (_) => screen),
       );
 
-      if (mounted) await _load();
+      if (mounted) {
+        await _load();
+      }
     } finally {
-      if (mounted) setState(() => _opening = false);
+      if (mounted) {
+        setState(() {
+          _opening = false;
+        });
+      }
     }
   }
 
@@ -186,18 +233,28 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     if (_type == type || _opening) return;
 
     if (type == 'following') {
-      setState(() => _opening = true);
+      setState(() {
+        _opening = true;
+      });
 
       try {
-        if (!await _ensureLogin()) return;
+        final authorized = await _ensureLogin();
+        if (!authorized) return;
       } finally {
-        if (mounted) setState(() => _opening = false);
+        if (mounted) {
+          setState(() {
+            _opening = false;
+          });
+        }
       }
     }
 
     if (!mounted) return;
 
-    setState(() => _type = type);
+    setState(() {
+      _type = type;
+    });
+
     await _load();
   }
 
@@ -211,7 +268,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       return;
     }
 
-    setState(() => _liking.add(id));
+    setState(() {
+      _liking.add(id);
+    });
 
     try {
       final data = await CommunityApi.like(id);
@@ -223,6 +282,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           if (CommunityApi.number(current['id']) == id) {
             current['is_liked'] =
                 CommunityApi.flag(data['is_liked']);
+
             current['likes_count'] =
                 CommunityApi.number(data['likes_count']);
           }
@@ -239,7 +299,11 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       _message(CommunityApi.errorText(e));
       await _load();
     } finally {
-      if (mounted) setState(() => _liking.remove(id));
+      if (mounted) {
+        setState(() {
+          _liking.remove(id);
+        });
+      }
     }
   }
 
@@ -248,12 +312,15 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 
     if (_opening || _liking.contains(id)) return;
 
-    setState(() => _opening = true);
+    setState(() {
+      _opening = true;
+    });
 
     try {
-      if (!await _ensureLogin() || !mounted) return;
+      final authorized = await _ensureLogin();
 
-      // Login বা account state বদলালে পুরোনো ownership ব্যবহার নয়।
+      if (!authorized || !mounted) return;
+
       final data = await CommunityApi.request(
         'community/get_post.php',
         query: {'post_id': '$id'},
@@ -276,15 +343,17 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         authorId: CommunityApi.number(fresh['author_id']),
       );
 
-      if (!mounted || result == CommunityMenuResult.cancelled) return;
+      if (!mounted || result == CommunityMenuResult.cancelled) {
+        return;
+      }
 
-      _message(
-        result == CommunityMenuResult.blocked
-            ? 'User blocked'
-            : result == CommunityMenuResult.postRemoved
-            ? 'Post feed থেকে সরানো হয়েছে'
-            : 'Action completed',
-      );
+      if (result == CommunityMenuResult.blocked) {
+        _message('User blocked');
+      } else if (result == CommunityMenuResult.postRemoved) {
+        _message('Post feed থেকে সরানো হয়েছে');
+      } else {
+        _message('Action completed');
+      }
 
       await _load();
     } on LoginRequired {
@@ -296,15 +365,19 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       if (!mounted) return;
 
       _message(CommunityApi.errorText(e));
-
-      // Block toggle বা অন্য mutation automatic retry নয়।
       await _load();
     } finally {
-      if (mounted) setState(() => _opening = false);
+      if (mounted) {
+        setState(() {
+          _opening = false;
+        });
+      }
     }
   }
 
   void _message(String text) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(text)),
     );
@@ -313,8 +386,11 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: mint,
+      backgroundColor: background,
+      floatingActionButtonLocation:
+      FloatingActionButtonLocation.endFloat,
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'community-create-post',
         onPressed: _opening
             ? null
             : () => _open(
@@ -323,145 +399,157 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         ),
         backgroundColor: searchGreen,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.edit_outlined),
-        label: const Text('Create Post'),
+        elevation: 3,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        icon: const Icon(Icons.edit_outlined, size: 23),
+        label: const Text(
+          'Create Post',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
       body: SafeArea(
+        bottom: false,
         child: RefreshIndicator(
           color: searchGreen,
           onRefresh: () async {
-            if (!_opening) await _load();
+            if (!_opening) {
+              await _load();
+            }
           },
-          child: ListView(
+          child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 100),
-            children: [
-              _header(),
-              const SizedBox(height: 18),
-              _feedTabs(),
-              const SizedBox(height: 12),
-              _categoryTabs(),
-              const SizedBox(height: 16),
-              if (_opening) const LinearProgressIndicator(),
-              if (_loading)
-                const Padding(
-                  padding: EdgeInsets.all(50),
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                )
-              else ...[
-                for (final post in _posts)
-                  CommunityFeedPostCard(
-                    key: ValueKey(post['id']),
-                    post: post,
-                    disabled: _opening,
-                    liking: _liking.contains(
-                      CommunityApi.number(post['id']),
-                    ),
-                    onOpen: () => _open(
-                      CommunityDiscussionScreen(
-                        postId: CommunityApi.number(post['id']),
-                      ),
-                    ),
-                    onAuthor: () => _open(
-                      CommunityProfileScreen(
-                        userId: CommunityApi.number(post['author_id']),
-                      ),
-                      requiresLogin: true,
-                    ),
-                    onLike: () => _like(post),
-                    onMenu: () => _postMenu(post),
-                  ),
-                if (_error != null)
-                  _notice(_error!, retry: true)
-                else if (_posts.isEmpty)
-                  _notice(
-                    _type == 'following'
-                        ? 'এখনো কোনো post নেই।\n'
-                        'Search থেকে অন্য learners-কে follow করো।'
-                        : 'এখানে এখনো কোনো post নেই।\n'
-                        'তোমার প্রশ্ন বা অভিজ্ঞতা share করো।',
-                  ),
-                if (_loadingMore)
-                  const Center(child: CircularProgressIndicator())
-                else if (_hasMore && _error == null)
-                  OutlinedButton(
-                    onPressed: _opening
-                        ? null
-                        : () => _load(more: true),
-                    child: const Text('Load more'),
-                  ),
-              ],
-            ],
+            padding: const EdgeInsets.only(bottom: 100),
+            itemCount: _posts.length + 2,
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return _topSection();
+              }
+
+              if (index == _posts.length + 1) {
+                return _footer();
+              }
+
+              return _postItem(_posts[index - 1]);
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _header() {
+  Widget _topSection() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Community',
-                style: TextStyle(
-                  color: searchInk,
-                  fontSize: 25,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: 'Search community',
-              onPressed: _opening
-                  ? null
-                  : () => _open(const CommunitySearchScreen()),
-              icon: const Icon(Icons.search, color: searchInk),
-            ),
-            IconButton(
-              tooltip: 'Notifications',
-              onPressed: _opening
-                  ? null
-                  : () => _open(
-                const CommunityNotificationsScreen(),
-                requiresLogin: true,
-              ),
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                color: searchInk,
-              ),
-            ),
-          ],
+        CommunityFeedHeader(
+          disabled: _opening,
+          isGuest: _sessionChecked && _guest,
+          onSearch: () => _open(
+            const CommunitySearchScreen(),
+          ),
+          onNotifications: () => _open(
+            const CommunityNotificationsScreen(),
+            requiresLogin: true,
+          ),
+          onSignIn: () => _open(
+            const CommunityLoginScreen(),
+          ),
         ),
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Learn, ask and grow together',
-                style: TextStyle(
-                  color: Colors.blueGrey,
-                  fontSize: 12,
-                ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+          child: _feedTabs(),
+        ),
+        _categoryTabs(),
+        const SizedBox(height: 22),
+        if (_opening)
+          const LinearProgressIndicator(
+            minHeight: 2,
+            color: searchGreen,
+          ),
+        if (_loading)
+          const Padding(
+            padding: EdgeInsets.all(50),
+            child: Center(
+              child: CircularProgressIndicator(
+                color: searchGreen,
               ),
             ),
-            if (_guest)
-              TextButton(
-                onPressed: _opening
-                    ? null
-                    : () => _open(const CommunityLoginScreen()),
-                child: const Text(
-                  'Sign in',
-                  style: TextStyle(color: searchGreen),
-                ),
-              ),
-          ],
-        ),
+          ),
       ],
+    );
+  }
+
+  Widget _postItem(Map<String, dynamic> post) {
+    final postId = CommunityApi.number(post['id']);
+    final authorId = CommunityApi.number(post['author_id']);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: CommunityFeedPostCard(
+        key: ValueKey(postId),
+        post: post,
+        disabled: _opening,
+        liking: _liking.contains(postId),
+        onOpen: () => _open(
+          CommunityDiscussionScreen(postId: postId),
+        ),
+        onAuthor: () => _open(
+          CommunityProfileScreen(userId: authorId),
+          requiresLogin: true,
+        ),
+        onLike: () => _like(post),
+        onMenu: () => _postMenu(post),
+      ),
+    );
+  }
+
+  Widget _footer() {
+    if (_loading) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_error != null)
+            _notice(_error!, retry: true),
+          if (_error == null && _posts.isEmpty)
+            _notice(
+              _type == 'following'
+                  ? 'এখনো কোনো post নেই।\n'
+                  'Search থেকে অন্য learners-কে follow করো।'
+                  : 'এখানে এখনো কোনো post নেই।\n'
+                  'তোমার প্রশ্ন বা অভিজ্ঞতা share করো।',
+            ),
+          if (_loadingMore)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: searchGreen,
+                ),
+              ),
+            ),
+          if (!_loadingMore && _hasMore && _error == null)
+            OutlinedButton(
+              onPressed: _opening
+                  ? null
+                  : () => _load(more: true),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: searchGreen,
+                minimumSize: const Size.fromHeight(46),
+              ),
+              child: const Text('Load more'),
+            ),
+        ],
+      ),
     );
   }
 
@@ -470,43 +558,44 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(36),
       ),
       child: Row(
-        children: const {
-          'for_you': 'For you',
-          'following': 'Following',
-        }.entries.map((entry) {
-          final selected = _type == entry.key;
+        children: [
+          _feedTab('for_you', 'For you'),
+          _feedTab('following', 'Following'),
+        ],
+      ),
+    );
+  }
 
-          return Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(24),
-              onTap: _opening
-                  ? null
-                  : () => _selectFeed(entry.key),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                padding: const EdgeInsets.symmetric(vertical: 13),
-                decoration: BoxDecoration(
-                  color: selected
-                      ? searchGreen
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Text(
-                  entry.value,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: selected ? Colors.white : searchInk,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
+  Widget _feedTab(String value, String label) {
+    final selected = _type == value;
+
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        child: GestureDetector(
+          onTap: _opening ? null : () => _selectFeed(value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            decoration: BoxDecoration(
+              color: selected ? searchGreen : Colors.transparent,
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: selected ? Colors.white : searchInk,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          );
-        }).toList(),
+          ),
+        ),
       ),
     );
   }
@@ -514,31 +603,57 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   Widget _categoryTabs() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Row(
         children: categories.entries.map((entry) {
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              selected: _category == entry.key,
-              showCheckmark: false,
-              selectedColor: const Color(0xFFC9EED9),
-              backgroundColor: Colors.white,
-              label: Text(entry.value),
-              labelStyle: const TextStyle(
-                color: searchInk,
-                fontWeight: FontWeight.w600,
-              ),
-              side: BorderSide.none,
-              onSelected: _opening
-                  ? null
-                  : (_) {
-                if (_category == entry.key) return;
-                setState(() => _category = entry.key);
-                _load();
-              },
-            ),
-          );
+          return _categoryItem(entry.key, entry.value);
         }).toList(),
+      ),
+    );
+  }
+
+  Widget _categoryItem(String value, String label) {
+    final selected = _category == value;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 9),
+      child: Material(
+        color: selected
+            ? const Color(0xFFC5ECD8)
+            : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        child: Semantics(
+          selected: selected,
+          button: true,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: _opening
+                ? null
+                : () {
+              if (_category == value) return;
+
+              setState(() {
+                _category = value;
+              });
+
+              _load();
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 17,
+                vertical: 13,
+              ),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: searchInk,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -563,17 +678,18 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                 height: 1.5,
               ),
             ),
-            if (retry) ...[
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: _opening
-                    ? null
-                    : () => _load(
-                  more: _posts.isNotEmpty && _hasMore,
+            if (retry)
+              Padding(
+                padding: const EdgeInsets.only(top: 12),
+                child: OutlinedButton(
+                  onPressed: _opening
+                      ? null
+                      : () => _load(
+                    more: _posts.isNotEmpty && _hasMore,
+                  ),
+                  child: const Text('Retry'),
                 ),
-                child: const Text('Retry'),
               ),
-            ],
           ],
         ),
       ),

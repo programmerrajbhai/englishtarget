@@ -2,6 +2,7 @@ import 'package:englishtarget/features/community/screens/community_feed_screen.d
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../community/screens/community_profile_screen.dart';
 import '../../daily_challenge/screens/daily_challenge_screen.dart';
 import '../../progress/screens/achievements_screen.dart';
 import '../../progress/screens/progress_screen.dart';
@@ -18,7 +19,7 @@ class MainNavigationScreen extends StatefulWidget {
 
 class _MainNavigationScreenState
     extends State<MainNavigationScreen> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 2;
 
   late final List<Widget> _screens = [
     HomeScreen(
@@ -31,10 +32,9 @@ class _MainNavigationScreenState
     const CommunityFeedScreen(),
 
 
-    const ProgressScreen(),
 
     const AchievementsScreen(),
-
+    const CommunityProfileScreen(),
 
   ];
 
@@ -100,7 +100,7 @@ class _MainNavigationScreenState
             NavigationDestination(
               icon: Icon(Icons.home_outlined),
               selectedIcon: Icon(Icons.home_rounded),
-              label: 'Home',
+              label: 'Study',
             ),
             NavigationDestination(
               icon: Icon(Icons.menu_book_outlined),
@@ -123,8 +123,8 @@ class _MainNavigationScreenState
             ),
             NavigationDestination(
               icon: Icon(Icons.workspace_premium_outlined),
-              selectedIcon: Icon(Icons.workspace_premium_rounded),
-              label: 'Achievements',
+              selectedIcon: Icon(Icons.person),
+              label: 'Profile',
             ),
           ],
         ),
