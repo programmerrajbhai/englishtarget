@@ -29,6 +29,7 @@
     <application
         android:label="English Target"
         android:name="${applicationName}"
+        android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"
         android:icon="@mipmap/ic_launcher">
 

@@ -1,3 +1,4 @@
+import 'package:englishtarget/features/community/screens/community_feed_screen.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -27,7 +28,7 @@ class _MainNavigationScreenState
     const RulesListScreen(
       showBackButton: false,
     ),
-    const DailyChallengeScreen(),
+    const CommunityFeedScreen(),
 
 
     const ProgressScreen(),
@@ -111,7 +112,7 @@ class _MainNavigationScreenState
               selectedIcon: Icon(
                 Icons.emoji_events_rounded,
               ),
-              label: 'Challenge',
+              label: 'Feed',
             ),
             NavigationDestination(
               icon: Icon(Icons.bar_chart_outlined),
