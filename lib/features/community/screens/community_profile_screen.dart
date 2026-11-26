@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../coins/screens/coin_wallet_screen.dart';
 import '../services/community_api.dart';
 import '../widgets/community_search_cards.dart';
+
 import 'community_blocked_users_screen.dart';
 import 'community_connections_screen.dart';
 import 'community_discussion_screen.dart';
@@ -9,7 +11,6 @@ import 'community_edit_profile_screen.dart';
 import 'community_login_screen.dart';
 
 class CommunityProfileScreen extends StatefulWidget {
-  // null হলে নিজের profile।
   final int? userId;
   final ValueChanged<Map<String, dynamic>>? onChanged;
 
@@ -24,7 +25,8 @@ class CommunityProfileScreen extends StatefulWidget {
       _CommunityProfileScreenState();
 }
 
-class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
+class _CommunityProfileScreenState
+    extends State<CommunityProfileScreen> {
   static const mint = Color(0xFFE8F7F1);
 
   final _posts = <Map<String, dynamic>>[];
@@ -65,7 +67,11 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
   }
 
   Future<void> _load({bool more = false}) async {
-    if (more && (_loading || _loadingMore || !_hasMore)) return;
+    if (!mounted) return;
+
+    if (more && (_loading || _loadingMore || !_hasMore)) {
+      return;
+    }
 
     final generation = ++_generation;
     final nextPage = more ? _page + 1 : 1;
@@ -74,6 +80,7 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
       _error = null;
       _loading = !more;
       _loadingMore = more;
+      _needsLogin = false;
 
       if (!more) {
         _profile = null;
@@ -151,9 +158,9 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
           _hasMore = false;
         });
       }
-    } catch (e) {
+    } catch (error) {
       if (mounted && generation == _generation) {
-        setState(() => _error = CommunityApi.errorText(e));
+        setState(() => _error = CommunityApi.errorText(error));
       }
     } finally {
       if (mounted && generation == _generation) {
@@ -166,7 +173,7 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
   }
 
   Future<void> _login() async {
-    if (_opening) return;
+    if (_disabled) return;
     setState(() => _opening = true);
 
     try {
@@ -177,9 +184,13 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
         ),
       );
 
-      if (mounted && success == true) await _load();
+      if (mounted && success == true) {
+        await _load();
+      }
     } finally {
-      if (mounted) setState(() => _opening = false);
+      if (mounted) {
+        setState(() => _opening = false);
+      }
     }
   }
 
@@ -193,9 +204,13 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
         MaterialPageRoute(builder: (_) => screen),
       );
 
-      if (mounted) await _load();
+      if (mounted) {
+        await _load();
+      }
     } finally {
-      if (mounted) setState(() => _opening = false);
+      if (mounted) {
+        setState(() => _opening = false);
+      }
     }
   }
 
@@ -211,11 +226,13 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
+            onPressed: () =>
+                Navigator.pop(dialogContext, false),
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
+            onPressed: () =>
+                Navigator.pop(dialogContext, true),
             child: Text(label),
           ),
         ],
@@ -226,21 +243,24 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
 
   Future<void> _run(Future<void> Function() action) async {
     if (_disabled || _profile == null) return;
+
     setState(() => _working = true);
 
     try {
       await action();
     } on LoginRequired {
-      if (mounted) await _load();
-    } catch (e) {
+      if (mounted) {
+        await _load();
+      }
+    } catch (error) {
       if (!mounted) return;
 
-      _message(CommunityApi.errorText(e));
-
-      // Toggle নিজে থেকে retry নয়; fresh status আনবে।
+      _message(CommunityApi.errorText(error));
       await _load();
     } finally {
-      if (mounted) setState(() => _working = false);
+      if (mounted) {
+        setState(() => _working = false);
+      }
     }
   }
 
@@ -291,7 +311,7 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
         'Block ${profile['name']}?',
         'তোমার account থেকে তাঁর content লুকানো হবে। '
             'দুজনের Follow সম্পর্কও সরিয়ে দেওয়া হবে। '
-            'পরে Your blocked users থেকে Unblock করতে পারবে।',
+            'পরে Blocked users থেকে Unblock করতে পারবে।',
         'Block',
       );
 
@@ -310,7 +330,7 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
         _message('User blocked');
         Navigator.pop(context, true);
       } else {
-        _message('Block status বদলেছে। Profile refresh করা হচ্ছে।');
+        _message('Block status বদলেছে। Profile refresh হচ্ছে।');
         await _load();
       }
     });
@@ -328,6 +348,8 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
   }
 
   void _message(String text) {
+    if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(text)),
     );
@@ -347,12 +369,19 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
             enabled: !_disabled,
             tooltip: 'Profile options',
             onSelected: (value) {
-              if (value == 'mine') {
-                _open(const CommunityProfileScreen());
-              } else if (value == 'blocked') {
-                _open(const CommunityBlockedUsersScreen());
-              } else if (value == 'block') {
-                _block();
+              switch (value) {
+                case 'mine':
+                  _open(const CommunityProfileScreen());
+                  break;
+                case 'coins':
+                  _open(const CoinWalletScreen());
+                  break;
+                case 'blocked':
+                  _open(const CommunityBlockedUsersScreen());
+                  break;
+                case 'block':
+                  _block();
+                  break;
               }
             },
             itemBuilder: (_) => [
@@ -360,6 +389,11 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
                 const PopupMenuItem(
                   value: 'mine',
                   child: Text('My profile'),
+                ),
+              if (_self)
+                const PopupMenuItem(
+                  value: 'coins',
+                  child: Text('My Coins'),
                 ),
               const PopupMenuItem(
                 value: 'blocked',
@@ -380,50 +414,39 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
       body: RefreshIndicator(
         color: searchGreen,
         onRefresh: () async {
-          if (!_working && !_opening) await _load();
+          if (!_disabled) {
+            await _load();
+          }
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
           children: [
-            if (_working) const LinearProgressIndicator(),
+            if (_working || _opening)
+              const LinearProgressIndicator(),
             if (_loading)
               const Padding(
                 padding: EdgeInsets.all(60),
-                child: Center(child: CircularProgressIndicator()),
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
               )
             else if (_needsLogin)
               _notice(
                 'Profile দেখতে login করো।',
                 label: 'Sign in',
-                action: _opening ? null : _login,
+                action: _disabled ? null : _login,
               )
             else ...[
                 if (_profile != null) ...[
                   _hero(),
-                  if (_self)
-                    searchCard(
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(
-                          Icons.shield_outlined,
-                          color: searchGreen,
-                        ),
-                        title: const Text(
-                          'Blocked users',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: const Text(
-                          'Manage your block list',
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: _disabled
-                            ? null
-                            : () => _open(
-                          const CommunityBlockedUsersScreen(),
-                        ),
-                      ),
-                    ),
+
+                  // Only your own profile shows this wallet entry.
+                  if (_self) ...[
+                    _coinsCard(),
+                    _blockedCard(),
+                  ],
+
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Row(
@@ -444,6 +467,7 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
                       ],
                     ),
                   ),
+
                   for (final post in _posts)
                     SearchPostCard(
                       post: {
@@ -459,6 +483,7 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
                         ),
                       ),
                     ),
+
                   if (_posts.isEmpty && _error == null)
                     _notice(
                       _self
@@ -466,6 +491,7 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
                           : 'এখনো কোনো post নেই।',
                     ),
                 ],
+
                 if (_error != null)
                   _notice(
                     _error!,
@@ -476,18 +502,99 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
                       more: _page > 0 && _hasMore,
                     ),
                   ),
+
                 if (_loadingMore)
                   const Center(child: CircularProgressIndicator())
                 else if (_hasMore && _error == null)
                   OutlinedButton(
-                    onPressed: _disabled
-                        ? null
-                        : () => _load(more: true),
+                    onPressed:
+                    _disabled ? null : () => _load(more: true),
                     child: const Text('Load more posts'),
                   ),
               ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _coinsCard() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Material(
+        color: const Color(0xFFFFF7DF),
+        borderRadius: BorderRadius.circular(22),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _disabled
+              ? null
+              : () => _open(const CoinWalletScreen()),
+          child: const Padding(
+            padding: EdgeInsets.all(18),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 25,
+                  backgroundColor: Color(0xFFFFE6A3),
+                  child: Icon(
+                    Icons.monetization_on_rounded,
+                    color: Color(0xFFB67C00),
+                    size: 31,
+                  ),
+                ),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'My Coins',
+                        style: TextStyle(
+                          color: searchInk,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Daily reward, balance & history',
+                        style: TextStyle(
+                          color: Color(0xFF887347),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFFB67C00),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _blockedCard() {
+    return searchCard(
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(
+          Icons.shield_outlined,
+          color: searchGreen,
+        ),
+        title: const Text(
+          'Blocked users',
+          style: TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: const Text('Manage your block list'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: _disabled
+            ? null
+            : () => _open(const CommunityBlockedUsersScreen()),
       ),
     );
   }
@@ -567,26 +674,12 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
                         width: 96,
                         height: 96,
                         child: avatar == null
-                            ? const ColoredBox(
-                          color: mint,
-                          child: Icon(
-                            Icons.person,
-                            color: searchGreen,
-                            size: 54,
-                          ),
-                        )
+                            ? _avatarPlaceholder()
                             : Image.network(
                           avatar,
                           fit: BoxFit.cover,
                           errorBuilder: (_, __, ___) =>
-                          const ColoredBox(
-                            color: mint,
-                            child: Icon(
-                              Icons.person,
-                              color: searchGreen,
-                              size: 54,
-                            ),
-                          ),
+                              _avatarPlaceholder(),
                         ),
                       ),
                     ),
@@ -698,6 +791,17 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
     );
   }
 
+  Widget _avatarPlaceholder() {
+    return const ColoredBox(
+      color: mint,
+      child: Icon(
+        Icons.person,
+        color: searchGreen,
+        size: 54,
+      ),
+    );
+  }
+
   Widget _primaryButton(
       String label,
       IconData icon,
@@ -749,9 +853,8 @@ class _CommunityProfileScreenState extends State<CommunityProfileScreen> {
               Text(
                 label,
                 style: TextStyle(
-                  color: onTap == null
-                      ? Colors.blueGrey
-                      : searchGreen,
+                  color:
+                  onTap == null ? Colors.blueGrey : searchGreen,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
