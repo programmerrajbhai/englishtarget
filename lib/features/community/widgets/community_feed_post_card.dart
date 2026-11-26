@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/community_api.dart';
+import '../utils/community_time_formatter.dart';
 import 'community_search_cards.dart';
 
 class CommunityFeedPostCard extends StatelessWidget {
@@ -49,7 +50,7 @@ class CommunityFeedPostCard extends StatelessWidget {
     final isImage = post['post_type'] == 'image' ||
         '${post['media_type']}'.startsWith('image/');
 
-    final date = '${post['created_at'] ?? ''}';
+    final timeAgo = CommunityTimeFormatter.timeAgo(post['created_at']);
     final english = '${post['english_sentence'] ?? ''}'.trim();
     final bangla = '${post['bangla_meaning'] ?? ''}'.trim();
 
@@ -88,8 +89,9 @@ class CommunityFeedPostCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'Lv. ${post['author_level'] ?? 0} · '
-                                  '${date.length >= 16 ? date.substring(0, 16).replaceFirst('T', ' ') : date}',
+                              timeAgo.isEmpty
+                                  ? 'Lv. ${post['author_level'] ?? 0}'
+                                  : 'Lv. ${post['author_level'] ?? 0} ·$timeAgo',
                               style: const TextStyle(
                                 color: Colors.blueGrey,
                                 fontSize: 11,
@@ -181,8 +183,7 @@ class CommunityFeedPostCard extends StatelessWidget {
                   height: 220,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  loadingBuilder: (_, child, progress) =>
-                  progress == null
+                  loadingBuilder: (_, child, progress) => progress == null
                       ? child
                       : const SizedBox(
                     height: 220,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
 import 'about_screen.dart';
@@ -9,8 +10,67 @@ import 'terms_of_use_screen.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
+  // তোমার সার্ভারে আপলোড করা delete_account.php ফাইলের লাইভ URL বসাও
+  static const String _deleteAccountUrl =
+      'https://yourdomain.com/api/users/delete_account.php';
+
   void _open(BuildContext context, Widget screen) {
     Navigator.push(context, MaterialPageRoute<void>(builder: (_) => screen));
+  }
+
+  Future<void> _openDeleteAccount(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(
+          'Delete Account',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        content: const Text(
+          'অ্যাকাউন্ট ডিলিট করার পেজটি ব্রাউজারে ওপেন হবে। সেখানে আপনার Email বা Phone এবং Password দিয়ে স্থায়ীভাবে অ্যাকাউন্ট ডিলিট করতে পারবেন।',
+          style: TextStyle(height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      final opened = await launchUrl(
+        Uri.parse(_deleteAccountUrl),
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!opened && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Delete account পেজটি খোলা যাচ্ছে না।'),
+          ),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Browser open করতে সমস্যা হয়েছে। আবার চেষ্টা করো।'),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -29,17 +89,17 @@ class SettingsScreen extends StatelessWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
-        children: <Widget>[
+        children: [
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: <Color>[AppColors.primary, AppColors.primaryDark],
+                colors: [AppColors.primary, AppColors.primaryDark],
               ),
               borderRadius: BorderRadius.circular(24),
             ),
             child: const Row(
-              children: <Widget>[
+              children: [
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: Colors.white,
@@ -53,7 +113,7 @@ class SettingsScreen extends StatelessWidget {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
+                    children: [
                       Text(
                         'English Target',
                         style: TextStyle(
@@ -91,6 +151,15 @@ class SettingsScreen extends StatelessWidget {
             subtitle: 'Rules for using the app',
             onTap: () {
               _open(context, const TermsOfUseScreen());
+            },
+          ),
+          _SettingsTile(
+            icon: Icons.delete_forever_rounded,
+            color: Colors.redAccent,
+            title: 'Delete Account',
+            subtitle: 'Permanently delete your account and data',
+            onTap: () {
+              _openDeleteAccount(context);
             },
           ),
           const SizedBox(height: 20),
@@ -181,7 +250,7 @@ class _SettingsTile extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
-              children: <Widget>[
+              children: [
                 Container(
                   width: 46,
                   height: 46,
@@ -195,7 +264,7 @@ class _SettingsTile extends StatelessWidget {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
+                    children: [
                       Text(
                         title,
                         style: const TextStyle(

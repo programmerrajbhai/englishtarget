@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/ad_manager.dart';
+import '../../../core/ads/banner_ad_widget.dart';
 import '../services/community_api.dart';
 import '../services/community_auth_service.dart';
 import '../services/community_upload_service.dart';
@@ -51,6 +53,12 @@ class _CommunityCreatePostScreenState
           _createUncertain;
 
   @override
+  void initState() {
+    super.initState();
+    AdManager.instance.loadInterstitialAd();
+  }
+
+  @override
   void dispose() {
     _body.dispose();
     _english.dispose();
@@ -72,6 +80,9 @@ class _CommunityCreatePostScreenState
         'post_video' => ['mp4', 'webm'],
         _ => ['mp3', 'm4a', 'aac', 'ogg', 'wav', 'webm'],
       };
+
+      // ফাইল পিকার থেকে ফেরার সময় যেন App Open Ad না আসে
+      AdManager.instance.suppressNextAppOpenAd();
 
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -171,9 +182,7 @@ class _CommunityCreatePostScreenState
         );
 
         final post = result['post'];
-        final id = post is Map
-            ? CommunityApi.number(post['id'])
-            : 0;
+        final id = post is Map ? CommunityApi.number(post['id']) : 0;
 
         if (id < 1) {
           throw Exception('Post ID পাওয়া যায়নি।');
@@ -197,7 +206,16 @@ class _CommunityCreatePostScreenState
         );
       }
 
-      if (mounted) Navigator.pop(context, true);
+      if (!mounted) return;
+
+      // পোস্ট সফলভাবে তৈরি হলে Interstitial Ad দেখিয়ে Feed-এ ফিরবে
+      AdManager.instance.showInterstitialAd(
+        onAdDismissed: () {
+          if (mounted) {
+            Navigator.pop(context, true);
+          }
+        },
+      );
     } on LoginRequired {
       if (mounted) {
         setState(() {
@@ -244,10 +262,11 @@ class _CommunityCreatePostScreenState
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
         ),
+        bottomNavigationBar: const BannerAdWidget(),
         body: Form(
           key: _form,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 32),
             children: [
               Wrap(
                 spacing: 8,

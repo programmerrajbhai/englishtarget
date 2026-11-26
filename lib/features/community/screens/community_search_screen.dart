@@ -2,10 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/banner_ad_widget.dart';
 import '../services/community_api.dart';
 import '../widgets/community_search_cards.dart';
 import 'community_discussion_screen.dart';
 import 'community_login_screen.dart';
+
+typedef JsonMap = Map<String, dynamic>;
 
 class CommunitySearchScreen extends StatefulWidget {
   const CommunitySearchScreen({super.key});
@@ -17,8 +20,8 @@ class CommunitySearchScreen extends StatefulWidget {
 
 class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
   final _text = TextEditingController();
-  final _people = <Map<String, dynamic>>[];
-  final _posts = <Map<String, dynamic>>[];
+  final List<JsonMap> _people = [];
+  final List<JsonMap> _posts = [];
   final _following = <int>{};
 
   Timer? _debounce;
@@ -66,7 +69,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
   }
 
   void _merge(
-      List<Map<String, dynamic>> target,
+      List<JsonMap> target,
       dynamic incoming,
       ) {
     if (incoming is! List) return;
@@ -75,7 +78,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
 
     for (final item in incoming) {
       if (item is Map && ids.add(item['id'])) {
-        target.add(Map<String, dynamic>.from(item));
+        target.add(JsonMap.from(item));
       }
     }
   }
@@ -165,7 +168,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
     await _search();
   }
 
-  Future<void> _follow(Map<String, dynamic> person) async {
+  Future<void> _follow(JsonMap person) async {
     final id = CommunityApi.number(person['id']);
 
     if (_following.contains(id)) return;
@@ -202,7 +205,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
     }
   }
 
-  Future<void> _openPost(Map<String, dynamic> post) async {
+  Future<void> _openPost(JsonMap post) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -256,6 +259,7 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
+      bottomNavigationBar: const BannerAdWidget(),
       body: ListView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.all(18),

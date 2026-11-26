@@ -6,6 +6,7 @@ import '../services/community_auth_service.dart';
 import '../widgets/community_content_menu.dart';
 import '../widgets/community_feed_header.dart';
 import '../widgets/community_feed_post_card.dart';
+import '../widgets/community_native_ad_card.dart';
 import '../widgets/community_search_cards.dart';
 
 import 'community_create_post_screen.dart';
@@ -14,6 +15,8 @@ import 'community_login_screen.dart';
 import 'community_notifications_screen.dart';
 import 'community_profile_screen.dart';
 import 'community_search_screen.dart';
+
+typedef JsonMap = Map<String, dynamic>;
 
 class CommunityFeedScreen extends StatefulWidget {
   const CommunityFeedScreen({super.key});
@@ -35,7 +38,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     'notes': 'Notes',
   };
 
-  final List<Map<String, dynamic>> _posts = [];
+  final List<JsonMap> _posts = [];
   final Set<int> _liking = {};
 
   String _type = 'for_you';
@@ -51,11 +54,17 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   bool _loadingMore = false;
   bool _hasMore = false;
   bool _opening = false;
+  bool _needsLoginForFeed = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  /// ১ম পোস্টের পর (index 0) এবং এরপর প্রতি ৪টি পোস্ট পরপর (index 4, 8, 12...) অ্যাড দেখাবে
+  bool _shouldShowAdAfterPost(int postIndex) {
+    return postIndex == 0 || (postIndex > 0 && postIndex % 4 == 0);
   }
 
   Future<void> _load({bool more = false}) async {
@@ -70,6 +79,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 
     setState(() {
       _error = null;
+      _needsLoginForFeed = false;
       _loading = !more;
       _loadingMore = more;
 
@@ -113,7 +123,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 
         for (final row in rows) {
           if (row is Map) {
-            final post = Map<String, dynamic>.from(row);
+            final post = JsonMap.from(row);
             final id = CommunityApi.number(post['id']);
 
             if (existingIds.add(id)) {
@@ -151,8 +161,8 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 
       setState(() {
         _guest = true;
-        _error = 'Server feed দেখতে login চাইছে। '
-            'Public feed API update হয়েছে কি না দেখো।';
+        _needsLoginForFeed = true;
+        _error = 'Community feed দেখতে অনুগ্রহ করে Sign in করো।';
       });
     } catch (e) {
       if (mounted && generation == _generation) {
@@ -258,7 +268,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     await _load();
   }
 
-  Future<void> _like(Map<String, dynamic> post) async {
+  Future<void> _like(JsonMap post) async {
     final id = CommunityApi.number(post['id']);
 
     if (_liking.contains(id) || _opening) return;
@@ -307,7 +317,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     }
   }
 
-  Future<void> _postMenu(Map<String, dynamic> post) async {
+  Future<void> _postMenu(JsonMap post) async {
     final id = CommunityApi.number(post['id']);
 
     if (_opening || _liking.contains(id)) return;
@@ -434,7 +444,19 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                 return _footer();
               }
 
-              return _postItem(_posts[index - 1]);
+              final postIndex = index - 1;
+              final post = _posts[postIndex];
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _postItem(post),
+                  if (_shouldShowAdAfterPost(postIndex))
+                    CommunityNativeAdCard(
+                      key: ValueKey('community-native-ad-$postIndex'),
+                    ),
+                ],
+              );
             },
           ),
         ),
@@ -484,7 +506,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     );
   }
 
-  Widget _postItem(Map<String, dynamic> post) {
+  Widget _postItem(JsonMap post) {
     final postId = CommunityApi.number(post['id']);
     final authorId = CommunityApi.number(post['author_id']);
 
@@ -519,7 +541,11 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (_error != null)
-            _notice(_error!, retry: true),
+            _notice(
+              _error!,
+              retry: !_needsLoginForFeed,
+              showLogin: _needsLoginForFeed,
+            ),
           if (_error == null && _posts.isEmpty)
             _notice(
               _type == 'following'
@@ -658,14 +684,22 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     );
   }
 
-  Widget _notice(String text, {bool retry = false}) {
+  Widget _notice(
+      String text, {
+        bool retry = false,
+        bool showLogin = false,
+      }) {
     return searchCard(
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: Column(
           children: [
             Icon(
-              retry ? Icons.cloud_off : Icons.forum_outlined,
+              showLogin
+                  ? Icons.lock_outline_rounded
+                  : retry
+                  ? Icons.cloud_off
+                  : Icons.forum_outlined,
               color: searchGreen,
               size: 42,
             ),
@@ -678,6 +712,20 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                 height: 1.5,
               ),
             ),
+            if (showLogin)
+              Padding(
+                padding: const EdgeInsets.only(top: 14),
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: searchGreen,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _opening
+                      ? null
+                      : () => _open(const CommunityLoginScreen()),
+                  child: const Text('Sign in'),
+                ),
+              ),
             if (retry)
               Padding(
                 padding: const EdgeInsets.only(top: 12),

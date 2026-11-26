@@ -3,13 +3,17 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/ad_manager.dart';
+import '../../../core/ads/banner_ad_widget.dart';
 import '../services/community_api.dart';
 import '../services/community_upload_service.dart';
 import '../widgets/community_search_cards.dart';
 import 'community_login_screen.dart';
 
+typedef JsonMap = Map<String, dynamic>;
+
 class CommunityEditProfileScreen extends StatefulWidget {
-  final Map<String, dynamic> profile;
+  final JsonMap profile;
 
   const CommunityEditProfileScreen({
     super.key,
@@ -81,6 +85,9 @@ class _CommunityEditProfileScreenState
     });
 
     try {
+      // গ্যালারি থেকে ফেরার সময় যেন অপ্রত্যাশিতভাবে App Open Ad না আসে
+      AdManager.instance.suppressNextAppOpenAd();
+
       // file_picker 11.0.3 API
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -446,6 +453,7 @@ class _CommunityEditProfileScreenState
           foregroundColor: searchInk,
           surfaceTintColor: Colors.transparent,
         ),
+        bottomNavigationBar: const BannerAdWidget(),
         body: SafeArea(
           child: Center(
             child: ConstrainedBox(

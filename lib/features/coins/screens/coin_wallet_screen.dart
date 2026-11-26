@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/ad_manager.dart';
 import '../../community/screens/community_login_screen.dart';
 import '../../community/services/community_api.dart';
 import '../services/coin_reward_service.dart';
+
+typedef JsonMap = Map<String, dynamic>;
 
 class CoinWalletScreen extends StatefulWidget {
   const CoinWalletScreen({super.key});
@@ -16,25 +19,58 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
   static const _ink = Color(0xFF102038);
   static const _mint = Color(0xFFE4F6EF);
 
-  final _history = <Map<String, dynamic>>[];
-  final _rules = <Map<String, dynamic>>[];
+  final List<JsonMap> _history = [];
+  final List<JsonMap> _rules = [];
 
-  Map<String, dynamic>? _wallet;
+  JsonMap? _wallet;
 
   bool _busy = false;
   bool _needsLogin = false;
   bool _openingLogin = false;
+  bool _watchingAd = false;
 
   String? _error;
   String? _rulesError;
   int? _nextBefore;
 
-  bool get _locked => _busy || _openingLogin;
+  bool get _locked => _busy || _openingLogin || _watchingAd;
 
   @override
   void initState() {
     super.initState();
+    AdManager.instance.loadRewardedAd();
     _load();
+  }
+
+  void _claimWithAd() {
+    if (_locked || !mounted) return;
+
+    setState(() => _watchingAd = true);
+
+    var earned = false;
+
+    AdManager.instance.showRewardedAd(
+      onUserEarnedReward: (_) {
+        earned = true;
+      },
+      onAdDismissed: () async {
+        if (!mounted) return;
+
+        setState(() => _watchingAd = false);
+
+        if (earned) {
+          await _load(claim: true);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Reward পেতে পুরো video ad দেখো (অথবা কিছুক্ষণ পর আবার চেষ্টা করো)।',
+              ),
+            ),
+          );
+        }
+      },
+    );
   }
 
   Future<void> _load({
@@ -74,7 +110,7 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
       }
 
       final entries = rows
-          .map((row) => Map<String, dynamic>.from(row as Map))
+          .map((row) => JsonMap.from(row as Map))
           .toList();
 
       final rawCursor = pagination['next_before'];
@@ -153,7 +189,7 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
 
       setState(() {
         _error = claim
-            ? 'Reward-এর ফল নিশ্চিত করা যায়নি। Refresh করে দেখো। '
+            ? 'Reward-এর ফল নিশ্চিত করা যায়নি। Refresh করে দেখো। '
             'আবার check-in করলেও একই দিনের duplicate coin হবে না।'
             : CommunityApi.errorText(error);
       });
@@ -277,8 +313,7 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
                   ),
                 ),
 
-              if (_error != null)
-                _errorCard(_error!),
+              if (_error != null) _errorCard(_error!),
 
               if (wallet != null) ...[
                 _balanceCard(wallet),
@@ -289,7 +324,7 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
 
                 if (_rulesError != null)
                   _errorCard(
-                    'Reward list load হয়নি।\n$_rulesError',
+                    'Reward list load হয়নি।\n$_rulesError',
                   )
                 else if (_rules.isEmpty)
                   _card(
@@ -310,7 +345,7 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
                       child: Center(
                         child: Text(
                           'এখনো কোনো coin অর্জন করোনি।\n'
-                              'Daily check-in দিয়ে শুরু করো!',
+                              'Daily check-in দিয়ে শুরু করো!',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.blueGrey,
@@ -325,14 +360,13 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
 
                 if (_nextBefore != null)
                   OutlinedButton(
-                    onPressed:
-                    _locked ? null : () => _load(more: true),
+                    onPressed: _locked ? null : () => _load(more: true),
                     child: const Text('Load older history'),
                   ),
 
                 const SizedBox(height: 16),
                 const Text(
-                  'Daily reward বাংলাদেশ সময় রাত ১২টায় reset হয়।\n'
+                  'Daily reward বাংলাদেশ সময় রাত ১২টায় reset হয়।\n'
                       'Coin ও learning XP আলাদা। Cash withdrawal চালু নেই।',
                   textAlign: TextAlign.center,
                   style: TextStyle(
@@ -349,7 +383,7 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
     );
   }
 
-  Widget _balanceCard(Map<String, dynamic> wallet) {
+  Widget _balanceCard(JsonMap wallet) {
     return Container(
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
@@ -404,18 +438,17 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
     );
   }
 
-  Widget _dailyCard(Map<String, dynamic> wallet) {
-    final rule =
-    Map<String, dynamic>.from(wallet['daily_reward'] as Map);
+  Widget _dailyCard(JsonMap wallet) {
+    final rule = JsonMap.from(wallet['daily_reward'] as Map);
 
     final claimed = rule['claimed_today'] == true;
     final enabled = rule['enabled'] == true;
     final amount = CommunityApi.number(rule['amount']);
 
     final label = claimed
-        ? 'আজকের reward সংগ্রহ করা হয়েছে'
+        ? 'আজকের reward সংগ্রহ করা হয়েছে'
         : enabled
-        ? 'Collect $amount coins'
+        ? 'Watch Ad & Collect $amount coins'
         : 'Reward আপাতত বন্ধ';
 
     return _card(
@@ -444,9 +477,9 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
           const SizedBox(height: 12),
           Text(
             claimed
-                ? 'আজকের reward পেয়েছ। আগামীকাল আবার এসো।'
+                ? 'আজকের reward পেয়েছ। আগামীকাল আবার এসো।'
                 : enabled
-                ? 'আজ check-in করে $amount coin সংগ্রহ করো।'
+                ? 'একটি ছোট video ad দেখে আজকের $amount coin সংগ্রহ করো।'
                 : 'Daily reward বর্তমানে বন্ধ আছে।',
             style: const TextStyle(
               color: Colors.blueGrey,
@@ -457,9 +490,7 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
-              onPressed: _locked || claimed || !enabled
-                  ? null
-                  : () => _load(claim: true),
+              onPressed: _locked || claimed || !enabled ? null : _claimWithAd,
               style: FilledButton.styleFrom(
                 backgroundColor: _green,
                 foregroundColor: Colors.white,
@@ -474,7 +505,7 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
               icon: Icon(
                 claimed
                     ? Icons.check_circle_outline_rounded
-                    : Icons.redeem_rounded,
+                    : Icons.play_circle_fill_rounded,
               ),
               label: Text(label, textAlign: TextAlign.center),
             ),
@@ -484,7 +515,7 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
     );
   }
 
-  Widget _ruleCard(Map<String, dynamic> rule) {
+  Widget _ruleCard(JsonMap rule) {
     final ready = rule['integration_ready'] == true;
     final active = rule['active'] == true;
     final amount = CommunityApi.number(rule['amount']);
@@ -537,9 +568,7 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
                     _badge(
                       status,
                       active ? _green : const Color(0xFF887347),
-                      active
-                          ? _mint
-                          : const Color(0xFFFFF3D8),
+                      active ? _mint : const Color(0xFFFFF3D8),
                     ),
                   ],
                 ),
@@ -551,7 +580,7 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
     );
   }
 
-  Widget _historyCard(Map<String, dynamic> item) {
+  Widget _historyCard(JsonMap item) {
     return _card(
       Row(
         children: [
@@ -667,7 +696,4 @@ class _CoinWalletScreenState extends State<CoinWalletScreen> {
       child: child,
     );
   }
-
-
-
 }

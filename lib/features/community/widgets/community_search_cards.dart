@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/community_profile_screen.dart';
 import '../services/community_api.dart';
+import '../utils/community_time_formatter.dart';
 
 const searchGreen = Color(0xFF008B48);
 const searchInk = Color(0xFF102038);
@@ -238,6 +239,7 @@ class SearchPostCard extends StatelessWidget {
     final media = CommunityApi.mediaUrl(post['media_key']);
     final english = '${post['english_sentence'] ?? ''}'.trim();
     final bangla = '${post['bangla_meaning'] ?? ''}'.trim();
+    final timeAgo = CommunityTimeFormatter.timeAgo(post['created_at']);
 
     final isImage = post['post_type'] == 'image' ||
         '${post['media_type']}'.startsWith('image/');
@@ -264,13 +266,28 @@ class SearchPostCard extends StatelessWidget {
                   searchAvatar(post['author_avatar_key']),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(
-                      '${post['author_name'] ?? ''}',
-                      style: const TextStyle(
-                        color: searchInk,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${post['author_name'] ?? ''}',
+                          style: const TextStyle(
+                            color: searchInk,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        ),
+                        if (timeAgo.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            timeAgo,
+                            style: const TextStyle(
+                              color: Colors.blueGrey,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   Text(

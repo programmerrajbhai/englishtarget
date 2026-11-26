@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/ads/banner_ad_widget.dart';
 import '../services/community_api.dart';
+import '../utils/community_time_formatter.dart';
 import '../widgets/community_search_cards.dart';
 import 'community_discussion_screen.dart';
 import 'community_login_screen.dart';
 import 'community_profile_screen.dart';
+
+typedef JsonMap = Map<String, dynamic>;
 
 class CommunityNotificationsScreen extends StatefulWidget {
   const CommunityNotificationsScreen({super.key});
@@ -23,7 +27,7 @@ class _CommunityNotificationsScreenState
     'likes': 'Likes',
   };
 
-  final _items = <Map<String, dynamic>>[];
+  final List<JsonMap> _items = [];
 
   String _type = 'all';
   String? _error;
@@ -88,7 +92,7 @@ class _CommunityNotificationsScreenState
 
         for (final row in rows) {
           if (row is Map && ids.add('${row['id']}')) {
-            _items.add(Map<String, dynamic>.from(row));
+            _items.add(JsonMap.from(row));
           }
         }
 
@@ -160,7 +164,7 @@ class _CommunityNotificationsScreenState
     }
   }
 
-  Future<void> _openNotification(Map<String, dynamic> item) async {
+  Future<void> _openNotification(JsonMap item) async {
     if (_working) return;
 
     setState(() => _working = true);
@@ -230,7 +234,7 @@ class _CommunityNotificationsScreenState
     );
   }
 
-  String _description(Map<String, dynamic> item) {
+  String _description(JsonMap item) {
     final message = '${item['message'] ?? ''}'.trim();
     if (message.isNotEmpty) return message;
 
@@ -298,6 +302,7 @@ class _CommunityNotificationsScreenState
           ),
         ],
       ),
+      bottomNavigationBar: const BannerAdWidget(),
       body: RefreshIndicator(
         color: searchGreen,
         onRefresh: () => _load(),
@@ -383,9 +388,8 @@ class _CommunityNotificationsScreenState
     );
   }
 
-  Widget _notificationCard(Map<String, dynamic> item) {
+  Widget _notificationCard(JsonMap item) {
     final read = CommunityApi.flag(item['is_read']);
-    final date = '${item['created_at'] ?? ''}';
 
     return searchCard(
       InkWell(
@@ -430,9 +434,7 @@ class _CommunityNotificationsScreenState
                   ),
                   const SizedBox(height: 7),
                   Text(
-                    date.length >= 16
-                        ? date.substring(0, 16).replaceFirst('T', ' ')
-                        : date,
+                    CommunityTimeFormatter.timeAgo(item['created_at']),
                     style: const TextStyle(
                       color: Colors.blueGrey,
                       fontSize: 11,

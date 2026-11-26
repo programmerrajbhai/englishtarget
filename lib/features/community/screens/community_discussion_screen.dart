@@ -3,9 +3,13 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/community_api.dart';
 import '../services/community_auth_service.dart';
+import '../utils/community_time_formatter.dart';
 import '../widgets/community_content_menu.dart';
+import '../widgets/community_native_ad_card.dart';
 import '../widgets/community_search_cards.dart';
 import 'community_login_screen.dart';
+
+typedef JsonMap = Map<String, dynamic>;
 
 class CommunityDiscussionScreen extends StatefulWidget {
   final int postId;
@@ -24,10 +28,10 @@ class _CommunityDiscussionScreenState
     extends State<CommunityDiscussionScreen> {
   final _text = TextEditingController();
   final _focus = FocusNode();
-  final _comments = <Map<String, dynamic>>[];
+  final List<JsonMap> _comments = [];
 
-  Map<String, dynamic>? _post;
-  Map<String, dynamic>? _reply;
+  JsonMap? _post;
+  JsonMap? _reply;
   String? _error;
 
   int _page = 0;
@@ -96,13 +100,13 @@ class _CommunityDiscussionScreenState
       }
 
       setState(() {
-        _post = Map<String, dynamic>.from(rawPost);
+        _post = JsonMap.from(rawPost);
 
         final ids = _comments.map((item) => '${item['id']}').toSet();
 
         for (final item in rawComments) {
           if (item is Map && ids.add('${item['id']}')) {
-            _comments.add(Map<String, dynamic>.from(item));
+            _comments.add(JsonMap.from(item));
           }
         }
 
@@ -142,7 +146,6 @@ class _CommunityDiscussionScreenState
 
     if (!mounted) return;
 
-    // নতুন session অনুযায়ী ownership ও likes refresh।
     await _load();
 
     if (success == true && mounted) {
@@ -157,8 +160,6 @@ class _CommunityDiscussionScreenState
     if (token != null && token.isNotEmpty) return true;
 
     await _login();
-
-    // Login-এর আগের ownership দিয়ে action চালাব না।
     return false;
   }
 
@@ -176,8 +177,6 @@ class _CommunityDiscussionScreenState
       if (!mounted) return;
 
       _message(CommunityApi.errorText(e));
-
-      // Failed mutation নিজে থেকে আবার পাঠানো হবে না।
       await _load();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -230,7 +229,7 @@ class _CommunityDiscussionScreenState
   }
 
   Future<void> _like(
-      Map<String, dynamic> item, {
+      JsonMap item, {
         required bool isComment,
       }) async {
     await _perform(() async {
@@ -253,7 +252,7 @@ class _CommunityDiscussionScreenState
     });
   }
 
-  Future<void> _selectReply(Map<String, dynamic>? comment) async {
+  Future<void> _selectReply(JsonMap? comment) async {
     await _perform(() async {
       setState(() => _reply = comment);
       _focus.requestFocus();
@@ -261,7 +260,7 @@ class _CommunityDiscussionScreenState
   }
 
   Future<void> _menu(
-      Map<String, dynamic> item, {
+      JsonMap item, {
         required bool isComment,
       }) async {
     await _perform(() async {
@@ -322,14 +321,6 @@ class _CommunityDiscussionScreenState
     );
   }
 
-  String _date(dynamic value) {
-    final text = '${value ?? ''}';
-
-    return text.length >= 16
-        ? text.substring(0, 16).replaceFirst('T', ' ')
-        : text;
-  }
-
   @override
   Widget build(BuildContext context) {
     final disabled = _busy || _loading || _loadingMore;
@@ -370,6 +361,12 @@ class _CommunityDiscussionScreenState
                   else ...[
                     if (_post != null) ...[
                       _contentCard(_post!, isComment: false),
+                      const Padding(
+                        padding: EdgeInsets.only(top: 6),
+                        child: CommunityNativeAdCard(
+                          key: ValueKey('discussion-native-ad'),
+                        ),
+                      ),
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 12),
                         child: Text(
@@ -436,7 +433,7 @@ class _CommunityDiscussionScreenState
   }
 
   Widget _contentCard(
-      Map<String, dynamic> item, {
+      JsonMap item, {
         required bool isComment,
       }) {
     final prefix = isComment ? 'user' : 'author';
@@ -470,7 +467,7 @@ class _CommunityDiscussionScreenState
                     const SizedBox(height: 3),
                     Text(
                       'Lv. ${item['${prefix}_level'] ?? 0} · '
-                          '${_date(item['created_at'])}',
+                          '${CommunityTimeFormatter.timeAgo(item['created_at'])}',
                       style: const TextStyle(
                         color: Colors.blueGrey,
                         fontSize: 11,
